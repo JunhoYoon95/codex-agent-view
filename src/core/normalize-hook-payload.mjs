@@ -1,0 +1,146 @@
+const NORMALIZED_EVENT_TYPES = Object.freeze({
+  PermissionRequest: "permission_requested",
+  PostToolUse: "tool_completed",
+  PreToolUse: "tool_started",
+  SubagentStart: "subagent_started",
+  SubagentStop: "subagent_stopped",
+});
+
+const MAX_IDENTIFIER_LENGTH = 512;
+const MAX_LABEL_LENGTH = 256;
+
+function isObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isBoundedString(value, maxLength = MAX_IDENTIFIER_LENGTH) {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= maxLength
+  );
+}
+
+function ignored(code, diagnosedAtMs, field) {
+  return {
+    status: "ignored",
+    diagnostic: {
+      code,
+      diagnosed_at_ms: diagnosedAtMs,
+      ...(field ? { field } : {}),
+    },
+  };
+}
+
+function requiredString(payload, field, diagnosedAtMs, maxLength) {
+  if (!(field in payload)) {
+    return ignored("missing_required_field", diagnosedAtMs, field);
+  }
+
+  if (!isBoundedString(payload[field], maxLength)) {
+    return ignored("invalid_field", diagnosedAtMs, field);
+  }
+
+  return null;
+}
+
+function resolveReceivedAtMs(options) {
+  const receivedAtMs = options?.receivedAtMs ?? Date.now();
+  if (!Number.isSafeInteger(receivedAtMs) || receivedAtMs < 0) {
+    throw new TypeError("receivedAtMs must be a non-negative safe integer");
+  }
+  return receivedAtMs;
+}
+
+function commonEvent(payload, type, receivedAtMs) {
+  return {
+    schema_version: 1,
+    source: "hook",
+    type,
+    session_id: payload.session_id,
+    turn_id: payload.turn_id,
+    received_at_ms: receivedAtMs,
+  };
+}
+
+/**
+ * Validate an untrusted Codex hook payload and retain only monitor-safe fields.
+ * Raw prompts, tool input/output, paths, and assistant messages are never copied.
+ */
+export function normalizeHookPayload(payload, options = {}) {
+  const receivedAtMs = resolveReceivedAtMs(options);
+  if (!isObject(payload)) {
+    return ignored("malformed_payload", receivedAtMs);
+  }
+
+  const eventNameError = requiredString(
+    payload,
+    "hook_event_name",
+    receivedAtMs,
+    MAX_LABEL_LENGTH,
+  );
+  if (eventNameError) {
+    return eventNameError;
+  }
+
+  const type = NORMALIZED_EVENT_TYPES[payload.hook_event_name];
+  if (!type) {
+    return ignored("unsupported_hook_event", receivedAtMs, "hook_event_name");
+  }
+
+  for (const field of ["session_id", "turn_id"]) {
+    const error = requiredString(payload, field, receivedAtMs);
+    if (error) {
+      return error;
+    }
+  }
+
+  const event = commonEvent(payload, type, receivedAtMs);
+
+  if (type === "subagent_started" || type === "subagent_stopped") {
+    for (const [field, maxLength] of [
+      ["agent_id", MAX_IDENTIFIER_LENGTH],
+      ["agent_type", MAX_LABEL_LENGTH],
+    ]) {
+      const error = requiredString(payload, field, receivedAtMs, maxLength);
+      if (error) {
+        return error;
+      }
+    }
+
+    event.agent_id = payload.agent_id;
+    event.agent_type = payload.agent_type;
+  }
+
+  if (type === "tool_started" || type === "tool_completed") {
+    for (const [field, maxLength] of [
+      ["tool_name", MAX_LABEL_LENGTH],
+      ["tool_use_id", MAX_IDENTIFIER_LENGTH],
+    ]) {
+      const error = requiredString(payload, field, receivedAtMs, maxLength);
+      if (error) {
+        return error;
+      }
+    }
+
+    event.tool_name = payload.tool_name;
+    event.tool_use_id = payload.tool_use_id;
+  }
+
+  if (type === "permission_requested") {
+    const error = requiredString(
+      payload,
+      "tool_name",
+      receivedAtMs,
+      MAX_LABEL_LENGTH,
+    );
+    if (error) {
+      return error;
+    }
+
+    event.tool_name = payload.tool_name;
+  }
+
+  return { status: "accepted", event };
+}
+

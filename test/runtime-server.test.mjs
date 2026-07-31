@@ -1,0 +1,251 @@
+import assert from "node:assert/strict";
+import { access, mkdir, mkdtemp, rm, symlink, writeFile, stat } from "node:fs/promises";
+import { createServer, request as httpRequest } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+
+import { readRuntimeInfo, runtimeFile } from "../src/runtime/config.mjs";
+import { startMonitorServer } from "../src/runtime/server.mjs";
+
+const TOKEN = "t".repeat(43);
+
+async function startFixture(t) {
+  const root = await mkdtemp(join(tmpdir(), "codex-agent-view-server-test-"));
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: join(root, "runtime") };
+  const monitor = await startMonitorServer({
+    host: "127.0.0.1",
+    port: 0,
+    env,
+    token: TOKEN,
+    now: () => 1_000,
+  });
+  t.after(async () => {
+    await monitor.close().catch(() => {});
+    await rm(root, { force: true, recursive: true });
+  });
+  return { env, monitor };
+}
+
+function request(monitor, { body, headers = {}, method = "GET", path = "/" } = {}) {
+  return new Promise((resolve, reject) => {
+    const req = httpRequest(
+      {
+        hostname: monitor.runtimeInfo.host,
+        port: monitor.runtimeInfo.port,
+        method,
+        path,
+        headers: {
+          host: `${monitor.runtimeInfo.host}:${monitor.runtimeInfo.port}`,
+          ...headers,
+        },
+      },
+      (response) => {
+        const chunks = [];
+        response.on("data", (chunk) => chunks.push(chunk));
+        response.on("end", () => {
+          resolve({
+            body: Buffer.concat(chunks).toString("utf8"),
+            headers: response.headers,
+            status: response.statusCode,
+          });
+        });
+      },
+    );
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+
+function json(response) {
+  return JSON.parse(response.body);
+}
+
+function bearer(token = TOKEN) {
+  return { authorization: `Bearer ${token}` };
+}
+
+async function reserveLoopbackPort() {
+  const server = createServer();
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const { port } = server.address();
+  await new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+  return port;
+}
+
+test("binds to 127.0.0.1 with port zero and cleans up runtime info", async (t) => {
+  const { env, monitor } = await startFixture(t);
+  const address = monitor.server.address();
+  assert.equal(address.address, "127.0.0.1");
+  assert(address.port > 0);
+
+  const info = await readRuntimeInfo(env);
+  assert.equal(info.host, "127.0.0.1");
+  assert.equal(info.port, address.port);
+  assert.equal(info.token, TOKEN);
+  if (process.platform !== "win32") {
+    assert.equal((await stat(runtimeFile(env))).mode & 0o777, 0o600);
+  }
+
+  await monitor.close();
+  await monitor.close();
+  await assert.rejects(access(runtimeFile(env)), { code: "ENOENT" });
+});
+
+test("closes the listener and rethrows when runtime info publication fails", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("symbolic link setup is not portable on Windows");
+    return;
+  }
+
+  const root = await mkdtemp(join(tmpdir(), "codex-agent-view-startup-failure-test-"));
+  t.after(async () => rm(root, { force: true, recursive: true }));
+  const badDirectory = join(root, "bad-runtime");
+  const target = join(root, "target.json");
+  await mkdir(badDirectory, { mode: 0o700 });
+  await writeFile(target, "unchanged\n");
+  await symlink(target, join(badDirectory, "runtime.json"));
+  const port = await reserveLoopbackPort();
+
+  await assert.rejects(
+    startMonitorServer({
+      host: "127.0.0.1",
+      port,
+      env: { CODEX_AGENT_VIEW_RUNTIME_DIR: badDirectory },
+      token: TOKEN,
+    }),
+    /refusing symbolic link/,
+  );
+
+  const recoveryDirectory = join(root, "recovery-runtime");
+  const recovered = await startMonitorServer({
+    host: "127.0.0.1",
+    port,
+    env: { CODEX_AGENT_VIEW_RUNTIME_DIR: recoveryDirectory },
+    token: "r".repeat(43),
+  });
+  await recovered.close();
+});
+
+test("requires auth, accepts hook ingest, and returns minimized state", async (t) => {
+  const { monitor } = await startFixture(t);
+  assert.equal((await request(monitor, { path: "/api/health" })).status, 200);
+  assert.equal((await request(monitor, { path: "/api/state" })).status, 401);
+  assert.equal(
+    (
+      await request(monitor, {
+        path: "/api/state",
+        headers: bearer("x".repeat(43)),
+      })
+    ).status,
+    401,
+  );
+
+  const payload = {
+    session_id: "session-1",
+    turn_id: "turn-1",
+    hook_event_name: "PreToolUse",
+    tool_name: "Bash",
+    tool_use_id: "tool-1",
+    prompt: "private prompt",
+    tool_input: { command: "private command" },
+    tool_response: "private output",
+    cwd: "/private/workspace",
+    transcript_path: "/private/transcript.jsonl",
+  };
+  const ingested = await request(monitor, {
+    method: "POST",
+    path: "/api/events",
+    headers: {
+      ...bearer(),
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  assert.equal(ingested.status, 202);
+  assert.deepEqual(json(ingested), { status: "applied" });
+
+  const stateResponse = await request(monitor, {
+    path: "/api/state",
+    headers: bearer(),
+  });
+  assert.equal(stateResponse.status, 200);
+  const state = json(stateResponse);
+  assert.equal(state.sessions[0].session_id, "session-1");
+  assert.equal(state.sessions[0].recent_activities[0].tool_name, "Bash");
+  const serialized = JSON.stringify(state);
+  for (const privateValue of [
+    "private prompt",
+    "private command",
+    "private output",
+    "/private/workspace",
+    "/private/transcript.jsonl",
+  ]) {
+    assert(!serialized.includes(privateValue));
+  }
+});
+
+test("rejects non-loopback Host headers before serving health or state", async (t) => {
+  const { monitor } = await startFixture(t);
+  for (const host of ["example.com", "127.0.0.1.example.com"]) {
+    const response = await request(monitor, {
+      path: "/api/health",
+      headers: { host },
+    });
+    assert.equal(response.status, 421);
+    assert.equal(json(response).error, "loopback host required");
+  }
+});
+
+test("enforces required, valid, and bounded event bodies", async (t) => {
+  const { monitor } = await startFixture(t);
+  const headers = { ...bearer(), "content-type": "application/json" };
+
+  const empty = await request(monitor, {
+    method: "POST",
+    path: "/api/events",
+    headers,
+  });
+  assert.equal(empty.status, 400);
+
+  const malformed = await request(monitor, {
+    method: "POST",
+    path: "/api/events",
+    headers,
+    body: "not-json",
+  });
+  assert.equal(malformed.status, 400);
+
+  const oversized = await request(monitor, {
+    method: "POST",
+    path: "/api/events",
+    headers,
+    body: JSON.stringify({ value: "x".repeat(64 * 1024) }),
+  });
+  assert.equal(oversized.status, 413);
+});
+
+test("serves static assets with restrictive security headers", async (t) => {
+  const { monitor } = await startFixture(t);
+  const fixtures = [
+    ["/", "text/html", "Codex Agent View"],
+    ["/assets/app.js", "text/javascript", "API_STATE_URL"],
+    ["/assets/styles.css", "text/css", "--surface-canvas"],
+  ];
+
+  for (const [path, contentType, marker] of fixtures) {
+    const response = await request(monitor, { path });
+    assert.equal(response.status, 200);
+    assert.match(response.headers["content-type"], new RegExp(contentType));
+    assert.equal(response.headers["cache-control"], "no-store");
+    assert.equal(response.headers["x-content-type-options"], "nosniff");
+    assert.equal(response.headers["x-frame-options"], "DENY");
+    assert.match(response.headers["content-security-policy"], /default-src 'self'/);
+    assert(response.body.includes(marker));
+  }
+});
