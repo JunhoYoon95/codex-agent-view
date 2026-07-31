@@ -1,0 +1,5 @@
+node_modules/
+*.tgz
+.codex-agent-view/
+captures/
+.DS_Store
