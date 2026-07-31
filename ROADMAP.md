@@ -52,7 +52,7 @@
 - [x] 추측한 payload field를 영구 데이터 모델로 고정하지 않았는지 검토한다.
 - [x] 관련 단위 테스트를 통과한다. (`8/8`)
 - [x] 프로젝트 내부 및 공식 plugin validation을 통과한다.
-- [x] npm package dry-run에서 의도한 runtime file 6개만 포함되는지 확인한다.
+- [x] npm package dry-run에서 의도한 runtime file 7개만 포함되는지 확인한다.
 - [ ] 팀장이 공식 앱 E2E QA를 직접 수행하고, 지적 사항이 없어질 때까지 재작업·재검증한다.
 
 ### Phase 0 완료 기준
