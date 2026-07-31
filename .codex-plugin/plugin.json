@@ -1,0 +1,25 @@
+{
+  "name": "codex-agent-view",
+  "version": "0.1.0",
+  "description": "Read-only local visibility into Codex parent-task and subagent lifecycle events.",
+  "author": {
+    "name": "JunhoYoon95",
+    "url": "https://github.com/JunhoYoon95"
+  },
+  "homepage": "https://github.com/JunhoYoon95/codex-agent-view#readme",
+  "repository": "https://github.com/JunhoYoon95/codex-agent-view",
+  "license": "Apache-2.0",
+  "interface": {
+    "displayName": "Codex Agent View",
+    "shortDescription": "See parent tasks and subagents at a glance.",
+    "longDescription": "A read-only companion monitor for the official Codex app. Phase 0 captures privacy-minimized local lifecycle events only.",
+    "developerName": "JunhoYoon95",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Verify Codex task and subagent lifecycle capture."
+    ]
+  }
+}
