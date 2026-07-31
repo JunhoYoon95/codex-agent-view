@@ -1,25 +1,34 @@
 {
   "name": "codex-agent-view",
-  "version": "0.1.0",
-  "description": "Read-only local visibility into Codex parent-task and subagent lifecycle events.",
+  "version": "0.2.0",
+  "description": "Read-only local monitor for Codex parent-task and subagent lifecycle events.",
   "author": {
-    "name": "JunhoYoon95",
+    "name": "Junho Yoon",
     "url": "https://github.com/JunhoYoon95"
   },
   "homepage": "https://github.com/JunhoYoon95/codex-agent-view#readme",
   "repository": "https://github.com/JunhoYoon95/codex-agent-view",
   "license": "Apache-2.0",
+  "skills": "./skills/",
   "interface": {
     "displayName": "Codex Agent View",
-    "shortDescription": "See parent tasks and subagents at a glance.",
-    "longDescription": "A read-only companion monitor for the official Codex app. Phase 0 captures privacy-minimized local lifecycle events only.",
-    "developerName": "JunhoYoon95",
+    "shortDescription": "Monitor Codex task activity.",
+    "longDescription": "A read-only companion monitor for the official Codex app. View privacy-minimized task, subagent, tool, and permission lifecycle state in a local dashboard.",
+    "developerName": "Junho Yoon",
     "category": "Productivity",
+    "brandColor": "#123F35",
+    "composerIcon": "./assets/logo.svg",
+    "logo": "./assets/logo.svg",
+    "logoDark": "./assets/logo-dark.svg",
     "capabilities": [
       "Read"
     ],
+    "websiteURL": "https://github.com/JunhoYoon95/codex-agent-view",
+    "privacyPolicyURL": "https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/privacy.md",
+    "termsOfServiceURL": "https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/terms.md",
     "defaultPrompt": [
-      "Verify Codex task and subagent lifecycle capture."
+      "Show the current Codex task and subagent status.",
+      "Diagnose why Codex Agent View is not receiving events."
     ]
   }
 }

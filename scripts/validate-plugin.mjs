@@ -8,6 +8,8 @@ const packageUrl = new URL("../package.json", import.meta.url);
 const marketplaceUrl = new URL("../.agents/plugins/marketplace.json", import.meta.url);
 const hooksUrl = new URL("../hooks/hooks.json", import.meta.url);
 const captureScriptUrl = new URL("./capture-hook.mjs", import.meta.url);
+const senderScriptUrl = new URL("./send-hook.mjs", import.meta.url);
+const skillUrl = new URL("../skills/codex-agent-view/SKILL.md", import.meta.url);
 const licenseUrl = new URL("../LICENSE", import.meta.url);
 const noticeUrl = new URL("../NOTICE", import.meta.url);
 
@@ -34,6 +36,12 @@ assert(
 assert(typeof manifest.description === "string" && manifest.description.length > 0, "manifest description is required");
 assert(!("hooks" in manifest), "default hooks/hooks.json discovery should not need a manifest hooks entry");
 assert(packageMetadata.name === manifest.name, "package name must match the manifest");
+assert(packageMetadata.version === manifest.version, "package version must match the manifest");
+assert(
+  typeof manifest.interface?.shortDescription === "string" &&
+    manifest.interface.shortDescription.length <= 30,
+  "manifest shortDescription must be 30 characters or fewer",
+);
 assert(
   packageMetadata.license === "Apache-2.0" && manifest.license === "Apache-2.0",
   "package and manifest license must be Apache-2.0",
@@ -109,7 +117,7 @@ const expectedEvents = [
   "PostToolUse",
   "PermissionRequest",
 ];
-const expectedCommand = 'node "${PLUGIN_ROOT}/scripts/capture-hook.mjs"';
+const expectedCommand = 'node "${PLUGIN_ROOT}/scripts/send-hook.mjs"';
 
 for (const event of expectedEvents) {
   const groups = config.hooks?.[event];
@@ -142,4 +150,14 @@ for (const event of expectedEvents) {
 }
 
 await access(captureScriptUrl, constants.R_OK);
+await access(senderScriptUrl, constants.R_OK);
+await access(skillUrl, constants.R_OK);
+for (const field of ["composerIcon", "logo", "logoDark"]) {
+  const value = manifest.interface?.[field];
+  assert(
+    typeof value === "string" && value.startsWith("./assets/"),
+    `manifest interface.${field} must reference a bundled asset`,
+  );
+  await access(new URL(`../${value.slice(2)}`, import.meta.url), constants.R_OK);
+}
 process.stdout.write("Plugin scaffold validation passed.\n");

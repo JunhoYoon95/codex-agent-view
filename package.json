@@ -1,12 +1,24 @@
 {
   "name": "codex-agent-view",
-  "version": "0.1.0",
-  "description": "Read-only companion monitor plugin for Codex parent tasks and subagents.",
+  "version": "0.2.0",
+  "description": "Local read-only companion monitor for Codex parent tasks and subagents.",
   "type": "module",
+  "main": "./src/core/index.mjs",
+  "exports": "./src/core/index.mjs",
+  "bin": {
+    "codex-agent-view": "./bin/codex-agent-view.mjs"
+  },
   "files": [
+    ".agents/",
     ".codex-plugin/",
+    "assets/",
+    "bin/",
     "hooks/",
+    "public/",
     "scripts/capture-hook.mjs",
+    "scripts/send-hook.mjs",
+    "skills/",
+    "src/",
     "README.md",
     "LICENSE",
     "NOTICE"
@@ -14,7 +26,12 @@
   "scripts": {
     "test": "node --test",
     "validate:plugin": "node scripts/validate-plugin.mjs",
-    "check": "npm test && npm run validate:plugin && npm pack --dry-run --cache ./node_modules/.cache/npm"
+    "check": "npm test && npm run validate:plugin && npm pack --dry-run --cache ./node_modules/.cache/npm",
+    "prepublishOnly": "npm run check",
+    "start": "node bin/codex-agent-view.mjs start",
+    "doctor": "node bin/codex-agent-view.mjs doctor",
+    "install:plugin": "node bin/codex-agent-view.mjs install",
+    "uninstall:plugin": "node bin/codex-agent-view.mjs uninstall"
   },
   "keywords": [
     "codex",
@@ -22,7 +39,7 @@
     "subagent",
     "monitor"
   ],
-  "author": "JunhoYoon95",
+  "author": "Junho Yoon",
   "license": "Apache-2.0",
   "homepage": "https://github.com/JunhoYoon95/codex-agent-view#readme",
   "repository": {
@@ -33,6 +50,9 @@
     "url": "https://github.com/JunhoYoon95/codex-agent-view/issues"
   },
   "packageManager": "npm@11.13.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=18"
   }
