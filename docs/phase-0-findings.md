@@ -8,7 +8,7 @@
 
 다만 이것은 공식 앱 bundle에 포함된 CLI runtime 검증이지, Codex GUI의 현재 task가 plugin hook을 실행했다는 증거는 아니다. 현재 열린 GUI task에 plugin을 추가한 뒤 worker를 시작·종료했지만 캡처는 없었다. task 시작 시점의 config snapshot과 미신뢰 hook skip을 분리하지 못했으므로 “GUI는 hook hot-load를 지원하지 않는다”고 단정할 수 없다. `PermissionRequest`도 아직 실제 payload를 관찰하지 못했다.
 
-따라서 Phase 0은 아직 완료가 아니다. 새 GUI task에서 plugin 활성화와 hook trust를 확인한 뒤 subagent lifecycle, tool use, approval 요청을 다시 발생시키는 최종 E2E가 남아 있다.
+Phase 0의 repository 조사와 구현 입력 정리는 완료했지만, 새 GUI task에서 plugin 활성화와 hook trust를 확인한 뒤 subagent lifecycle, tool use, approval 요청을 발생시키는 최종 공식 앱 E2E는 아직 외부 acceptance blocker로 남아 있다. 이 문서는 그 미확인 항목을 완료로 간주하지 않는다.
 
 ## 검증 환경
 
@@ -132,23 +132,21 @@
 
 ## Package와 배포 관련 발견
 
-로컬 marketplace installer는 package의 `files` allowlist만 설치하는 것이 아니라 repository 전체를 복사했다. 반면 `npm pack --dry-run`은 현재 `package.json`의 allowlist에 따라 LICENSE와 NOTICE를 포함한 7개 runtime file만 포함했다.
+Phase 0 당시 local marketplace가 repository root를 가리키면 source tree 전체가 설치 경계가 될 수 있었다. 이후 `0.2.0` package는 npm `files` allowlist와 package-owned installer를 추가했다. `npm pack --dry-run`에서 manifest/catalog, logo assets, hooks, CLI, sender/capture scripts, skill, runtime/UI, README, LICENSE, NOTICE로 구성된 21 files를 확인했다.
 
-따라서 npm 배포 전에는 다음 중 하나가 필요하다.
+`codex-agent-view install`은 package에 포함된 allowlisted entry만 runtime directory 아래 copied local marketplace로 옮긴 뒤 Codex plugin을 등록한다. npm package를 받았다고 hook trust를 자동 승인하지 않으며, 사용자 설정을 몰래 바꾸는 `postinstall`도 없다.
 
-- runtime 전용 package directory를 두고 그 경로를 marketplace source와 npm package의 공통 경계로 사용하거나
-- 생성된 tarball을 설치 source로 사용해 repository 문서·테스트가 runtime install에 섞이지 않게 한다.
-
-사용자 설정을 몰래 바꾸는 `postinstall`은 두지 않는다. 설치가 hook 실행 권한을 자동 부여해서도 안 된다.
+Public npm registry publish는 아직 수행되지 않았으므로 registry 이름의 `npx` 경로는 미검증·미제공 상태다. Universal Plugins Directory 제출도 별도 외부 절차로 남아 있다.
 
 ## 권장 다음 아키텍처
 
 ```text
 Codex hooks
-  -> short-lived sender (validate + redact + bounded timeout)
-  -> Unix socket 우선 / localhost fallback
-  -> in-memory reducer
-  -> read-only local UI
+  -> short-lived sender (minimize + bounded timeout + fail-open)
+  -> token-authenticated IPv4 loopback HTTP
+  -> narrow runtime validation
+  -> bounded in-memory reducer
+  -> read-only local status API and UI
 
 App Server (선택)
   -> hierarchy/metadata enrichment only
@@ -159,9 +157,35 @@ App Server (선택)
 - sender는 Codex 실행을 막지 않도록 짧은 timeout과 fail-open 관찰 경계를 가진다.
 - 입력은 event별 narrow schema로 검증하되 unknown field를 허용하고 원본 전체를 저장하지 않는다.
 - reducer는 중복, 누락, 역순 event와 monitor 재시작으로 생긴 `unknown` 상태를 표현한다.
-- 전송은 Unix socket을 우선 검토하고, 호환성이 필요한 경우 loopback에만 bind하는 localhost transport를 fallback으로 둔다.
+- `0.2.0`은 cross-platform CLI와 browser UI 호환성을 위해 IPv4 loopback `127.0.0.1` transport를 선택했다. bearer token, Host 검증, body/time limit, restrictive response header를 적용한다.
 - UI는 관찰만 하며 approval이나 task control을 제공하지 않는다.
 - App Server 실패 또는 부재가 lifecycle 상태 표시를 깨뜨리지 않아야 한다.
+
+## `0.2.0` 후속 구현: 관찰에서 runtime schema로
+
+Phase 0 capture는 원본 payload를 영구 model로 복사하기 위한 것이 아니라 어떤 field를 버릴지 결정하는 근거로 사용했다. 이후 구현은 다음 두 단계로 관찰값을 좁혔다.
+
+1. `scripts/send-hook.mjs`는 Codex가 전달한 raw object를 local process에서 받고 `scripts/capture-hook.mjs`의 minimizer를 재사용한다. allowlisted metadata만 값을 보존하고 prompt, transcript path, tool input/output, assistant message 같은 나머지 field 값은 type/key/length summary로 바꾼 뒤 loopback으로 보낸다.
+2. `src/core/normalize-hook-payload.mjs`는 minimized payload도 다시 untrusted input으로 취급한다. 지원 event별 required field를 runtime validation하고 monitor state에 필요한 field만 새 object로 복사한다. Summary와 unknown field는 reducer에 전달하지 않는다.
+
+현재 normalized contract는 다음과 같다.
+
+| Event | runtime에 유지하는 입력 field | derived state |
+| --- | --- | --- |
+| 공통 | `hook_event_name`, `session_id`, `turn_id`, local `received_at_ms` | normalized event type, session first/last seen |
+| `SubagentStart` / `SubagentStop` | `agent_id`, `agent_type` | running, stopped, stopped-without-start, out-of-order flag |
+| `PreToolUse` / `PostToolUse` | `tool_name`, `tool_use_id` | running, completed, completed-without-start, out-of-order flag |
+| `PermissionRequest` | `tool_name` | waiting-for-user permission state |
+
+`PermissionRequest` row는 공식 event schema를 바탕으로 구현한 provisional input contract다. 실제 GUI payload 관찰이 없으므로 호환성이 확인됐다는 뜻이 아니다. Missing/invalid field는 상태를 발명하지 않고 bounded diagnostic으로 남긴다.
+
+Reducer는 event identity가 완전히 보장된다고 가정하지 않는다. 관찰된 ID를 상관관계 key로 사용하되 duplicate, stop-before-start, post-before-pre, stale permission event를 명시적 상태로 처리한다. Session, agent, activity, diagnostic collection에 상한을 두고 monitor restart 뒤 이전 event를 복구하거나 parent completion을 추측하지 않는다.
+
+Runtime server는 `127.0.0.1` 외 bind를 거부하고, user-only runtime file에 저장한 random bearer token을 `/api/events`와 `/api/state`에 요구한다. Hook sender는 750ms timeout과 neutral `{}` response로 fail-open하며 monitor 장애가 Codex task를 막지 않게 한다. Browser는 URL fragment token을 `sessionStorage`로 옮기고 fragment를 제거하며 external asset/CDN을 사용하지 않는다.
+
+정상 hook wiring은 이제 JSONL capture script가 아니라 `scripts/send-hook.mjs`를 실행한다. `scripts/capture-hook.mjs`와 `CODEX_AGENT_VIEW_CAPTURE_FULL=1`은 명시적 Phase 0 diagnostic opt-in으로만 남아 있으며 production state source가 아니다.
+
+이 구현 결정은 “관찰된 field만 좁게 수용하고 민감한 원본은 저장하지 않는다”는 Phase 0 결론을 반영한다. Schema version은 현재 `1`이며, 향후 Codex payload 변경은 unknown/malformed diagnostic과 실제 재캡처를 근거로 별도 versioning해야 한다.
 
 ## Trust, 실행, 제거 절차
 
@@ -171,14 +195,15 @@ App Server (선택)
 2. 공식 앱/CLI의 plugin browser에서 plugin이 설치·활성화됐는지 확인한다.
 3. 새 task/session을 시작한다.
 4. hook browser에서 새 hook 정의와 command를 확인하고 현재 exact hash를 명시적으로 trust한다. CLI에서는 `/hooks`를 사용한다.
-5. subagent start/stop, 지원 tool pre/post, 실제 승인이 필요한 동작을 순서대로 발생시킨다.
-6. redacted capture에서 event 존재와 key/type만 검증한다.
+5. monitor를 실행한 뒤 subagent start/stop, 지원 tool pre/post, 실제 승인이 필요한 동작을 순서대로 발생시킨다.
+6. `codex-agent-view status --json`과 local UI에서 minimized state와 diagnostic을 확인한다. 필요할 때만 별도 redacted capture로 wire payload key/type을 검증한다.
 
 제거 시에는 다음 세 범위를 각각 확인한다.
 
 1. plugin browser에서 plugin을 disable/uninstall한다.
 2. hook browser에서 해당 hook source가 더 이상 활성 상태가 아닌지 확인한다.
-3. 사용자가 원할 때 캡처 위치를 검토하고 로컬 검증 산출물을 정리한다. 설치된 plugin의 기본 위치는 `PLUGIN_DATA/captures`, standalone 실행의 fallback은 `<cwd>/.codex-agent-view/captures`다.
+3. `codex-agent-view uninstall`로 copied marketplace bundle을 제거하고, 사용자가 runtime directory까지 제거하길 명시적으로 원할 때만 exact target을 검토한 뒤 `--purge`를 사용한다.
+4. 별도 opt-in diagnostic capture가 있다면 `PLUGIN_DATA`, configured capture directory, standalone fallback을 각각 확인해 정리한다.
 
 hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash를 다시 검토해야 한다.
 
@@ -194,12 +219,21 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 
 이 과정에서 캡처가 생기지 않으면 hook browser의 loaded source/trust 상태와 앱 진단 로그가 다음 조사 증거다. 기존 GUI task의 미캡처만으로 지원 불가 결론을 내리지 않는다.
 
+공개 배포에는 다음 외부 단계도 남아 있다.
+
+- maintainer의 npm login, 2FA/package ownership 확인, `0.2.0` publish 승인
+- published exact artifact에서 `npx` smoke test
+- Universal Plugins Directory portal 제출, review, publish, search visibility 확인
+
+Publish 전에는 `npx codex-agent-view`을 사용할 수 있다고 안내하지 않고, directory publish 전에는 검색 가능하다고 주장하지 않는다.
+
 ## QA 결과
 
-- `npm run check`: 통과, 테스트 `8/8`
+- `npm test`: 통과, `49/49`
 - 프로젝트 내부 plugin validation: 통과
-- 공식 `validate_plugin`: 통과
-- `npm pack --dry-run`: 통과, LICENSE와 NOTICE를 포함한 runtime file 7개 포함
-- `git diff --check`: 통과
+- bundled skill `quick_validate.py`: 통과
+- `npm pack --dry-run`: 통과, `codex-agent-view@0.2.0`, logo assets와 skill을 포함한 21 files
+- source CLI `--version`: `0.2.0`
+- source CLI `doctor --json`: Codex CLI version, plugin/monitor 상태, runtime directory 진단 확인
 
-현재 합격 범위는 scaffold, 두 CLI runtime, redaction, package 구성이다. 새 GUI task E2E와 `PermissionRequest`는 미완료다.
+현재 local 합격 범위는 captured-evidence 기반 schema, in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring이다. 새 official GUI task E2E, 실제 `PermissionRequest`, public npm artifact, Universal Directory listing은 미완료다.

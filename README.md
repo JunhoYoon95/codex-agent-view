@@ -1,353 +1,307 @@
 # Codex Agent View
 
-Codex Agent View는 공식 Codex 앱의 부모 task와 subagent 활동을 보여주기 위한 가벼운 read-only companion monitor 프로젝트다. Codex를 대체하지 않고 공식 앱의 관찰 가능성을 보강하는 것이 목표다.
+Codex Agent View는 공식 Codex 앱을 그대로 사용하면서 부모 task와 subagent의 hook 기반 활동을 한눈에 보여주는 가벼운 read-only companion monitor다. Codex를 대체하거나 task를 제어하지 않는다.
 
-> 이 프로젝트는 비공식 커뮤니티 프로젝트이며 OpenAI의 공식 제품이나 공식 지원 프로젝트가 아니다.
+> 비공식 커뮤니티 프로젝트이며 OpenAI의 공식 제품, 제휴 제품, 공식 지원 프로젝트가 아니다.
 
 ## 한국어 사용법
 
-### 현재 상태와 주의사항
+### 현재 상태
 
-> 이 저장소는 **Phase 0 기술 검증용 PoC**다. npm 배포 또는 일상 사용을 위한 안정 버전이 아니며, 완성형 monitor UI도 아직 없다.
+현재 source version은 `0.2.0`이다. 다음 구성은 구현되어 있다.
 
-현재 확인된 범위는 다음과 같다.
+- `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
+- `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest` hook wiring
+- privacy-minimized hook sender와 bounded in-memory reducer
+- `127.0.0.1` 전용 token-authenticated local HTTP runtime
+- 부모 task/session, subagent, 최근 활동, permission wait 상태를 표시하는 local UI
+- `start`, `status`, `doctor`, `install`, `uninstall` CLI
+- 명시적 설치·hook trust·제거 경로
 
-- Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex CLI에서 plugin 설치와 hook runtime을 확인했다.
-- 실제 subagent 실행에서 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`를 캡처했다.
-- 새 공식 앱 GUI task에서의 최종 E2E는 아직 완료하지 못했다.
-- `PermissionRequest`는 공식 문서상 지원되지만 실제 payload는 아직 캡처하지 못했다.
-- 현재 task에 plugin을 뒤늦게 추가해도 hot-load된다고 가정하지 않는다. plugin을 활성화한 뒤 새 task를 시작한다.
+Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex executable에서 plugin 설치와 실제 lifecycle payload를 검증했다. 그러나 공식 Codex 앱의 **현재 GUI task에서 trusted hook → local monitor → UI 전체 흐름을 확인하는 최종 E2E는 아직 완료되지 않았다.** `PermissionRequest`의 실제 payload도 아직 관찰하지 못했다. 이 미확인 범위를 지원 완료로 해석하지 않는다.
 
-Phase 0에는 SQLite, 외부 서버, 외부 telemetry, task 제어 기능이 없다. JSONL 캡처는 payload 구조 검증용이며 production state store가 아니다. 자세한 근거와 blocker는 [Phase 0 기술 검증 결과](https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/phase-0-findings.md)를 참고한다.
+또한 package는 아직 public npm registry에 publish되지 않았다. 따라서 `npx codex-agent-view ...`는 현재 실행 가능한 공개 설치 명령이 아니다. Universal Plugins Directory 제출도 완료되지 않아 directory 검색에 나타나지 않는다.
 
-### 요구사항과 검증한 버전
+### 제품 경계
 
-- Node.js `>=18` — `package.json`의 engine requirement
+- live 상태의 source of truth는 hook event다.
+- 상태는 monitor process memory에만 있고 재시작하면 사라진다.
+- 외부 telemetry, 원격 server, account, SQLite가 없다.
+- prompt, transcript path, 전체 tool input/output, assistant message를 monitor 상태나 UI에 저장·표시하지 않는다.
+- task/subagent 중지·재시작, message 전송, permission 자동 승인·거절 기능이 없다.
+- App Server는 향후 계층 metadata 보강 후보일 뿐이며 공식 앱 process와 memory를 공유한다고 가정하지 않는다.
+
+Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`, `stopped_without_start`, 빈 상태는 그대로 해석해야 한다. 빈 session 목록은 “이 monitor가 event를 관찰하지 못함”이며 “실행 중인 task가 없음”의 증거가 아니다.
+
+### 요구사항과 검증 범위
+
+- Node.js `>=18`
 - npm
-- Git — source clone에 필요
-- plugin을 지원하는 공식 Codex 앱 또는 Codex CLI
+- plugin command를 지원하는 Codex CLI 또는 공식 Codex 앱
 
-검증한 Codex 버전은 지원 하한이 아니라 현재 테스트 범위다.
+아래 버전은 현재 테스트 matrix이며 지원 하한 보장이 아니다.
 
-| Runtime | 검증 버전 |
-| --- | --- |
-| 공식 Codex 앱 | `26.727.40816` (`build 6067`) |
-| 앱 embedded Codex | `0.146.0-alpha.9.2` |
-| Homebrew Codex CLI | `0.146.0` |
+| Runtime | 확인된 버전 | 확인 범위 |
+| --- | --- | --- |
+| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | bundle metadata, GUI current-task E2E 미완료 |
+| 앱 embedded Codex | `0.146.0-alpha.9.2` | isolated plugin install/runtime 및 lifecycle probe |
+| Homebrew Codex CLI | `0.146.0` | isolated plugin install/runtime probe |
 
 다른 버전은 별도 검증이 필요하다.
 
-### Source clone과 프로젝트 검증
+### Source에서 검증
 
 ```bash
 git clone https://github.com/JunhoYoon95/codex-agent-view.git
 cd codex-agent-view
-```
-
-Phase 0 runtime은 Node.js built-in module만 사용하므로 production dependency 설치가 필요하지 않다. 다음 명령은 현재 `package.json`과 일치한다.
-
-```bash
 npm test
 npm run validate:plugin
 npm run check
 ```
 
-- `npm test`: 캡처, redaction, 경로 처리 테스트
-- `npm run validate:plugin`: 저장소 내부의 최소 plugin scaffold validation
-- `npm run check`: 테스트, 내부 validation, `npm pack --dry-run` 실행
+Production dependency는 없고 runtime은 Node.js built-in module만 사용한다.
 
-내부 validation 통과만으로 공식 앱 GUI 호환성을 주장하지 않는다.
+- `npm test`: redaction, schema, reducer, runtime security, hook delivery, UI 정적 검증
+- `npm run validate:plugin`: manifest, catalog, hooks, skill, package wiring 검증
+- `npm run check`: test, plugin validation, `npm pack --dry-run` 실행
 
-### GitHub marketplace에서 설치
+내부 validation이나 fixture 통과만으로 공식 앱 GUI 호환성을 주장하지 않는다.
 
-이 저장소에는 `.agents/plugins/marketplace.json`이 포함되어 있다. 다음 명령으로 GitHub marketplace를 등록하고 plugin을 명시적으로 설치한다.
+### Source package로 설치
 
-```bash
-codex plugin marketplace add JunhoYoon95/codex-agent-view --ref main
-codex plugin marketplace list
-codex plugin list --marketplace codex-agent-view --available --json
-codex plugin add codex-agent-view@codex-agent-view
-codex plugin list
-```
-
-설치 전에 `--available --json` 결과에 `codex-agent-view`가 표시되는지 확인한다. 이 저장소 자체의 marketplace catalog는 plugin이 repository root에 있으므로 `source.path`로 `./`을 사용한다.
-
-설치 후 공식 앱을 완전히 종료했다가 다시 시작한다. Codex의 **Plugins** Directory 또는 CLI의 `/plugins`에서 `codex-agent-view`가 설치·활성화됐는지 확인하고 새 task를 만든다.
-
-source를 수정하며 테스트하려면 별도 local marketplace root 아래 `plugins/codex-agent-view`로 clone하고, marketplace root의 `.agents/plugins/marketplace.json`에서 `./plugins/codex-agent-view`를 가리킨다. 이 경로는 repository 자체 catalog의 `./`과 다른 **별도 로컬 개발 marketplace 예시**다. 그 뒤 JSON 파일이 아니라 marketplace root 디렉터리를 등록한다.
+Public npm publish 전에는 source checkout에서 다음 명령을 사용한다.
 
 ```bash
-codex plugin marketplace add /absolute/path/to/local-marketplace
-codex plugin add codex-agent-view@codex-agent-view-local
+node bin/codex-agent-view.mjs --version
+node bin/codex-agent-view.mjs doctor --json
+node bin/codex-agent-view.mjs install
 ```
 
-Local marketplace installer는 npm의 `files` allowlist가 아니라 marketplace가 가리키는 plugin directory를 설치 대상으로 사용한다. Phase 0 source 설치에는 문서와 테스트 파일도 함께 복사될 수 있다. 배포용 npm package 경계와 marketplace 경계를 일치시키는 작업은 다음 Phase 과제다.
+`install`은 package bundle을 `~/.codex-agent-view/marketplace` 기본 경로에 복사하고 local marketplace와 `codex-agent-view@codex-agent-view` plugin을 Codex CLI에 등록한다. `CODEX_AGENT_VIEW_RUNTIME_DIR`로 runtime root를 바꿀 수 있다.
 
-이 package에는 `postinstall` script가 없으며, npm lifecycle에서 Codex 설정을 자동 변경하지 않는다. marketplace 등록, plugin 설치, 활성화, hook trust는 모두 사용자가 명시적으로 수행한다.
+이 명령은 npm lifecycle에서 자동 실행되지 않는다. `package.json`에는 `postinstall`이 없으며, 사용자가 `install`을 명시적으로 실행해야 Codex 등록이 바뀐다.
 
-### Plugin 활성화, hook trust, event 발생
+### Plugin과 hook trust
 
-1. Plugins Directory 또는 CLI의 `/plugins`에서 plugin이 설치되고 활성화됐는지 확인한다.
-2. CLI TUI를 실행하고 composer에 `/hooks`를 입력한다. `codex /hooks`라는 shell command가 아니다.
-3. `hooks/hooks.json`의 source와 `node "${PLUGIN_ROOT}/scripts/capture-hook.mjs"` command를 확인한 뒤 현재 definition의 exact hash를 명시적으로 trust한다.
-4. 공식 앱을 완전히 재시작하고 **새 task**를 시작한다. GUI 전용 hook-trust 화면은 이번 Phase 0에서 확인되지 않았다.
-5. subagent를 한 개 시작하고 정상 종료시킨다.
-6. shell 또는 지원되는 로컬 tool을 실행해 `PreToolUse`와 `PostToolUse`를 발생시킨다.
-7. `PermissionRequest`를 검증하려면 실제 approval prompt가 필요한 동작을 사용자가 검토하고 승인 또는 거절한다. 단순히 tool을 실행하는 것만으로는 이 event가 발생하지 않을 수 있다.
+1. install 출력과 `codex plugin list`에서 plugin ID와 source를 확인한다.
+2. 공식 앱의 Plugins Directory 또는 CLI `/plugins`에서 plugin이 설치·활성화됐는지 확인한다.
+3. CLI TUI composer의 `/hooks` 또는 공식 앱의 해당 hook review UI에서 `hooks/hooks.json`과 `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command를 검토한다.
+4. 현재 hook definition의 exact hash를 사용자가 직접 trust한다.
+5. 공식 앱을 완전히 재시작하고 **새 task**를 만든다.
 
-hook command가 바뀌면 hash도 바뀌며, 기존 trust가 재사용되지 않는다. 새 definition을 다시 검토해야 한다. trust를 우회하는 옵션은 일반 설치·사용 절차에 사용하지 않는다.
+`/hooks`는 CLI TUI command이며 `codex /hooks`라는 shell command가 아니다. Hook definition이 바뀌면 hash도 바뀌므로 다시 검토한다. 일반 설치에서 trust-bypass option을 사용하지 않는다.
 
-### 캡처 위치와 redaction
+### Monitor 실행과 상태 확인
 
-기본 파일명은 `events.jsonl`이다.
+Monitor를 foreground로 실행한다.
 
-| 실행 방식 | 캡처 위치 |
-| --- | --- |
-| 설치된 plugin | `PLUGIN_DATA/captures/events.jsonl` |
-| standalone script | `<cwd>/.codex-agent-view/captures/events.jsonl` |
-| 명시적 override | `CODEX_AGENT_VIEW_CAPTURE_DIR/events.jsonl` |
+```bash
+node bin/codex-agent-view.mjs start
+```
 
-`PLUGIN_DATA`는 Codex가 설치된 plugin에 제공하는 writable data directory다. 실제 절대경로를 하드코딩하지 않는다.
+기본 주소는 `127.0.0.1:43127`이며 실행 시 local bearer token을 포함한 URL을 browser에서 연다. 자동으로 browser를 열지 않으려면 다음을 사용한다.
 
-기본 redaction은 lifecycle 표시에 필요한 allowlisted metadata만 값으로 보존한다. prompt, transcript path, tool input/output, assistant message 같은 나머지 값은 type, key 목록, 길이 같은 요약으로 바뀐다. 캡처에는 여전히 session ID, agent ID, working directory 같은 로컬 metadata가 포함될 수 있으므로 공유하거나 commit하지 않는다.
+```bash
+node bin/codex-agent-view.mjs start --no-open
+```
 
-`CODEX_AGENT_VIEW_CAPTURE_FULL=1`은 redaction을 끄고 원본 payload를 기록한다. secret, prompt, tool input/output이 포함될 수 있으므로 일반 사용에서는 설정하지 않는다. 격리된 폐기용 검증 환경에서도 필요성과 정리 계획을 먼저 확인한다.
+다른 terminal에서 상태를 확인한다.
+
+```bash
+node bin/codex-agent-view.mjs status
+node bin/codex-agent-view.mjs status --json
+node bin/codex-agent-view.mjs doctor --json
+```
+
+- `status`는 실행 중 monitor가 관찰한 task/session과 subagent 수를 읽는다.
+- `status --json`은 hook 기반 snapshot과 bounded diagnostics를 반환한다.
+- `doctor`는 Codex CLI, plugin 설치, monitor, runtime directory를 진단한다.
+- `Ctrl+C`는 monitor를 종료하며 in-memory state와 정상 종료된 runtime file을 정리한다.
+
+Monitor가 꺼져 있어도 hook sender는 fail-open으로 끝나 Codex task를 막지 않는다. Monitor를 나중에 켜면 꺼져 있던 동안의 event가 복구되지는 않는다.
+
+### npm 공개 배포 상태
+
+`package.json`은 `codex-agent-view` bin과 public publish metadata를 준비했지만 public registry publish는 아직 외부 작업으로 남아 있다.
+
+다음 명령은 `codex-agent-view@0.2.0`이 npm에 실제 publish되고 exact tarball E2E가 끝난 뒤에만 유효하다.
+
+```bash
+npx --yes codex-agent-view@0.2.0 doctor
+npx --yes codex-agent-view@0.2.0 install
+npx --yes codex-agent-view@0.2.0 start
+```
+
+현재는 위 명령을 설치 경로로 사용하지 않는다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
+
+### Privacy와 opt-in diagnostic capture
+
+정상 hook 경로는 `scripts/send-hook.mjs`다. 이 sender는 allowlisted metadata만 값으로 남기고 나머지는 type/key/length summary로 바꾼 뒤 loopback으로 보낸다. Runtime reducer는 그중 event type, session/turn ID, agent ID/type, tool name/use ID, local receipt time처럼 상태 표시에 필요한 더 좁은 field만 memory에 유지한다.
+
+정상 monitor는 event JSONL을 쓰지 않는다. `scripts/capture-hook.mjs`는 Phase 0 검증용 별도 diagnostic script이며 누군가 명시적으로 실행하거나 hook에 연결할 때만 `events.jsonl`을 만든다.
+
+`CODEX_AGENT_VIEW_CAPTURE_FULL=1`은 diagnostic script의 redaction을 끄며 raw prompt, tool data, credential을 기록할 수 있다. 일반 사용, skill workflow, install/start command는 이를 자동 enable하지 않는다. Raw capture와 runtime token을 commit하거나 public issue에 첨부하지 않는다.
+
+전체 data flow, token lifecycle, capture 위치는 [Privacy](docs/privacy.md), 취약점 신고는 [Security](SECURITY.md)를 참고한다.
 
 ### 제거와 복구
 
-제거 전 캡처가 필요하면 먼저 위치와 내용을 검토해 별도로 보관한다. 이 README는 자동 삭제 command를 제공하지 않는다.
+가능하면 monitor를 `Ctrl+C`로 먼저 종료한 뒤 실행한다.
 
-1. CLI에서 plugin을 제거하거나 공식 앱의 Plugins Directory에서 disable 후 uninstall한다.
+```bash
+node bin/codex-agent-view.mjs doctor --json
+node bin/codex-agent-view.mjs uninstall
+```
 
-   ```bash
-   codex plugin remove codex-agent-view@codex-agent-view
-   ```
+기본 `uninstall`은 plugin 등록, marketplace 등록, copied marketplace bundle을 제거하지만 runtime directory의 나머지 data는 보존한다. 사용자가 `doctor`가 보여준 exact runtime directory까지 제거하길 명시적으로 원할 때만 다음을 사용한다.
 
-2. hook 검토 화면에서 해당 plugin source가 더 이상 활성 상태가 아닌지 확인한다. CLI에서는 `/hooks`로 확인한다.
-3. local marketplace까지 제거하려면 등록된 이름을 먼저 확인한 뒤 제거한다.
+```bash
+node bin/codex-agent-view.mjs uninstall --purge
+```
 
-   ```bash
-   codex plugin marketplace list
-   codex plugin marketplace remove codex-agent-view
-   ```
-
-4. 사용자가 원할 때 설치형의 `PLUGIN_DATA/captures`와 standalone의 `<cwd>/.codex-agent-view/captures`를 각각 검토하고 정리한다. 위치를 확인하지 않은 채 넓은 디렉터리를 삭제하지 않는다.
-5. 공식 앱을 재시작하고 새 task에서 plugin과 hook source가 사라졌는지 확인한다.
-
-`plugin remove` 또는 GUI uninstall은 설치 bundle을 제거해도 `PLUGIN_DATA`의 캡처를 보존할 수 있다. marketplace 제거도 등록만 해제하며 사용자가 소유한 source checkout이나 local marketplace directory를 자동 삭제하지 않는다.
-
-복구하려면 marketplace를 다시 등록하고 Plugins Directory에서 plugin을 재설치·활성화한 뒤 새 task에서 새 hook hash를 검토하고 trust한다. 삭제한 캡처는 별도 backup이 없으면 복구 대상으로 간주하지 않는다.
+별도 `PLUGIN_DATA`, `CODEX_AGENT_VIEW_CAPTURE_DIR`, project working directory에 만든 opt-in diagnostic capture는 runtime directory 밖에 있을 수 있다. 정확한 위치를 검토해 별도로 정리하고 broad Codex/home directory를 삭제하지 않는다.
 
 ### Troubleshooting
 
-#### Plugin이 Plugins Directory에 보이지 않음
+#### `status`가 runtime file 또는 connection error를 출력함
 
-- GitHub repository marketplace라면 `.agents/plugins/marketplace.json`의 `source.path`가 repository root의 plugin을 가리키는 `./`인지 확인한다.
-- 별도 로컬 개발 marketplace라면 catalog가 marketplace root의 `.agents/plugins/` 아래에 있고, `source.path`가 `./plugins/codex-agent-view`인지 확인한다.
-- `codex plugin marketplace list`에서 source 이름과 해석된 root를 확인한다.
-- 설치 전 `codex plugin list --marketplace codex-agent-view --available --json`에서 plugin이 조회되는지 확인한다.
-- 공식 앱을 재시작한다.
+```bash
+node bin/codex-agent-view.mjs doctor --json
+```
 
-#### Plugin은 보이지만 캡처가 없음
+Monitor가 실행 중인지, stale runtime file인지, runtime directory가 예상한 위치인지 확인한다. Monitor가 실행되지 않았다면 사용자가 원할 때 `start --no-open`으로 시작한다.
 
-- plugin이 설치만 된 것이 아니라 활성화됐는지 확인한다.
-- plugin 활성화 후 생성한 새 task인지 확인한다.
-- hook 검토 화면에서 command, source, exact-hash trust 상태를 확인한다.
-- Node.js가 `>=18`이고 hook process에서 실행 가능한지 확인한다.
-- 설치형에서는 `PLUGIN_DATA/captures/events.jsonl`, standalone에서는 `<cwd>/.codex-agent-view/captures/events.jsonl`을 확인한다.
-- 현재 GUI task의 무캡처만으로 GUI hook 미지원 또는 hot-load 불가라고 결론내리지 않는다.
+#### UI에 task/subagent가 없음
 
-#### Hook 변경 후 실행되지 않음
+- plugin이 설치뿐 아니라 enable됐는지 확인한다.
+- 현재 `send-hook.mjs` definition을 검토하고 trust했는지 확인한다.
+- plugin enable/trust 후 공식 앱을 재시작하고 새 task를 만들었는지 확인한다.
+- monitor가 event 발생 전에 실행 중이었는지 확인한다.
+- 빈 상태만으로 GUI hook 미지원이라고 결론내리지 않는다.
 
-hook definition이 바뀌면 기존 trust hash는 유효하지 않다. 새 task를 시작하고 hook command를 다시 검토·trust한다.
+#### `PermissionRequest`가 표시되지 않음
 
-#### `PermissionRequest`가 보이지 않음
+Approval이 실제 필요한 동작에서만 발생할 수 있다. 현재 공식 앱 GUI의 실제 payload capture는 미완료이므로 표시되지 않는 원인을 schema 문제와 “event 자체가 발생하지 않음”으로 분리해 조사한다. Monitor는 approval을 자동 처리하지 않는다.
 
-이 event는 Codex가 실제 approval을 요청하려는 시점에만 발생한다. approval이 필요 없는 command에서는 나타나지 않는다. 현재 Phase 0에서는 GUI `PermissionRequest` payload 캡처가 미완료다.
+### 문서와 지원
 
-### 프로젝트 문서
+- [Roadmap](ROADMAP.md)
+- [Phase 0 findings](docs/phase-0-findings.md)
+- [Distribution](docs/distribution.md)
+- [Plugin submission](docs/plugin-submission.md)
+- [Privacy](docs/privacy.md)
+- [Terms](docs/terms.md)
+- [Support](SUPPORT.md)
+- [Security](SECURITY.md)
 
-- [ROADMAP.md](https://github.com/JunhoYoon95/codex-agent-view/blob/main/ROADMAP.md): 단계별 범위와 완료 기준
-- [AGENTS.md](https://github.com/JunhoYoon95/codex-agent-view/blob/main/AGENTS.md): 프로젝트 작업 규칙
-- [docs/phase-0-findings.md](https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/phase-0-findings.md): 실제 검증 결과와 다음 아키텍처
-
-### 라이선스
-
-Copyright 2026 Junho Yoon
-
-이 프로젝트는 Apache License, Version 2.0에 따라 배포됩니다. 전체 조건은 [LICENSE](https://github.com/JunhoYoon95/codex-agent-view/blob/main/LICENSE)와 [NOTICE](https://github.com/JunhoYoon95/codex-agent-view/blob/main/NOTICE)를 참조하세요.
+Copyright 2026 Junho Yoon. Apache License 2.0은 [LICENSE](LICENSE), attribution은 [NOTICE](NOTICE)를 참고한다.
 
 ## English Usage
 
-> This is an unofficial community project. It is not an official OpenAI product or an officially supported OpenAI project.
+Codex Agent View is a lightweight, read-only companion monitor for the official Codex app. It shows hook-observed parent task/session and subagent activity without replacing or controlling Codex.
 
-### Current status and warning
+> This is an unofficial community project. It is not an OpenAI product, affiliate, or officially supported project.
 
-> This repository is a **Phase 0 technical-validation PoC**. It is not a stable npm release or a finished monitor UI.
+### Status
 
-The verified scope is limited to the following:
+The current source version is `0.2.0`. It includes the plugin and marketplace manifests, a genuine Codex skill, privacy-minimized hooks, a bounded in-memory reducer, a token-authenticated `127.0.0.1` runtime, a local dashboard, and `start`, `status`, `doctor`, `install`, and `uninstall` commands.
 
-- Plugin installation and hook runtime were verified with the Homebrew Codex CLI and the Codex CLI embedded in the official app.
-- Real subagent runs produced `SubagentStart`, `SubagentStop`, `PreToolUse`, and `PostToolUse` captures.
-- The final end-to-end check in a new official Codex GUI task is not complete.
-- `PermissionRequest` is documented as supported, but its real payload has not been captured yet.
-- Do not assume that adding a plugin to an already-open task hot-loads it. Enable the plugin, then start a new task.
+Plugin installation and real lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. The final **trusted hook → local monitor → UI E2E in a current official Codex GUI task remains unverified**, and a real `PermissionRequest` payload has not been observed.
 
-Phase 0 does not include SQLite, an external server, external telemetry, or task controls. JSONL capture exists only to inspect payload structure; it is not a production state store. See [Phase 0 findings](https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/phase-0-findings.md) for the evidence and exact blockers.
+The package has not been published to the public npm registry, so `npx codex-agent-view ...` is not a working public install path yet. The plugin has also not been published through the Universal Plugins Directory and is not directory-searchable.
+
+### Boundaries
+
+- Hooks are the source of truth for live state.
+- Operational state exists only in bounded process memory and is lost on restart.
+- There is no external telemetry, remote server, account, SQLite store, or remote control.
+- Prompt text, transcript paths, full tool input/output, and assistant messages are not retained or displayed by the monitor.
+- The product cannot stop or restart tasks/subagents, send messages, or approve/deny permissions.
+- Missing, duplicated, or out-of-order events remain visible as empty, unknown, or degraded state instead of being guessed away.
 
 ### Requirements and tested versions
 
-- Node.js `>=18`, as required by `package.json`
+- Node.js `>=18`
 - npm
-- Git for cloning the source
-- An official Codex app or Codex CLI build with plugin support
+- A Codex app or CLI build with plugin commands
 
-The following versions define the current test matrix, not a minimum support guarantee.
+| Runtime | Tested version | Scope |
+| --- | --- | --- |
+| Official Codex app | `26.727.40816` (`build 6067`) | bundle metadata; current GUI-task E2E pending |
+| App-embedded Codex | `0.146.0-alpha.9.2` | isolated install/runtime and lifecycle probe |
+| Homebrew Codex CLI | `0.146.0` | isolated install/runtime probe |
 
-| Runtime | Tested version |
-| --- | --- |
-| Official Codex app | `26.727.40816` (`build 6067`) |
-| App-embedded Codex | `0.146.0-alpha.9.2` |
-| Homebrew Codex CLI | `0.146.0` |
+These versions are a test matrix, not a minimum-version guarantee.
 
-Other versions require separate verification.
-
-### Clone and validate the source
+### Validate and run from source
 
 ```bash
 git clone https://github.com/JunhoYoon95/codex-agent-view.git
 cd codex-agent-view
-```
-
-The Phase 0 runtime uses only Node.js built-in modules, so it has no production dependencies to install. These commands match the current `package.json`:
-
-```bash
 npm test
 npm run validate:plugin
 npm run check
+node bin/codex-agent-view.mjs doctor --json
+node bin/codex-agent-view.mjs install
 ```
 
-- `npm test`: tests capture, redaction, and path handling
-- `npm run validate:plugin`: runs the repository's minimal plugin-scaffold validator
-- `npm run check`: runs tests, internal validation, and `npm pack --dry-run`
+There are no production dependencies; the runtime uses Node.js built-ins. `install` explicitly copies the package into a local marketplace under the runtime directory and registers `codex-agent-view@codex-agent-view`. No `postinstall` script changes Codex settings.
 
-Passing the internal validator alone does not prove compatibility with the official Codex GUI.
+Review the installed plugin and `hooks/hooks.json`, inspect the `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command, explicitly trust the current hook hash, restart the official app, and create a new task.
 
-### Install from the GitHub marketplace
-
-This repository includes `.agents/plugins/marketplace.json`. Register the GitHub marketplace and explicitly install the plugin:
+Start the foreground monitor:
 
 ```bash
-codex plugin marketplace add JunhoYoon95/codex-agent-view --ref main
-codex plugin marketplace list
-codex plugin list --marketplace codex-agent-view --available --json
-codex plugin add codex-agent-view@codex-agent-view
-codex plugin list
+node bin/codex-agent-view.mjs start
 ```
 
-Before installing, confirm that the `--available --json` output includes `codex-agent-view`. The marketplace catalog in this repository uses `source.path: "./"` because the plugin is at the repository root.
-
-Quit and restart the official app after installation. Confirm that `codex-agent-view` is installed and enabled in the Codex **Plugins** Directory or the CLI `/plugins` browser, then create a new task.
-
-For source-editing tests, clone the repository as `plugins/codex-agent-view` under a separate local marketplace root. Point that root's `.agents/plugins/marketplace.json` at `./plugins/codex-agent-view`. This is a **separate local development marketplace example**, distinct from the repository catalog's `./`. Then register the marketplace root directory—not the JSON file.
+Use `--no-open` to suppress automatic browser opening. In another terminal:
 
 ```bash
-codex plugin marketplace add /absolute/path/to/local-marketplace
-codex plugin add codex-agent-view@codex-agent-view-local
+node bin/codex-agent-view.mjs status --json
+node bin/codex-agent-view.mjs doctor --json
 ```
 
-The local marketplace installer uses the plugin directory referenced by the marketplace, not npm's `files` allowlist. A Phase 0 source installation may therefore copy documentation and tests too. Aligning the npm-package boundary with the marketplace boundary is deferred to the next phase.
+An empty session list means that this monitor observed no events. It does not prove that Codex has no running task. Stopping or restarting the monitor discards its in-memory state, and downtime events are not replayed.
 
-This package has no `postinstall` script and does not change Codex settings during an npm lifecycle. Marketplace registration, installation, enablement, and hook trust are all explicit user actions.
+### npm publication status
 
-### Enable the plugin, trust hooks, and produce events
+These exact-version commands are examples for **after** a verified public npm release; they do not work as the current public install path:
 
-1. Confirm that the plugin is installed and enabled in the Plugins Directory or the CLI `/plugins` browser.
-2. Start the CLI TUI and enter `/hooks` in the composer. It is not a `codex /hooks` shell command.
-3. Inspect the source from `hooks/hooks.json` and the `node "${PLUGIN_ROOT}/scripts/capture-hook.mjs"` command, then explicitly trust the exact hash of the current definition.
-4. Quit and restart the official app, then start a **new task**. A GUI-only hook-trust surface was not verified in Phase 0.
-5. Start one subagent and let it finish normally.
-6. Run a shell command or another supported local tool to produce `PreToolUse` and `PostToolUse`.
-7. To test `PermissionRequest`, review and approve or deny an operation that genuinely requires an approval prompt. Running an ordinary tool may not produce this event.
+```bash
+npx --yes codex-agent-view@0.2.0 doctor
+npx --yes codex-agent-view@0.2.0 install
+npx --yes codex-agent-view@0.2.0 start
+```
 
-Changing a hook command changes its hash, so the previous trust decision no longer applies. Review the new definition again. Do not use trust-bypass options for normal installation or use.
+npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 
-### Capture paths and redaction
+### Privacy
 
-The default filename is `events.jsonl`.
+The normal hook path uses `scripts/send-hook.mjs`. It minimizes the local Codex payload before loopback delivery, and the reducer retains only a narrower state schema in memory. The normal monitor does not write an event JSONL history.
 
-| Execution mode | Capture path |
-| --- | --- |
-| Installed plugin | `PLUGIN_DATA/captures/events.jsonl` |
-| Standalone script | `<cwd>/.codex-agent-view/captures/events.jsonl` |
-| Explicit override | `CODEX_AGENT_VIEW_CAPTURE_DIR/events.jsonl` |
+`scripts/capture-hook.mjs` is a separate, explicitly invoked Phase 0 diagnostic tool. Setting `CODEX_AGENT_VIEW_CAPTURE_FULL=1` for that script can write raw prompts, tool data, credentials, and other secrets. Normal install/start and the bundled skill never enable it automatically. Do not commit or publicly attach captures or runtime tokens.
 
-`PLUGIN_DATA` is the writable data directory supplied by Codex to an installed plugin. Do not hard-code its absolute value.
+Read [Privacy](docs/privacy.md), [Security](SECURITY.md), and [Support](SUPPORT.md) before sharing diagnostics.
 
-Default redaction preserves values only for allowlisted lifecycle metadata. Other values—including prompts, transcript paths, tool inputs and outputs, and assistant messages—are replaced with summaries such as their type, keys, or length. Captures can still include local metadata such as session IDs, agent IDs, and the working directory, so do not share or commit them.
+### Uninstall
 
-`CODEX_AGENT_VIEW_CAPTURE_FULL=1` disables redaction and writes the original payload. It can contain secrets, prompts, and tool inputs or outputs. Do not set it for normal use. Even in an isolated disposable environment, decide why it is necessary and how it will be cleaned up first.
+Stop the monitor with `Ctrl+C` when practical, then run:
 
-### Removal and recovery
+```bash
+node bin/codex-agent-view.mjs doctor --json
+node bin/codex-agent-view.mjs uninstall
+```
 
-If a capture must be retained, inspect and back it up before removal. This README intentionally does not provide a raw deletion command.
+The default command removes plugin/marketplace registration and the copied bundle while preserving remaining runtime data. Use `uninstall --purge` only after reviewing the exact runtime directory and explicitly deciding to remove it. Opt-in captures outside that directory require separate, exact cleanup.
 
-1. Remove the plugin with the CLI, or disable and uninstall it in the official app's Plugins Directory.
+### Documentation and license
 
-   ```bash
-   codex plugin remove codex-agent-view@codex-agent-view
-   ```
+- [Roadmap](ROADMAP.md)
+- [Phase 0 findings](docs/phase-0-findings.md)
+- [Privacy](docs/privacy.md)
+- [Terms](docs/terms.md)
+- [Support](SUPPORT.md)
+- [Security](SECURITY.md)
 
-2. Confirm that the plugin hook source is no longer active in the hook review surface. Use `/hooks` in the CLI.
-3. If the local marketplace should also be removed, inspect its registered name before removing it.
-
-   ```bash
-   codex plugin marketplace list
-   codex plugin marketplace remove codex-agent-view
-   ```
-
-4. If desired, inspect and clean up installed-plugin captures under `PLUGIN_DATA/captures` and standalone captures under `<cwd>/.codex-agent-view/captures` separately. Never delete a broad directory without resolving the exact target first.
-5. Restart the official app and verify in a new task that the plugin and hook source are gone.
-
-`plugin remove` or GUI uninstall can remove the installed bundle while preserving captures in `PLUGIN_DATA`. Removing a marketplace unregisters it but does not delete a user-owned source checkout or local marketplace directory.
-
-To recover, add the marketplace again, reinstall and enable the plugin in the Plugins Directory, then review and trust the new hook hash in a new task. Treat deleted captures as unrecoverable unless they were backed up separately.
-
-### Troubleshooting
-
-#### The plugin is missing from the Plugins Directory
-
-- For the GitHub repository marketplace, confirm that `.agents/plugins/marketplace.json` uses `source.path: "./"` to point at the plugin in the repository root.
-- For a separate local development marketplace, confirm that the catalog is under `.agents/plugins/` in the marketplace root and uses `source.path: "./plugins/codex-agent-view"`.
-- Run `codex plugin marketplace list` and inspect the source name and resolved root.
-- Before installation, confirm that `codex plugin list --marketplace codex-agent-view --available --json` returns the plugin.
-- Restart the official app.
-
-#### The plugin is visible but no capture is written
-
-- Confirm that the plugin is enabled, not merely installed.
-- Confirm that the task was created after enabling the plugin.
-- Inspect the hook command, source, and exact-hash trust state in the hook review surface.
-- Confirm that Node.js `>=18` is executable by the hook process.
-- Check `PLUGIN_DATA/captures/events.jsonl` for an installed plugin and `<cwd>/.codex-agent-view/captures/events.jsonl` for standalone execution.
-- Do not infer that GUI hooks or hot-loading are unsupported from a missing capture in the current task alone.
-
-#### A changed hook no longer runs
-
-A changed hook definition invalidates the previous trust hash. Start a new task, review the hook command again, and trust the new definition.
-
-#### `PermissionRequest` is missing
-
-This event runs only when Codex is actually about to request approval. Commands that do not require approval will not produce it. Capturing a GUI `PermissionRequest` payload remains incomplete in Phase 0.
-
-### Project documents
-
-- [ROADMAP.md](https://github.com/JunhoYoon95/codex-agent-view/blob/main/ROADMAP.md): phase scope and completion criteria
-- [AGENTS.md](https://github.com/JunhoYoon95/codex-agent-view/blob/main/AGENTS.md): project working rules
-- [docs/phase-0-findings.md](https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/phase-0-findings.md): observed evidence and recommended next architecture
-
-### License
-
-Copyright 2026 Junho Yoon
-
-Licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/JunhoYoon95/codex-agent-view/blob/main/LICENSE) and [NOTICE](https://github.com/JunhoYoon95/codex-agent-view/blob/main/NOTICE) for details.
+Copyright 2026 Junho Yoon. Licensed under the Apache License 2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
