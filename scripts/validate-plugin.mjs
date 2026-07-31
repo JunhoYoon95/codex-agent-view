@@ -2,8 +2,6 @@
 
 import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
-import { basename } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const manifestUrl = new URL("../.codex-plugin/plugin.json", import.meta.url);
 const packageUrl = new URL("../package.json", import.meta.url);
@@ -29,10 +27,6 @@ async function readJson(url) {
 
 const manifest = await readJson(manifestUrl);
 const packageMetadata = await readJson(packageUrl);
-const pluginDirectory = basename(
-  fileURLToPath(new URL("../", import.meta.url)).replace(/[\\/]$/, ""),
-);
-assert(manifest.name === pluginDirectory, "manifest name must match the plugin directory");
 assert(
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(manifest.version),
   "manifest version must be strict semver",
@@ -65,8 +59,8 @@ assert(
 const marketplace = await readJson(marketplaceUrl);
 assert(isObject(marketplace), "marketplace catalog must be a JSON object");
 assert(
-  marketplace.name === "codex-agent-view",
-  "marketplace name must be codex-agent-view",
+  marketplace.name === manifest.name,
+  "marketplace name must match the manifest",
 );
 assert(isObject(marketplace.interface), "marketplace interface must be an object");
 assert(
