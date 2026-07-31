@@ -35,12 +35,14 @@ async function fixture(t) {
   const log = join(root, "codex-calls.jsonl");
   await mkdir(fakeBin);
   const fakeCodex = join(fakeBin, "codex");
+  // Keep this extensionless POSIX executable in CommonJS syntax: Node 18 parses
+  // it as CJS even though newer Node releases may detect ESM syntax here.
   await writeFile(
     fakeCodex,
     `#!/usr/bin/env node
-import { appendFile } from "node:fs/promises";
+const { appendFileSync } = require("node:fs");
 const args = process.argv.slice(2);
-await appendFile(process.env.FAKE_CODEX_LOG, JSON.stringify(args) + "\\n");
+appendFileSync(process.env.FAKE_CODEX_LOG, JSON.stringify(args) + "\\n");
 if (args.join(" ") === "plugin marketplace list --json") {
   process.stdout.write('{"marketplaces":[]}\\n');
 } else {
