@@ -6,7 +6,7 @@
   "main": "./src/core/index.mjs",
   "exports": "./src/core/index.mjs",
   "bin": {
-    "codex-agent-view": "./bin/codex-agent-view.mjs"
+    "codex-agent-view": "bin/codex-agent-view.mjs"
   },
   "files": [
     ".agents/",

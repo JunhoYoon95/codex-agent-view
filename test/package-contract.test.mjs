@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
-import { access, readFile, stat } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { execFile } from "node:child_process";
+import { access, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import { gunzip } from "node:zlib";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const execFileAsync = promisify(execFile);
+const gunzipAsync = promisify(gunzip);
 
 async function readJson(relativePath) {
   return JSON.parse(await readFile(resolve(projectRoot, relativePath), "utf8"));
@@ -16,13 +22,43 @@ async function assertRegularFile(relativePath) {
   assert.equal((await stat(path)).isFile(), true, `${relativePath} must be a file`);
 }
 
+function readTarEntry(archive, targetPath) {
+  let offset = 0;
+  while (offset + 512 <= archive.length) {
+    const header = archive.subarray(offset, offset + 512);
+    const name = header.subarray(0, 100).toString("utf8").replace(/\0.*$/s, "");
+    const prefix = header.subarray(345, 500).toString("utf8").replace(/\0.*$/s, "");
+    if (!name) break;
+    const path = prefix ? `${prefix}/${name}` : name;
+    const sizeText = header.subarray(124, 136).toString("ascii").replace(/\0.*$/s, "").trim();
+    const size = Number.parseInt(sizeText || "0", 8);
+    assert.equal(Number.isFinite(size), true, `invalid tar entry size for ${path}`);
+    const contentStart = offset + 512;
+    if (path === targetPath) {
+      return archive.subarray(contentStart, contentStart + size);
+    }
+    offset = contentStart + Math.ceil(size / 512) * 512;
+  }
+  throw new Error(`${targetPath} is missing from npm package archive`);
+}
+
+function npmPackEnvironment() {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.toLowerCase().replaceAll("-", "_") === "npm_config_dry_run") {
+      delete env[key];
+    }
+  }
+  return env;
+}
+
 test("keeps the npm 0.2.0 executable and publish surface intact", async () => {
   const packageMetadata = await readJson("package.json");
 
   assert.equal(packageMetadata.name, "codex-agent-view");
   assert.equal(packageMetadata.version, "0.2.0");
   assert.deepEqual(packageMetadata.bin, {
-    "codex-agent-view": "./bin/codex-agent-view.mjs",
+    "codex-agent-view": "bin/codex-agent-view.mjs",
   });
 
   const requiredFiles = [
@@ -51,6 +87,42 @@ test("keeps the npm 0.2.0 executable and publish surface intact", async () => {
   await assertRegularFile("public/index.html");
   await assertRegularFile("public/app.js");
   await assertRegularFile("public/styles.css");
+});
+
+test("keeps the executable mapping in npm pack metadata", async (t) => {
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "codex-agent-view-pack-"));
+  t.after(async () => rm(temporaryDirectory, { force: true, recursive: true }));
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  const { stderr, stdout } = await execFileAsync(
+    npmCommand,
+    [
+      "pack",
+      "--dry-run=false",
+      "--ignore-scripts",
+      "--json",
+      "--pack-destination",
+      temporaryDirectory,
+      "--cache",
+      join(temporaryDirectory, "npm-cache"),
+    ],
+    {
+      cwd: projectRoot,
+      env: npmPackEnvironment(),
+      maxBuffer: 2 * 1024 * 1024,
+    },
+  );
+  assert.doesNotMatch(stderr, /bin\[codex-agent-view\].*invalid/i);
+
+  const packResult = JSON.parse(stdout);
+  assert.equal(packResult.length, 1);
+  const tarball = await readFile(join(temporaryDirectory, packResult[0].filename));
+  const archive = await gunzipAsync(tarball);
+  const packedMetadata = JSON.parse(
+    readTarEntry(archive, "package/package.json").toString("utf8"),
+  );
+  assert.deepEqual(packedMetadata.bin, {
+    "codex-agent-view": "bin/codex-agent-view.mjs",
+  });
 });
 
 test("has no postinstall side effects or production dependencies", async () => {
