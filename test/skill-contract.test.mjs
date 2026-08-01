@@ -271,20 +271,21 @@ test("distribution docs keep plugin selection separate from explicit skill dispa
   assert.match(docs, /English, Korean, Spanish selector/);
   assert.match(docs, /2초 polling/);
   assert.match(docs, /dedicated assignment description은 없다/);
-  assert.match(distribution, /`0\.4\.4` release candidate — acceptance pending/);
+  assert.match(distribution, /### Public `0\.4\.4` release evidence/);
   assert.match(
     distribution,
-    /아직 public npm publish, registry version\/`latest`, digest\/signature/,
+    /Public `0\.4\.4` 계약은 manifest starter\/default prompt를 두지 않는다/,
   );
   assert.match(
     distribution,
-    /main\/tag CI, `v0\.4\.4` tag와 GitHub Release는 미완료/,
+    /Plugin 선택은 action text를 붙이지 않고 사용법만 설명/,
   );
-  assert.match(submission, /`0\.4\.4` candidate의 npm publish/);
+  assert.match(submission, /## Public `0\.4\.4` package에 준비된 제출 자료/);
   assert.match(
     submission,
-    /main\/tag CI, annotated `v0\.4\.4` tag와 GitHub Release acceptance는 모두 대기 중/,
+    /Public `0\.4\.4` manifest에는 starter\/default prompt가 없다/,
   );
+  assert.match(submission, /실제 bundled `\$show-agents` skill을 명시적으로 선택하거나 호출/);
 });
 
 test("newest-first read_thread fixture selects latest commentary and deduplicates agents", () => {

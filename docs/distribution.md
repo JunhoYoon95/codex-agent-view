@@ -4,36 +4,47 @@
 
 릴리스 증거 갱신일: 2026-08-02
 
-이 문서는 Codex Agent View `0.4.4` release candidate와 Codex plugin의 배포 경계를 정리한다. Repository/package version은 `0.4.4`이고 public npm `latest`는 아직 검증된 `0.4.3`이다. `0.2.0`부터 `0.4.3`까지의 public evidence는 그대로 보존하며, `0.4.4`의 publish, registry metadata, CI acceptance, annotated tag와 GitHub Release는 아직 완료됐다고 주장하지 않는다. Universal Directory publish도 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
+이 문서는 public Codex Agent View `0.4.4`와 Codex plugin의 배포 경계를 정리한다. Repository/package와 public npm `latest`/version은 `0.4.4`이며 `0.2.0`부터 `0.4.4`까지의 public evidence를 보존한다. `0.4.4`의 npm/install/app E2E, main/tag CI, annotated tag와 GitHub Release를 확인했다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
 
 ## 현재 상태
 
-- package 이름은 `codex-agent-view`다. Repository/package는 `0.4.4` release candidate이고 public npm `latest`는 publish 전까지 `0.4.3`이다.
+- package 이름은 `codex-agent-view`다. Repository/package와 public npm `latest`는 `0.4.4`다.
 - Public `0.4.2`의 push, main CI Node.js 18/20/22, npm metadata/signature, release/registry tarball byte 일치, annotated tag/GitHub Release, this-device exact reinstall/artifact match, plugin installed/enabled, hook wiring 9종과 official Codex in-app Browser visual E2E를 확인했다.
 - Public `0.3.2`는 immutable packaged README의 잘못된 release-state 안내를 수정한 patch다. Registry metadata/digest/signature, tag/GitHub Release, main/tag CI, this-device exact install과 registry/install artifact match를 확인했다. App-native snapshot은 worker activity 3개를 확인했지만 live hook E2E는 앱 restart/new-task 전이라 미완료다.
 - Node.js `>=18`을 요구하며 production dependency가 없다.
 - `package.json`은 `codex-agent-view` executable을 `bin/codex-agent-view.mjs`로 노출한다.
-- `0.4.4` candidate bundle에는 plugin manifest/catalog, logo assets, hooks, CLI, local runtime/server, static monitor UI, scripts, bundled Codex skill 2개, README, LICENSE, NOTICE가 포함된다.
+- Public `0.4.4` bundle에는 plugin manifest/catalog, logo assets, hooks, CLI, local runtime/server, static monitor UI, scripts, bundled Codex skill 2개, README, LICENSE, NOTICE가 포함된다.
 - `postinstall`과 다른 npm lifecycle installer는 없다. npm package를 받는 것만으로 Codex 설정을 바꾸지 않는다.
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
-- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Historical public exact `codex-agent-view@0.4.3`의 this-device global install, plugin installed/enabled, hook wiring 9종, installed artifact match, `doctor` event observation과 official Codex migration E2E를 확인했다. `0.4.4`에는 이 evidence를 재사용하지 않는다.
+- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Public exact `codex-agent-view@0.4.4`의 this-device global reinstall, CLI/plugin version, installed/enabled, hook wiring 9종, `doctor` event observation과 official Codex in-app live E2E를 확인했다.
 
-### `0.4.4` release candidate — acceptance pending
+### Public `0.4.4` release evidence
 
-Package와 plugin manifest는 `0.4.4`로 동기화했다. Candidate는 plugin starter/default prompt를 제거하고, 호출 task 자체를 `CODEX_THREAD_ID`로 제외하며, English 기본의 English/Korean/Spanish selector, 2초 polling과 toggle 없는 inline activity/technical metadata를 제공한다. 검증된 hook payload에 dedicated agent assignment description이 없으므로 prompt/tool input에서 설명을 추론하지 않는다.
+Package와 plugin manifest는 `0.4.4`로 동기화했다. Release는 plugin starter/default prompt를 제거하고, 호출 task 자체를 `CODEX_THREAD_ID`로 제외하며, English 기본의 English/Korean/Spanish selector, 2초 polling과 toggle 없는 inline activity/technical metadata를 제공한다. 검증된 hook payload에 dedicated agent assignment description이 없으므로 prompt/tool input에서 설명을 추론하지 않는다.
 
-#### 완료된 local prepublish acceptance
+#### Public release acceptance
 
-Exact local `0.4.4` tarball을 pack한 뒤 설치해 global executable과 installed plugin version이 모두 `0.4.4`이고 plugin이 installed/enabled임을 확인했다. Hook wiring은 9종이며 `doctor`는 monitor `events_received: true`, sessions 7개를 보고했다.
+Release tarball과 registry tarball이 byte-identical임을 확인했다. This-device public exact reinstall에서 global executable과 installed plugin version이 모두 `0.4.4`이고 plugin이 installed/enabled였다. Hook wiring은 9종이며 `doctor`는 monitor `events_received: true`, sessions 7개를 보고했다.
 
-Official Codex in-app Browser의 local UI에서는 private token/exclude fragment가 page load 직후 주소에서 제거됐고 인증 상태는 계속 connected였다. Raw sessions 7개 중 current viewer task ID 1개가 client filter로 제외돼 6개가 표시됐다. 값 자체는 기록하지 않는다. UI는 English가 기본이었고 한국어와 Español 전환이 동작했으며, Español 선택은 reload 뒤에도 유지됐다. `<details>`와 `<summary>`는 각각 0개였고 agent profile 안내와 inline technical metadata가 표시됐다. Browser console warning/error는 0개였다.
+Official Codex in-app Browser에서는 reload와 public exact reinstall 뒤에도 auth가 valid였다. Private token/exclude fragment는 page load 직후 visible URL에서 제거됐고 current viewer task가 결과에서 제외됐다. 값 자체는 기록하지 않는다. `<details>`와 `<summary>`는 각각 0개였으며 English, 한국어, Español을 모두 확인했고 English 선택은 reload 뒤에도 유지됐다.
 
-이 결과는 local source/tarball과 현재 기기의 prepublish acceptance다. 아직 public npm publish, registry version/`latest`, digest/signature, registry tarball 비교, this-device **public exact** reinstall, main/tag CI, `v0.4.4` tag와 GitHub Release는 미완료다. 이 항목은 public release acceptance에서 실제 결과로만 갱신한다.
+| 확인 항목 | 결과 |
+| --- | --- |
+| npm `latest` / version | `0.4.4` / `0.4.4` |
+| Package / size / signature | 25 files / package `70.4 kB` / unpacked `250.6 kB` / registry signature 확인 |
+| Dist shasum | `482520d471b3ef04204f026b52237ac77407a99f` |
+| Exact integrity | `sha512-q0j/s5D6Hw0GV0x/CIkHRdM7U9uONqb2gmMguesC7BzTG4znbj35XKXqjMl5dJSc9O/GaYMj6lNCOqLdCiYdoA==` |
+| Artifact comparison | Release tarball과 registry tarball byte-identical |
+| This-device acceptance | Public exact reinstall, CLI/plugin `0.4.4`, installed/enabled, hook wiring 9종, events true, sessions 7 |
+| Official app live E2E | Reload/reinstall 뒤 auth valid, visible URL fragment 제거, current viewer task 제외, disclosure 0, en/ko/es 확인, English 선택 reload persistence |
+| Main CI | `30717562576`, 성공 |
+| Annotated tag / GitHub Release | `v0.4.4` → `1bedf47d2185d2a14a3c96536e57aef0719b767a` / [public release](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.4) |
+| Tag CI | `30717744653`, 성공 |
 
 ### Public `0.4.3` release evidence
 
-Historical public `0.4.3` manifest에는 `$show-agents` 형태의 plugin-level starter text가 있었다. 이 값은 text 삽입일 뿐 실제 bundled skill dispatch를 보장하지 않으므로, plugin 카드가 skill을 자동 또는 명시 호출했다고 주장하지 않는다. `0.4.4` candidate 계약은 manifest starter/default prompt를 두지 않는다. Plugin 선택은 action text를 붙이지 않고 사용법만 설명하며, 사용자가 공식 Codex 앱에서 실제 bundled `$show-agents` skill을 명시적으로 선택하거나 호출해야 한다. 이 source 변경과 아래 public `0.4.3` release evidence를 구분한다.
+Historical public `0.4.3` manifest에는 `$show-agents` 형태의 plugin-level starter text가 있었다. 이 값은 text 삽입일 뿐 실제 bundled skill dispatch를 보장하지 않으므로, plugin 카드가 skill을 자동 또는 명시 호출했다고 주장하지 않는다. Public `0.4.4` 계약은 manifest starter/default prompt를 두지 않는다. Plugin 선택은 action text를 붙이지 않고 사용법만 설명하며, 사용자가 공식 Codex 앱에서 실제 bundled `$show-agents` skill을 명시적으로 선택하거나 호출해야 한다.
 
 기본 monitor는 실행 중인 부모 task와 subagent를 먼저 정렬하고 사람이 읽을 수 있는 workspace/task/agent label과 상태 문구를 주 정보로 표시한다. Raw session/agent ID와 technical metadata는 접기 토글 없이 항상 보이되 보조 정보로 유지하며 raw hook event name은 화면의 중심 정보로 노출하지 않는다. Live UI는 English를 기본값으로 하고 English, Korean, Spanish selector를 제공하며 2초 polling을 유지한다. Validated private `CODEX_THREAD_ID`가 있으면 live view를 연 task 자체를 목록에서 제외한다. Prompt, preview, tool input/output과 full workspace path는 계속 표시하지 않는다. 실제 official `SubagentStart`에서 확인한 agent assignment 관련 field는 `agent_id`와 `agent_type`뿐이고 dedicated assignment description은 없다. Prompt/tool input을 저장해 설명을 추론하지 않으므로 agent별 할당 작업 설명을 발명하거나 표시하지 않는다.
 
@@ -267,7 +278,7 @@ Release candidate 검증에서는 `npm pack`으로 만든 exact tarball을 임�
 
 ## Public npm 사용자 경로
 
-Publish 완료 뒤 다음 명령은 public registry의 exact `0.4.4` release를 최초 설치한다. Candidate가 registry에 존재하기 전에는 실패한다. Mutable `latest`보다 문서와 일치하는 exact version을 우선한다.
+다음 명령은 public registry의 exact `0.4.4` release를 최초 설치한다. Mutable `latest`보다 문서와 일치하는 exact version을 우선한다.
 
 ```bash
 npm install --global codex-agent-view@0.4.4

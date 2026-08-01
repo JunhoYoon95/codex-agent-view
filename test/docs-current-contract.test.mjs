@@ -70,7 +70,7 @@ test("keeps README local links resolvable and the root guide free of Korean copy
   }
 });
 
-test("separates verified 0.4.4 local prepublish E2E from pending public release acceptance", async () => {
+test("records verified public 0.4.4 acceptance without stale candidate state", async () => {
   const [distribution, findings, submission] = await Promise.all([
     readProjectFile("docs/distribution.md"),
     readProjectFile("docs/phase-0-findings.md"),
@@ -78,18 +78,33 @@ test("separates verified 0.4.4 local prepublish E2E from pending public release 
   ]);
 
   for (const document of [distribution, findings, submission]) {
-    assert.match(document, /(?:Exact local|Local prepublish).*`0\.4\.4` tarball/i);
+    assert.match(document, /public npm `latest`\/version.*`0\.4\.4`/i);
+    assert.match(document, /482520d471b3ef04204f026b52237ac77407a99f/);
+    assert.match(
+      document,
+      /sha512-q0j\/s5D6Hw0GV0x\/CIkHRdM7U9uONqb2gmMguesC7BzTG4znbj35XKXqjMl5dJSc9O\/GaYMj6lNCOqLdCiYdoA==/,
+    );
+    assert.match(document, /registry signature/);
+    assert.match(document, /25 files/);
+    assert.match(document, /byte-identical/);
+    assert.match(document, /public exact reinstall/i);
     assert.match(document, /hook wiring 9종/);
-    assert.match(document, /events_received: true/);
+    assert.match(document, /events(?:_received:)? true/);
     assert.match(document, /sessions 7개/);
-    assert.match(document, /raw sessions 7개 중 6개|Raw sessions 7개 중.*6개/);
-    assert.match(document, /Español/);
-    assert.match(document, /details.*summary|<details>.*<summary>/s);
-    assert.match(document, /console warn(?:ing)?\/error.*0개/);
+    assert.match(document, /30717562576/);
+    assert.match(document, /30717744653/);
+    assert.match(document, /1bedf47d2185d2a14a3c96536e57aef0719b767a/);
+    assert.match(
+      document,
+      /https:\/\/github\.com\/JunhoYoon95\/codex-agent-view\/releases\/tag\/v0\.4\.4/,
+    );
+    assert.doesNotMatch(
+      document,
+      /0\.4\.4.{0,100}(?:release candidate|acceptance pending|대기 중|미완료|아직 미확인)/is,
+    );
+    assert.doesNotMatch(
+      document,
+      /(?:release candidate|acceptance pending|대기 중|미완료|아직 미확인).{0,100}0\.4\.4/is,
+    );
   }
-
-  assert.match(distribution, /public npm publish/);
-  assert.match(distribution, /`v0\.4\.4` tag와 GitHub Release는 미완료/);
-  assert.match(findings, /public release acceptance는 구분/);
-  assert.match(submission, /public exact install.*대기 중/s);
 });
