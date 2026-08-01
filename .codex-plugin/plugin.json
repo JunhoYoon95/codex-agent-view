@@ -1,7 +1,7 @@
 {
   "name": "codex-agent-view",
-  "version": "0.3.2",
-  "description": "Read-only Codex app task snapshots with an optional local live monitor.",
+  "version": "0.4.0",
+  "description": "Read-only Codex app task snapshots with a trusted-hook auto-prepared local live backend.",
   "author": {
     "name": "Junho Yoon",
     "url": "https://github.com/JunhoYoon95"
@@ -13,7 +13,7 @@
   "interface": {
     "displayName": "Codex Agent View",
     "shortDescription": "View active Codex tasks.",
-    "longDescription": "View privacy-minimized active task and subagent snapshots inside the official Codex app, with an optional localhost live monitor in the built-in Browser.",
+    "longDescription": "View privacy-minimized active task and subagent snapshots inside the official Codex app, with a trusted-hook auto-prepared local live backend for the built-in Browser.",
     "developerName": "Junho Yoon",
     "category": "Productivity",
     "brandColor": "#123F35",

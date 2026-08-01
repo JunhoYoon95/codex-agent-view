@@ -16,6 +16,21 @@ export const DEFAULT_PORT = 43127;
 export const MAX_EVENT_BODY_BYTES = 64 * 1024;
 export const RUNTIME_SCHEMA_VERSION = 1;
 
+export function autoStartPort(env = process.env) {
+  const configured = env.CODEX_AGENT_VIEW_AUTO_START_PORT;
+  if (configured === undefined || configured === "") {
+    return DEFAULT_PORT;
+  }
+  if (!/^\d+$/.test(configured)) {
+    throw new Error("invalid Codex Agent View auto-start port");
+  }
+  const port = Number(configured);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("invalid Codex Agent View auto-start port");
+  }
+  return port;
+}
+
 export function runtimeDirectory(env = process.env) {
   return resolve(
     env.CODEX_AGENT_VIEW_RUNTIME_DIR || join(homedir(), ".codex-agent-view"),

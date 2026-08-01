@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 
+import { spawn } from "node:child_process";
 import { basename } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { minimizePayload } from "./capture-hook.mjs";
 import { readRuntimeInfo } from "../src/runtime/config.mjs";
 
 const MAX_STDIN_BYTES = 2 * 1024 * 1024;
-const SEND_TIMEOUT_MS = 750;
+const SEND_TIMEOUT_MS = 500;
+const AUTO_START_WAIT_MS = 1_600;
+const AUTO_START_POLL_MS = 40;
 const MAX_WORKSPACE_LABEL_LENGTH = 120;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/g;
 
@@ -55,8 +59,7 @@ function monitorEnvelope(payload) {
     : minimized;
 }
 
-async function send(payload) {
-  const runtime = await readRuntimeInfo();
+async function sendToRuntime(runtime, envelope) {
   const response = await fetch(
     `http://${runtime.host}:${runtime.port}/api/events`,
     {
@@ -65,13 +68,73 @@ async function send(payload) {
         authorization: `Bearer ${runtime.token}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify(monitorEnvelope(payload)),
+      body: JSON.stringify(envelope),
       signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
     },
   );
   if (!response.ok) {
     throw new Error(`monitor returned HTTP ${response.status}`);
   }
+}
+
+function childEnvironment() {
+  const env = {};
+  for (const key of [
+    "CODEX_AGENT_VIEW_AUTO_START_PORT",
+    "CODEX_AGENT_VIEW_RUNTIME_DIR",
+    "SystemRoot",
+  ]) {
+    if (typeof process.env[key] === "string") {
+      env[key] = process.env[key];
+    }
+  }
+  return env;
+}
+
+function startMonitorDetached() {
+  const child = spawn(
+    process.execPath,
+    [fileURLToPath(new URL("./auto-start-monitor.mjs", import.meta.url))],
+    {
+      detached: true,
+      env: childEnvironment(),
+      shell: false,
+      stdio: "ignore",
+    },
+  );
+  child.on("error", () => {});
+  child.unref();
+}
+
+async function delay(milliseconds) {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function tryDelivery(envelope) {
+  try {
+    await sendToRuntime(await readRuntimeInfo(), envelope);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function send(payload) {
+  const envelope = monitorEnvelope(payload);
+  if (await tryDelivery(envelope)) {
+    return;
+  }
+
+  startMonitorDetached();
+  const deadline = Date.now() + AUTO_START_WAIT_MS;
+  do {
+    await delay(AUTO_START_POLL_MS);
+    if (await tryDelivery(envelope)) {
+      return;
+    }
+  } while (Date.now() < deadline);
+
+  throw new Error("monitor auto-start delivery timed out");
 }
 
 async function main() {

@@ -531,9 +531,9 @@ function setEmptyObservationMessage() {
 
   const steps = document.createElement("ol");
   for (const step of [
-    "Codex Agent View를 실행한 뒤 새 Codex task를 시작합니다.",
-    "설치된 plugin의 현재 hook command를 검토하고 직접 trust했는지 확인합니다.",
-    "plugin 설치 또는 hook trust 변경 후 공식 Codex 앱을 완전히 재시작하고 새 task에서 subagent를 실행합니다.",
+    "Plugin을 설치한 뒤 공식 Codex 앱을 완전히 재시작했는지 확인합니다.",
+    "새 task에서 표시되는 Codex Agent View hook command를 검토하고 직접 trust합니다.",
+    "Trust 이후 새 task를 시작해 subagent 작업을 실행합니다. Hook event가 이 목록에 자동으로 추가됩니다.",
   ]) {
     const item = document.createElement("li");
     item.textContent = step;
@@ -542,7 +542,7 @@ function setEmptyObservationMessage() {
 
   const boundary = document.createElement("p");
   boundary.className = "observation-boundary";
-  boundary.textContent = "Plugin 설치·trust 전에 이미 지나간 event와 monitor가 꺼져 있던 동안의 event는 재생되지 않습니다.";
+  boundary.textContent = "관찰 window는 첫 trusted hook에서 시작합니다. 그 전에 이미 지나간 event와 로컬 상태 수집이 중단된 동안의 event는 재생되지 않으며, 수집이 다시 시작되면 새 관찰 window가 열립니다.";
 
   guidance.append(guidanceTitle, automaticTracking, steps, boundary);
 
@@ -594,12 +594,16 @@ function renderSessions() {
 
   if (viewState.errorMessage) {
     elements.sessionList.hidden = !visibleSessions.length;
-    const description = viewState.sessions.length
-      ? "마지막 정상 상태를 계속 표시합니다."
+    const description = viewState.canRetry
+      ? viewState.sessions.length
+        ? "2초마다 자동으로 다시 연결합니다. 마지막 정상 상태를 계속 표시합니다."
+        : "2초마다 자동으로 다시 연결합니다. Codex 앱에서 이 화면을 그대로 두어도 됩니다."
       : viewState.errorMessage;
     setStateMessage(
       "error",
-      "로컬 monitor에 연결할 수 없습니다.",
+      viewState.canRetry
+        ? "로컬 상태 연결이 끊겨 다시 시도 중입니다."
+        : "이 live view를 인증할 수 없습니다.",
       description,
       viewState.canRetry,
     );
@@ -632,14 +636,14 @@ function render() {
   renderSessions();
 }
 
-function setConnectionStatus(status) {
+function setConnectionStatus(status, labelOverride = "") {
   elements.connectionStatus.dataset.status = status;
   const labels = {
     connecting: "로컬 상태 연결 중",
     connected: "로컬 monitor 연결됨",
-    error: "연결 끊김",
+    error: "연결 끊김 · 재시도 중",
   };
-  elements.connectionLabel.textContent = labels[status];
+  elements.connectionLabel.textContent = labelOverride || labels[status];
 }
 
 async function refreshState() {
@@ -650,8 +654,8 @@ async function refreshState() {
   if (!accessToken) {
     viewState.hasLoaded = true;
     viewState.canRetry = false;
-    viewState.errorMessage = "접근 token이 없습니다. monitor를 다시 실행해 새 주소를 여세요.";
-    setConnectionStatus("error");
+    viewState.errorMessage = "이 탭에는 접근 token이 없습니다. Codex 앱에서 Codex Agent View에 live view 열기를 다시 요청하세요.";
+    setConnectionStatus("error", "live view 인증 필요");
     render();
     return;
   }

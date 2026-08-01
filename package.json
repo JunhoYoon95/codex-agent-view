@@ -1,7 +1,7 @@
 {
   "name": "codex-agent-view",
-  "version": "0.3.2",
-  "description": "Read-only Codex app task view with an optional local live monitor.",
+  "version": "0.4.0",
+  "description": "Read-only Codex app task view with a trusted-hook auto-prepared local live backend.",
   "type": "module",
   "main": "./src/core/index.mjs",
   "exports": "./src/core/index.mjs",
@@ -15,6 +15,7 @@
     "bin/",
     "hooks/",
     "public/",
+    "scripts/auto-start-monitor.mjs",
     "scripts/capture-hook.mjs",
     "scripts/send-hook.mjs",
     "skills/",

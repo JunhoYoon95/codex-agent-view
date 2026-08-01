@@ -1,23 +1,98 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, rm } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { readRuntimeInfo, runtimeFile } from "../src/runtime/config.mjs";
 import { startMonitorServer } from "../src/runtime/server.mjs";
 
 const senderPath = fileURLToPath(new URL("../scripts/send-hook.mjs", import.meta.url));
 
 async function temporaryRuntime(t) {
   const root = await mkdtemp(join(tmpdir(), "codex-agent-view-sender-test-"));
+  const port = await reserveLoopbackPort();
   const env = {
     ...process.env,
+    CODEX_AGENT_VIEW_AUTO_START_PORT: String(port),
     CODEX_AGENT_VIEW_RUNTIME_DIR: join(root, "runtime"),
   };
-  t.after(async () => rm(root, { force: true, recursive: true }));
-  return { env };
+  t.after(async () => {
+    await stopDetachedMonitor(env).catch(() => {});
+    await rm(root, { force: true, recursive: true });
+  });
+  return { env, port };
+}
+
+async function reserveLoopbackPort() {
+  const server = createServer();
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const { port } = server.address();
+  await new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+  return port;
+}
+
+async function waitFor(predicate, timeoutMs = 2_000) {
+  const deadline = Date.now() + timeoutMs;
+  do {
+    if (await predicate()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  } while (Date.now() < deadline);
+  assert.fail("condition was not met before timeout");
+}
+
+function processExists(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if (error?.code === "ESRCH") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function stopDetachedMonitor(env) {
+  let runtime;
+  try {
+    runtime = await readRuntimeInfo(env);
+  } catch {
+    return;
+  }
+  if (runtime.pid === process.pid || !processExists(runtime.pid)) {
+    return;
+  }
+  process.kill(runtime.pid, "SIGTERM");
+  await waitFor(async () => {
+    const runtimeRemoved = await access(runtimeFile(env)).then(
+      () => false,
+      (error) => error?.code === "ENOENT",
+    );
+    return runtimeRemoved && !processExists(runtime.pid);
+  });
+}
+
+async function fetchSnapshot(runtime) {
+  const response = await fetch(
+    `http://${runtime.host}:${runtime.port}/api/state`,
+    {
+      headers: { authorization: `Bearer ${runtime.token}` },
+      signal: AbortSignal.timeout(500),
+    },
+  );
+  assert.equal(response.status, 200);
+  return response.json();
 }
 
 function runSender(payload, env) {
@@ -36,8 +111,8 @@ function runSender(payload, env) {
   });
 }
 
-test("fails open with neutral stdout when the monitor is not running", async (t) => {
-  const { env } = await temporaryRuntime(t);
+test("auto-starts a detached monitor and reuses it for later hooks", async (t) => {
+  const { env, port } = await temporaryRuntime(t);
   const result = await runSender(
     {
       session_id: "session-1",
@@ -50,6 +125,88 @@ test("fails open with neutral stdout when the monitor is not running", async (t)
   );
 
   assert.deepEqual(result, { code: 0, stderr: "", stdout: "{}\n" });
+  const runtime = await readRuntimeInfo(env);
+  assert.equal(runtime.port, port);
+  assert.notEqual(runtime.pid, process.pid);
+  const snapshot = await fetchSnapshot(runtime);
+  assert.equal(snapshot.sessions[0].session_id, "session-1");
+  assert.equal(snapshot.sessions[0].agents[0].agent_id, "agent-1");
+
+  const second = await runSender(
+    {
+      session_id: "session-1",
+      turn_id: "turn-1",
+      hook_event_name: "SubagentStop",
+      agent_id: "agent-1",
+      agent_type: "default",
+    },
+    env,
+  );
+  assert.deepEqual(second, { code: 0, stderr: "", stdout: "{}\n" });
+  assert.equal((await readRuntimeInfo(env)).pid, runtime.pid);
+
+  await stopDetachedMonitor(env);
+  assert.equal(processExists(runtime.pid), false);
+  await assert.rejects(access(runtimeFile(env)), { code: "ENOENT" });
+});
+
+test("concurrent hooks converge on one auto-started monitor", async (t) => {
+  const { env } = await temporaryRuntime(t);
+  const results = await Promise.all(
+    Array.from({ length: 6 }, (_, index) =>
+      runSender(
+        {
+          session_id: `session-${index}`,
+          turn_id: `turn-${index}`,
+          hook_event_name: "SubagentStart",
+          agent_id: `agent-${index}`,
+          agent_type: "default",
+        },
+        env,
+      ),
+    ),
+  );
+  for (const result of results) {
+    assert.deepEqual(result, { code: 0, stderr: "", stdout: "{}\n" });
+  }
+
+  const runtime = await readRuntimeInfo(env);
+  await waitFor(async () => (await fetchSnapshot(runtime)).sessions.length === 6);
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert.equal((await readRuntimeInfo(env)).pid, runtime.pid);
+  assert.equal(processExists(runtime.pid), true);
+
+  await stopDetachedMonitor(env);
+  assert.equal(processExists(runtime.pid), false);
+});
+
+test("fails open with neutral stdout when auto-start cannot bind", async (t) => {
+  const { env, port } = await temporaryRuntime(t);
+  const blocker = createServer((_request, response) => {
+    response.writeHead(503);
+    response.end();
+  });
+  await new Promise((resolve, reject) => {
+    blocker.once("error", reject);
+    blocker.listen(port, "127.0.0.1", resolve);
+  });
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        blocker.close(() => resolve());
+      }),
+  );
+
+  const result = await runSender(
+    {
+      session_id: "session-blocked",
+      hook_event_name: "SubagentStart",
+      agent_id: "agent-blocked",
+    },
+    env,
+  );
+  assert.deepEqual(result, { code: 0, stderr: "", stdout: "{}\n" });
+  await assert.rejects(readRuntimeInfo(env));
 });
 
 test("debug mode emits only a fixed failure code", async (t) => {

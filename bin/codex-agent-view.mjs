@@ -442,16 +442,90 @@ async function inspectRuntime() {
   }
 }
 
-async function runtimeResponds(runtime) {
+async function runtimeEndpointState(runtime) {
   try {
-    await fetch(`http://${runtime.host}:${runtime.port}/api/state`, {
+    const response = await fetch(`http://${runtime.host}:${runtime.port}/api/state`, {
       headers: { authorization: `Bearer ${runtime.token}` },
       signal: AbortSignal.timeout(1_500),
     });
-    return true;
+    if (!response.ok) {
+      await response.body?.cancel();
+      return "unrelated";
+    }
+    const snapshot = await response.json().catch(() => null);
+    return snapshot?.schema_version === 1 && snapshot?.source_of_truth === "hook"
+      ? "owned"
+      : "unrelated";
   } catch {
+    return "absent";
+  }
+}
+
+async function runtimeResponds(runtime) {
+  return (await runtimeEndpointState(runtime)) === "owned";
+}
+
+async function stopRunningRuntime(preflight) {
+  if (preflight.kind !== "valid") {
     return false;
   }
+  const endpointState = await runtimeEndpointState(preflight.info);
+  if (endpointState === "absent") {
+    return false;
+  }
+  if (endpointState === "unrelated") {
+    throw new Error(
+      "the runtime endpoint was not identified as an owned monitor; plugin and runtime files were preserved",
+    );
+  }
+
+  let response;
+  try {
+    response = await fetch(
+      `http://${preflight.info.host}:${preflight.info.port}/api/internal/shutdown`,
+      {
+        headers: { authorization: `Bearer ${preflight.info.token}` },
+        method: "POST",
+        signal: AbortSignal.timeout(1_500),
+      },
+    );
+  } catch {
+    throw new Error("the owned monitor could not be stopped; plugin files were preserved");
+  }
+  if (!response.ok) {
+    throw new Error(
+      `the owned monitor refused shutdown with HTTP ${response.status}; plugin files were preserved`,
+    );
+  }
+  const result = await response.json().catch(() => null);
+  if (result?.status !== "shutting_down") {
+    throw new Error(
+      "the owned monitor returned an invalid shutdown response; plugin files were preserved",
+    );
+  }
+
+  const deadline = Date.now() + 3_000;
+  while (Date.now() < deadline) {
+    const current = await inspectRuntime();
+    if (current.kind === "absent") {
+      return true;
+    }
+    if (current.kind === "unknown") {
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+      continue;
+    }
+    if (current.info.token !== preflight.info.token) {
+      throw new Error(
+        "runtime ownership changed during uninstall; new or unrecognized runtime data was preserved",
+      );
+    }
+    if (!(await runtimeResponds(current.info))) {
+      await removeRuntimeInfo(current.info.token);
+      return true;
+    }
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+  }
+  throw new Error("the owned monitor did not stop in time; plugin files were preserved");
 }
 
 async function inspectPluginBundle(destination) {
@@ -593,11 +667,18 @@ async function purgeStaleRuntime(preflight) {
   }
 
   const current = await inspectRuntime();
+  if (current.kind === "absent") {
+    return false;
+  }
   if (current.kind !== "valid" || current.info.token !== preflight.info.token) {
     return true;
   }
-  if (await runtimeResponds(current.info)) {
+  const endpointState = await runtimeEndpointState(current.info);
+  if (endpointState === "owned") {
     throw new Error("the Codex Agent View monitor started during uninstall; runtime data was preserved");
+  }
+  if (endpointState === "unrelated") {
+    return true;
   }
   await removeRuntimeInfo(current.info.token);
   return false;
@@ -637,15 +718,8 @@ async function uninstall(args) {
   }
 
   const purge = args.includes("--purge");
-  const runtimePreflight = purge ? await inspectRuntime() : { kind: "absent" };
-  if (
-    runtimePreflight.kind === "valid" &&
-    (await runtimeResponds(runtimePreflight.info))
-  ) {
-    throw new Error(
-      "the Codex Agent View monitor is running; stop it before uninstalling with --purge",
-    );
-  }
+  const runtimePreflight = await inspectRuntime();
+  const stoppedMonitor = await stopRunningRuntime(runtimePreflight);
 
   await run("codex", ["plugin", "remove", PLUGIN_ID, "--json"], { allowFailure: true });
   await run("codex", ["plugin", "marketplace", "remove", MARKETPLACE_NAME, "--json"], {
@@ -668,7 +742,11 @@ async function uninstall(args) {
       );
     }
   } else {
-    process.stdout.write("Removed plugin and marketplace bundle. Runtime data was preserved.\n");
+    process.stdout.write(
+      stoppedMonitor
+        ? "Stopped the owned monitor and removed the plugin and marketplace bundle.\n"
+        : "Removed plugin and marketplace bundle. Runtime data was preserved.\n",
+    );
   }
 }
 

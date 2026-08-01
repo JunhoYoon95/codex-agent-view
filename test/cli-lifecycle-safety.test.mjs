@@ -51,7 +51,7 @@ if (args.join(" ") === "plugin marketplace list --json") {
   process.stdout.write(JSON.stringify({ installed: [{
     pluginId: "codex-agent-view@codex-agent-view",
     enabled: process.env.FAKE_PLUGIN_DISABLED !== "1",
-    version: "0.3.2",
+    version: "0.4.0",
     source: { source: "local", path: sourcePath }
   }] }) + "\\n");
 } else {
@@ -264,7 +264,7 @@ test("refuses a symbolic-link runtime root without touching its target", async (
   assert.deepEqual(await readCalls(setup.log), []);
 });
 
-test("refuses purge before registration changes while the monitor is running", async (t) => {
+test("purge stops a healthy owned monitor before removing registration and runtime data", async (t) => {
   if (process.platform === "win32") {
     t.skip("fake executable fixture uses a POSIX shebang");
     return;
@@ -276,10 +276,128 @@ test("refuses purge before registration changes while the monitor is running", a
   t.after(async () => monitor.close());
 
   const result = await runCli(setup, runtimeRoot, ["uninstall", "--purge"]);
-  assert.equal(result.code, 1);
-  assert.match(result.stderr, /monitor is running/);
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /Removed plugin, marketplace, and runtime data/);
+  assert.deepEqual(await readCalls(setup.log), [
+    ["plugin", "remove", "codex-agent-view@codex-agent-view", "--json"],
+    ["plugin", "marketplace", "remove", "codex-agent-view", "--json"],
+  ]);
+  assert.equal(monitor.server.address(), null);
+  await assertMissing(runtimeRoot);
+});
+
+test("normal uninstall stops a healthy owned monitor instead of leaving an orphan", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const monitor = await startMonitorServer({ env, port: 0 });
+  t.after(async () => monitor.close());
+
+  const result = await runCli(setup, runtimeRoot, ["uninstall"]);
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /Stopped the owned monitor/);
+  assert.equal(monitor.server.address(), null);
+  await assertMissing(runtimeFile(env));
+  await assertMissing(join(runtimeRoot, "marketplace"));
+});
+
+test("purge stops a foreground start process without sending it a signal", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("foreground process fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "foreground-runtime");
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  const child = spawnCli(setup, runtimeRoot, ["start", "--port", "0", "--no-open"]);
+  await waitForMonitorStart(child);
+  const exited = new Promise((resolvePromise) => {
+    child.once("close", (code, signal) => resolvePromise({ code, signal }));
+  });
+
+  const purge = await runCli(setup, runtimeRoot, ["uninstall", "--purge"]);
+  assert.equal(purge.code, 0, purge.stderr);
+  assert.deepEqual(await exited, { code: 0, signal: null });
+  await assertMissing(runtimeRoot);
+});
+
+test("purge preserves an unrecognized runtime file", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "unknown-runtime");
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  await writeFile(runtimeFile({ CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot }), "user-owned\n");
+
+  const purge = await runCli(setup, runtimeRoot, ["uninstall", "--purge"]);
+  assert.equal(purge.code, 0, purge.stderr);
+  assert.match(purge.stdout, /unrecognized runtime file.*preserved/);
+  assert.equal(
+    await readFile(runtimeFile({ CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot }), "utf8"),
+    "user-owned\n",
+  );
+});
+
+test("purge preserves a runtime that points to an unrelated loopback service", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "unrelated-runtime");
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+
+  const unrelated = createServer((request, response) => {
+    if (request.url === "/api/state") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end("{}\n");
+      return;
+    }
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end('{"error":"not found"}\n');
+  });
+  await new Promise((resolvePromise, reject) => {
+    unrelated.once("error", reject);
+    unrelated.listen(0, LOOPBACK_HOST, resolvePromise);
+  });
+  t.after(
+    () =>
+      new Promise((resolvePromise) => {
+        unrelated.close(() => resolvePromise());
+      }),
+  );
+  const address = unrelated.address();
+  assert(address && typeof address !== "string");
+  const runtime = {
+    host: LOOPBACK_HOST,
+    pid: process.pid,
+    port: address.port,
+    schema_version: RUNTIME_SCHEMA_VERSION,
+    started_at_ms: Date.now(),
+    token: "u".repeat(43),
+  };
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  await writeRuntimeInfo(runtime, env);
+  await writeFile(setup.log, "");
+
+  const purge = await runCli(setup, runtimeRoot, ["uninstall", "--purge"]);
+  assert.equal(purge.code, 1);
+  assert.match(purge.stderr, /not identified as an owned monitor/);
   assert.deepEqual(await readCalls(setup.log), []);
-  assert.equal((await readRuntimeInfo(env)).token, monitor.runtimeInfo.token);
+  assert.deepEqual(await readRuntimeInfo(env), runtime);
+  await access(join(runtimeRoot, "marketplace"));
+  assert.notEqual(unrelated.address(), null);
 });
 
 test("purge removes only owned files and preserves a broad root sentinel", async (t) => {
@@ -494,7 +612,7 @@ test("doctor distinguishes valid registration from unobservable hook trust and n
     enabled: true,
     installed: true,
     source_path: join(runtimeRoot, "marketplace"),
-    version: "0.3.2",
+    version: "0.4.0",
   });
   assert.equal(report.hook.wiring_ok, true);
   assert.equal(report.hook.trust, "unknown");

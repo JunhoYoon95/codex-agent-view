@@ -5,7 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { readRuntimeInfo, runtimeFile } from "../src/runtime/config.mjs";
+import {
+  readRuntimeInfo,
+  runtimeFile,
+  writeRuntimeInfo,
+} from "../src/runtime/config.mjs";
 import { startMonitorServer } from "../src/runtime/server.mjs";
 
 const TOKEN = "t".repeat(43);
@@ -188,6 +192,54 @@ test("requires auth, accepts hook ingest, and returns minimized state", async (t
   ]) {
     assert(!serialized.includes(privateValue));
   }
+});
+
+test("shutdown requires loopback Bearer auth, responds, and closes without deadlock", async (t) => {
+  const { env, monitor } = await startFixture(t);
+  const path = "/api/internal/shutdown";
+
+  assert.equal((await request(monitor, { method: "POST", path })).status, 401);
+  assert.equal(
+    (
+      await request(monitor, {
+        headers: { ...bearer(), host: "example.com" },
+        method: "POST",
+        path,
+      })
+    ).status,
+    421,
+  );
+
+  const shutdown = await Promise.race([
+    request(monitor, { headers: bearer(), method: "POST", path }),
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("shutdown response timed out")), 1_000);
+    }),
+  ]);
+  assert.equal(shutdown.status, 202);
+  assert.deepEqual(json(shutdown), { status: "shutting_down" });
+
+  const deadline = Date.now() + 2_000;
+  while (monitor.server.address() !== null && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  assert.equal(monitor.server.address(), null);
+  await monitor.close();
+  await monitor.close();
+  await assert.rejects(access(runtimeFile(env)), { code: "ENOENT" });
+});
+
+test("monitor close uses token ownership when cleaning runtime info", async (t) => {
+  const { env, monitor } = await startFixture(t);
+  const replacement = {
+    ...monitor.runtimeInfo,
+    port: await reserveLoopbackPort(),
+    token: "n".repeat(43),
+  };
+  await writeRuntimeInfo(replacement, env);
+
+  await monitor.close();
+  assert.deepEqual(await readRuntimeInfo(env), replacement);
 });
 
 test("rejects non-loopback Host headers before serving health or state", async (t) => {

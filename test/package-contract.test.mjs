@@ -52,11 +52,12 @@ function npmPackEnvironment() {
   return env;
 }
 
-test("keeps the npm 0.3.2 executable and publish surface intact", async () => {
+test("keeps the npm 0.4.0 executable and publish surface intact", async () => {
   const packageMetadata = await readJson("package.json");
 
   assert.equal(packageMetadata.name, "codex-agent-view");
-  assert.equal(packageMetadata.version, "0.3.2");
+  assert.equal(packageMetadata.version, "0.4.0");
+  assert.match(packageMetadata.description, /trusted-hook auto-prepared local live backend/);
   assert.deepEqual(packageMetadata.bin, {
     "codex-agent-view": "bin/codex-agent-view.mjs",
   });
@@ -68,6 +69,7 @@ test("keeps the npm 0.3.2 executable and publish surface intact", async () => {
     "bin/",
     "hooks/",
     "public/",
+    "scripts/auto-start-monitor.mjs",
     "scripts/capture-hook.mjs",
     "scripts/send-hook.mjs",
     "skills/",
@@ -87,6 +89,7 @@ test("keeps the npm 0.3.2 executable and publish surface intact", async () => {
   await assertRegularFile("public/index.html");
   await assertRegularFile("public/app.js");
   await assertRegularFile("public/styles.css");
+  await assertRegularFile("scripts/auto-start-monitor.mjs");
 });
 
 test("keeps the executable mapping in npm pack metadata", async (t) => {
@@ -144,7 +147,9 @@ test("has no postinstall side effects or production dependencies", async () => {
 
 test("keeps legal links secure and branding assets local", async () => {
   const manifest = await readJson(".codex-plugin/plugin.json");
-  assert.equal(manifest.version, "0.3.2");
+  assert.equal(manifest.version, "0.4.0");
+  assert.match(manifest.description, /trusted-hook auto-prepared local live backend/);
+  assert.match(manifest.interface.longDescription, /trusted-hook auto-prepared local live backend/);
 
   const legalUrls = [
     manifest.interface?.websiteURL,
@@ -198,4 +203,5 @@ test("routes every supported hook through the live sender", async () => {
   }
 
   await assertRegularFile("scripts/send-hook.mjs");
+  await assertRegularFile("scripts/auto-start-monitor.mjs");
 });

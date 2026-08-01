@@ -7,11 +7,23 @@ import test from "node:test";
 import {
   LOOPBACK_HOST,
   RUNTIME_SCHEMA_VERSION,
+  autoStartPort,
   readRuntimeInfo,
   removeRuntimeInfo,
   runtimeFile,
   writeRuntimeInfo,
 } from "../src/runtime/config.mjs";
+
+test("uses a fixed validated loopback auto-start port", () => {
+  assert.equal(autoStartPort({}), 43127);
+  assert.equal(autoStartPort({ CODEX_AGENT_VIEW_AUTO_START_PORT: "54321" }), 54321);
+  for (const value of ["0", "65536", "12.5", "not-a-port", " 43127"]) {
+    assert.throws(
+      () => autoStartPort({ CODEX_AGENT_VIEW_AUTO_START_PORT: value }),
+      /invalid Codex Agent View auto-start port/,
+    );
+  }
+});
 
 async function temporaryRuntime(t) {
   const root = await mkdtemp(join(tmpdir(), "codex-agent-view-runtime-test-"));

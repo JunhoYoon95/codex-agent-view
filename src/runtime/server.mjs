@@ -126,6 +126,19 @@ export async function startMonitorServer({
         return;
       }
 
+      if (
+        request.method === "POST" &&
+        requestUrl.pathname === "/api/internal/shutdown"
+      ) {
+        response.once("finish", () => {
+          queueMicrotask(() => {
+            void close().catch(() => {});
+          });
+        });
+        sendJson(response, 202, { status: "shutting_down" });
+        return;
+      }
+
       const asset = request.method === "GET" ? STATIC_FILES.get(requestUrl.pathname) : null;
       if (asset) {
         const body = await readFile(fileURLToPath(asset.url));
@@ -181,16 +194,19 @@ export async function startMonitorServer({
     throw error;
   }
 
-  let closed = false;
+  let closePromise = null;
   async function close() {
-    if (closed) {
-      return;
+    if (closePromise) {
+      return closePromise;
     }
-    closed = true;
-    await new Promise((resolve, reject) => {
-      server.close((error) => (error ? reject(error) : resolve()));
-    });
-    await removeRuntimeInfo(token, env);
+    closePromise = (async () => {
+      await new Promise((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+        server.closeIdleConnections?.();
+      });
+      await removeRuntimeInfo(token, env);
+    })();
+    return closePromise;
   }
 
   return {
