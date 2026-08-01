@@ -10,7 +10,7 @@
 
 해당 app process에는 plugin 설치 전 `hooks/list` 응답이 있었고 설치 뒤에도 process가 유지됐다. 이는 stale config/hook snapshot 가설과 일치하지만 인과관계를 확정하지는 않는다. 또한 `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않아 config snapshot과 untrusted hook skip을 자동 진단으로 분리할 수 없었다. 따라서 당시 실패 원인을 “재시작 부족”으로 단정하지 않는다.
 
-Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. Public npm `latest`는 `0.2.1`이며, 현재 source는 아직 publish/tag/release/installed-artifact E2E를 주장하지 않는 `0.3.0` candidate다. `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했고 `SessionEnd`만 당시 미관찰이었다. 후속 `0.3.0` source E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase` active task의 workspace basename, title, description, explicit `inProgress`, 최신 explicit commentary와 `subAgentActivity`를 확인했다. 직후 list는 explicit `idle`, `hasUnreadTurn: true`로 전환됐으며, 이는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Optional browser monitor에서는 실제 `SessionEnd`와 completed lifecycle 반영도 관찰했다.
+Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. Public npm `latest`와 현재 source는 `0.3.0`이다. Historical `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했다. `0.3.0` E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 explicit `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환을 확인했으며, 후자는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Browser monitor에서는 실제 `SessionEnd` lifecycle 반영을 관찰했다. Public exact `0.3.0` 재설치 뒤 실제 hook, workspace label, permission/tool lifecycle과 subagent running → stopped를 추가 확인했다.
 
 ## 검증 환경
 
@@ -129,7 +129,6 @@ Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. Public npm
 - GUI `PermissionRequest` raw payload의 전체 field set
 - 별도 App Server로 현재 GUI process의 in-memory 상태를 공유하거나 attach하는 방법
 - hook event가 누락되거나 순서가 바뀌는 모든 조건
-- `0.3.0` exact artifact의 publish/tag/release와 이 기기 재설치 후 전체 E2E
 
 ### Phase 0 범위와 현재의 의도적 non-goal
 
@@ -150,6 +149,8 @@ Phase 0 당시 local marketplace가 repository root를 가리키면 source tree 
 Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 `codex-agent-view@0.2.0` public registry publish를 완료했다. Registry의 version/license/bin, dist shasum/exact SRI와 signature를 확인했으며, public exact artifact는 isolated global install과 exact-version `npx` 양쪽에서 CLI lifecycle smoke를 통과했다. npm `gitHead`와 annotated `v0.2.0` tag는 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고 tag source와 registry artifact의 21개 package file은 byte-identical이며 GitHub Release도 공개됐다. Universal Plugins Directory 제출은 npm과 별도 외부 절차다.
 
 후속 `codex-agent-view@0.2.1`도 public npm registry의 `latest`로 publish됐다. Version/license/bin, npm `gitHead` `8d6a67c9aafa23f801235d747ff018d254378970`, 21 files, unpacked size `144644`, shasum `ad17b8d1f179d99ea07ff128021d9708f73b1961`, exact SRI와 registry signature를 확인했다. Annotated `v0.2.1` tag는 같은 commit에 생성·origin push됐고 public GitHub Release가 공개됐다. Clean temporary cache의 exact-version `npx --version`이 성공했으며 registry tarball 21개 file은 tagged source와 byte-identical하다. 이 기기에 public exact artifact를 global로 다시 설치해 copied marketplace까지 registry tarball과 21개 file byte-identical임을 확인했고, CLI `0.2.1`, plugin installed/enabled, hook wiring 9종, 실제 session 자동 수신과 probe subagent running → stopped/UI 완료 반영을 검증했다.
+
+현재 `codex-agent-view@0.3.0`은 public npm `latest`다. npm `gitHead` `988132d0b525ee5e63f13a0d924810dd3f1bd93a`, shasum `08e2e5fa8c1133a1dcc3faae8f354535f9fc07b0`, exact SRI, registry signature, 21 files와 unpacked `158.8 kB`를 확인했다. Annotated `v0.3.0` tag가 origin에 push됐고 [public GitHub Release](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.0)가 공개됐다. 이 기기의 exact global reinstall은 plugin installed/enabled와 hook wiring 9종을 확인했고 registry tarball ↔ global diff는 0, marketplace는 ownership marker 1개 외 artifact files가 동일했다. Public install monitor는 `workspace_label: codex-agent-view`, 실제 `PermissionRequest`와 tool lifecycle을 수신했고, probe subagent는 `SubagentStart` running → `SubagentStop` stopped, `has_out_of_order_events: false`로 반영됐다.
 
 ## Phase 0 권장과 `0.2.0`에서 확정한 아키텍처
 
@@ -253,6 +254,8 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 - [x] 이 기기에 public exact `0.2.1` global reinstall, CLI/plugin/wiring 확인, 실제 sessions 자동 수신과 probe subagent running → stopped/UI 완료 반영
 - [x] Public exact `0.2.1` clean-cache exact-version `npx --version`
 - [x] `v0.2.1` annotated tag·origin push·GitHub Release·registry/tagged source 21개 file byte comparison
+- [x] `0.3.0` public registry metadata/signature, annotated tag·GitHub Release, exact global reinstall과 artifact comparison
+- [x] Public exact `0.3.0` 실제 workspace label, permission/tool lifecycle, subagent running → stopped (`has_out_of_order_events: false`) 확인
 - [x] Registry tarball과 this-device global install/copied marketplace 21개 file byte comparison
 - Universal Plugins Directory portal 제출, review, publish, search visibility 확인
 
@@ -276,4 +279,4 @@ README는 exact-version global install과 `npx`를 public npm 사용법으로 �
 - this-device public exact `0.2.1`: global reinstall/copied marketplace ↔ registry tarball 21 files byte-identical, CLI `0.2.1`, plugin installed/enabled, hook wiring 9종, 실제 session 자동 수신과 probe subagent running → stopped/UI 완료 반영
 - official app `0.2.1`: parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 `PermissionRequest` waiting 확인; 실제 `SessionEnd` 미관찰
 
-Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.0`/`0.2.1`의 npm artifact/tag/release evidence는 historical/public record로 보존한다. `0.3.0` source에서는 app-native snapshot과 실제 `SessionEnd`까지 확인했지만, publish/tag/GitHub Release와 exact artifact의 this-device reinstall E2E는 아직 완료로 주장하지 않는다. Universal Directory listing은 별도 external operation이다. 선택적인 npm provenance attestation 완료도 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.
+Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.0`/`0.2.1` evidence는 historical record로 보존하고 `0.3.0`은 npm publish, tag/GitHub Release, exact artifact의 this-device reinstall과 live hook QA까지 확인했다. Universal Directory listing은 별도 external operation이며 아직 제출하지 않았다. 선택적인 npm provenance attestation 완료도 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.

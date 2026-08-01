@@ -2,7 +2,7 @@
 
 조사일: 2026-08-01
 
-이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View의 준비 상태를 정리한다. Public npm `latest`는 `0.2.1`이고 현재 source는 unpublished `0.3.0` candidate다. `0.2.0`/`0.2.1` release evidence는 historical/public record로 보존하지만, `0.3.0` publish/tag/release/installed-artifact E2E나 실제 Directory 제출·검색 노출은 주장하지 않는다.
+이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View의 준비 상태를 정리한다. Public npm `latest`와 현재 source는 `0.3.0`이다. `0.2.0`/`0.2.1` release evidence는 historical record로 보존한다. `0.3.0` npm publish, tag/GitHub Release와 this-device exact artifact QA는 완료했지만 실제 Directory 제출·검색 노출은 주장하지 않는다.
 
 ## 핵심 결론
 
@@ -13,7 +13,7 @@
 - 이 skill은 current task/subagent status 조회, monitor 진단, explicit lifecycle action에 실제 사용자 가치를 제공한다. Directory 통과용 빈 형식 skill이 아니다.
 - 공식 공개 문서는 **skills-only submission에 local command hooks를 함께 bundle한 경우의 eligibility/review 규칙을 명시하지 않는다.** 따라서 “skills-only + hooks” 제출 가능 여부는 여전히 **미확인**이며 portal 또는 OpenAI 확인이 필요하다.
 - MCP 경로는 production HTTPS endpoint를 요구하므로 external server를 두지 않는 현재 제품 방향과 맞지 않는다.
-- Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 current `codex-agent-view@0.2.1` public registry publish와 this-device exact global reinstall을 완료했다. `0.2.0`은 registry metadata/digest/signature, global/`npx` smoke, annotated tag와 public GitHub Release, tagged source 대비 21개 package file byte 일치를 확인한 historical evidence다. `0.2.1`도 registry metadata/digest/signature, clean-cache exact `npx --version`, annotated tag·origin push·GitHub Release, tagged source와 registry tarball 21개 file byte 일치, this-device global/copied marketplace 일치를 확인했다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
+- Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했다. Current `codex-agent-view@0.3.0`은 public registry `latest`이며 registry metadata/digest/signature, annotated tag·public GitHub Release, this-device exact global reinstall과 artifact comparison을 완료했다. `0.2.0`/`0.2.1`은 historical evidence로 보존한다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
 
 Bounded in-memory local architecture와 package surface를 구현했다. Historical `0.2.1` 공식 앱 E2E에서 핵심 hook lifecycle과 실제 `PermissionRequest`를 확인했고, 후속 `0.3.0` source E2E에서는 앱 내장 thread tools로 `kyurasi-next-supabase` active task의 workspace/title/description/explicit `inProgress`/latest commentary/`subAgentActivity`를 확인했으며 optional browser monitor에서 실제 `SessionEnd`도 관찰했다. 아래 항목은 별도의 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 blocker가 아니다.
 
@@ -47,7 +47,7 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 
 ## 제출 유형과 현재 적합성
 
-| 공식 또는 후보 유형 | 문서상 상태 | Codex Agent View `0.3.0` source candidate |
+| 공식 또는 후보 유형 | 문서상 상태 | Codex Agent View `0.3.0` public release |
 | --- | --- | --- |
 | Skills only | 공식 지원 | genuine skill 존재. Local hooks 동시 bundle eligibility는 미확인 |
 | With MCP / MCP-only | 공식 지원 | production HTTPS MCP endpoint가 없어 현재 부적합 |
@@ -62,7 +62,7 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 2. Review environment에서 local `codex-agent-view` executable과 hook trust flow를 어떻게 fixture로 검증하는가?
 3. Local-only monitor처럼 MCP custom UI가 아닌 UI가 listing review에서 어떻게 취급되는가?
 
-## `0.3.0` source candidate에 준비된 제출 자료
+## `0.3.0` public release에 준비된 제출 자료
 
 ### Genuine skill
 
@@ -82,7 +82,7 @@ Skill `quick_validate.py`와 plugin/package wiring validation은 통과했다. P
 
 `.codex-plugin/plugin.json`에는 다음이 준비되어 있다.
 
-- `0.3.0` candidate semantic version과 display/short/long description
+- `0.3.0` semantic version과 display/short/long description
 - developer name, Productivity category, `Read` capability, starter prompts 2개
 - brand color `#123F35`
 - `assets/logo.svg` composer/logo asset과 `assets/logo-dark.svg` dark logo asset
@@ -177,7 +177,8 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [ ] Skills-only manifest에 screenshots가 없음을 final artifact에서 확인하지 않음
 - [x] Historical `0.2.1` 공식 앱 GUI task에서 hook → monitor → UI 핵심 lifecycle E2E를 완료함
 - [x] `0.3.0` source browser monitor에서 실제 `SessionEnd`와 completed 반영을 확인함
-- [ ] Exact `0.3.0` artifact의 this-device reinstall E2E와 npm publish/tag/GitHub Release/source match
+- [x] Exact `0.3.0` artifact의 this-device global reinstall, npm publish, annotated tag/GitHub Release와 registry/global artifact match
+- [x] Public install monitor의 실제 `workspace_label`, `PermissionRequest`, tool lifecycle과 subagent running → stopped (`has_out_of_order_events: false`) 확인
 - [x] 실제 `PermissionRequest` hook과 read-only waiting 표시를 확인함. Raw payload 전체 field set은 별도 미확정
 - [ ] Website/support/privacy/terms URL과 publisher identity가 maintainer 승인을 받지 않음
 - [ ] Verified individual/business identity가 완료되지 않음

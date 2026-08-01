@@ -8,7 +8,7 @@ Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task�
 
 ### 현재 상태
 
-현재 source는 아직 배포되지 않은 `0.3.0` candidate이며 public npm `latest`는 `0.2.1`이다. 다음 구성은 source에 구현되어 있다.
+현재 source와 public npm `latest`는 `0.3.0`이다. 다음 구성이 공개 package에 포함되어 있다.
 
 - 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
@@ -23,13 +23,15 @@ Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex executable에서는
 
 `0.2.1`은 부모 task lifecycle hook을 추가하고, `status`, `doctor`, 빈 UI가 “monitor 정상”과 “hook event 수신”을 구분하도록 개선한 patch다. 공식 Codex 앱 `26.727.40816`(`build 6067`)을 재시작하고 설치·활성화된 plugin `0.2.1`을 사용한 실제 E2E에서 task ID를 사전 등록하지 않아도 parent session 3개와 subagent 3개가 UI에 자동으로 나타났다. 실제 hook의 `SessionStart`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest`가 sender → loopback monitor → UI 경로에 반영됐다. `SessionEnd` wiring은 포함돼 있지만 실제 공식 앱 event는 아직 관찰하지 않았으므로 호환 확인을 주장하지 않는다.
 
-`0.3.0` candidate의 팀장 E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 active task, workspace basename, title, description, explicit `inProgress` status, 최신 explicit agent commentary와 `subAgentActivity`를 확인했다. 완료 직후 list 결과가 explicit `idle`, `hasUnreadTurn: true`로 바뀌는 것도 확인했다. Skill은 이를 running/active와 분리한 `완료/확인 대기` 표시 그룹에 포함하지만, `idle + unread`만으로 완료 또는 성공을 추론하지 않는다. 별도의 hook/browser monitor에서는 실제 `SessionEnd`까지 관찰했다. 이는 source candidate 증거이며 `0.3.0` npm publish, tag, GitHub Release 또는 public artifact 설치 E2E를 뜻하지 않는다.
+`0.3.0`의 팀장 E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 active task, workspace basename, title, description, explicit `inProgress` status, 최신 explicit agent commentary와 `subAgentActivity`를 확인했다. 완료 직후 list 결과가 explicit `idle`, `hasUnreadTurn: true`로 바뀌는 것도 확인했다. Skill은 이를 running/active와 분리한 `완료/확인 대기` 표시 그룹에 포함하지만, `idle + unread`만으로 완료 또는 성공을 추론하지 않는다. 별도의 hook/browser monitor에서는 실제 `SessionEnd`까지 관찰했다.
 
-Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 현재 `latest`인 `codex-agent-view@0.2.1`은 public npm registry에서 사용할 수 있다. npm publish와 별개인 Universal Plugins Directory 제출은 아직 완료되지 않아 directory 검색에는 나타나지 않는다.
+Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 현재 `latest`인 `codex-agent-view@0.3.0`은 public npm registry에서 사용할 수 있다. npm publish와 별개인 Universal Plugins Directory 제출은 아직 완료되지 않아 directory 검색에는 나타나지 않는다.
 
 검증된 `0.2.0` 릴리스: npm `gitHead`와 annotated `v0.2.0` tag는 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고, registry SRI/signature 및 tag source와 registry artifact의 21개 package file byte 일치를 확인했다. [GitHub Release v0.2.0](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.2.0)은 공개 상태다. 별도 npm provenance attestation은 선택 사항이며 이 릴리스에는 없다.
 
 공개 `0.2.1` patch: registry의 `latest`, version, `Apache-2.0` license, executable mapping, 21개 package file, unpacked size `144644`, npm `gitHead` `8d6a67c9aafa23f801235d747ff018d254378970`, shasum, exact SRI와 registry signature를 확인했다. Annotated `v0.2.1` tag는 같은 commit에 생성·push됐고 [GitHub Release v0.2.1](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.2.1)이 공개됐다. Clean cache exact-version `npx --version`을 통과했으며 registry tarball 21개 file과 tagged source가 byte-identical이다. 이 기기의 global install과 copied marketplace도 같은 registry tarball 21개 file과 byte-identical이고, CLI `0.2.1`, plugin installed/enabled, hook wiring 9종, 실제 session 자동 수신과 probe subagent의 running → stopped/UI 완료 반영을 검증했다.
+
+공개 `0.3.0`: npm `latest`/version, `gitHead` `988132d0b525ee5e63f13a0d924810dd3f1bd93a`, shasum `08e2e5fa8c1133a1dcc3faae8f354535f9fc07b0`, exact SRI, registry signature, 21 files와 unpacked size `158.8 kB`를 확인했다. Annotated `v0.3.0` tag가 push됐고 [GitHub Release v0.3.0](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.0)이 공개됐다. 이 기기에 public exact `0.3.0`을 global reinstall해 plugin installed/enabled와 hook wiring 9종을 확인했다. Registry tarball과 global install의 artifact diff는 0이며 copied marketplace도 ownership marker 1개를 제외한 artifact file이 동일하다. Public install monitor에서 실제 hook, `workspace_label: codex-agent-view`, `PermissionRequest`, tool lifecycle과 probe subagent의 running → stopped 전환(`has_out_of_order_events: false`)을 확인했다.
 
 ### 제품 경계
 
@@ -73,7 +75,7 @@ Live hook detail이 필요할 때만 “Open the live Codex Agent View in the bu
 
 | Runtime | 확인된 버전 | 확인 범위 |
 | --- | --- | --- |
-| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | `0.3.0` source candidate app-native snapshot에서 active task/title/description/inProgress/commentary/subAgentActivity 확인; browser monitor에서 실제 `SessionEnd` 확인 |
+| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | `0.3.0` public release에서 app-native task snapshot, 실제 `SessionEnd`, workspace label, permission/tool lifecycle과 subagent running → stopped 확인 |
 | 앱 embedded Codex | `0.146.0-alpha.9.2` | isolated plugin install/runtime 및 lifecycle probe |
 | Homebrew Codex CLI | `0.146.0` | isolated plugin install/runtime probe |
 
@@ -156,10 +158,10 @@ Monitor가 실행 중이고 plugin enable/trust가 끝난 뒤 생성되거나 �
 
 ### npm에서 설치
 
-아래는 아직 public `latest`인 `0.2.1`의 fallback 설치 방법이다. App-first `0.3.0` candidate는 publish 전이므로 이 명령으로 설치된다고 안내하지 않는다.
+아래 명령은 현재 public `latest`인 exact `0.3.0`을 설치한다.
 
 ```bash
-npm install --global codex-agent-view@0.2.1
+npm install --global codex-agent-view@0.3.0
 codex-agent-view install
 codex-agent-view doctor
 codex-agent-view start
@@ -168,12 +170,12 @@ codex-agent-view start
 Global install 없이 exact version을 일회성으로 실행할 수도 있다.
 
 ```bash
-npx --yes codex-agent-view@0.2.1 doctor
-npx --yes codex-agent-view@0.2.1 install
-npx --yes codex-agent-view@0.2.1 start
+npx --yes codex-agent-view@0.3.0 doctor
+npx --yes codex-agent-view@0.3.0 install
+npx --yes codex-agent-view@0.3.0 start
 ```
 
-`0.2.0` public artifact는 isolated global install과 exact-version `npx` 양쪽에서 CLI lifecycle을 통과했고 fixture event가 status/UI에 반영됐지만, 이후 실행 중이던 실제 공식 앱 process에서는 event 0건이 재현됐다. 별도의 public exact `0.2.1` artifact는 this-device global install, copied marketplace, clean-cache exact-version `npx --version`, tag/release/source byte comparison을 통과했다. 재시작한 공식 앱 E2E에서도 실제 hook 8종과 task ID 등록 없는 자동 표시를 확인했다. 후속 `0.3.0` source E2E의 browser monitor에서 실제 `SessionEnd`도 관찰했지만 `0.3.0` public artifact evidence는 아직 없다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
+`0.2.0`/`0.2.1` evidence는 historical record로 보존한다. Public exact `0.3.0`은 registry metadata/signature, tag/release, 이 기기 global reinstall과 artifact comparison을 통과했고 실제 hook, workspace label, permission/tool lifecycle 수신을 확인했다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
@@ -251,19 +253,21 @@ Codex Agent View is a read-only companion plugin that shows privacy-minimized ac
 
 ### Status
 
-The current source is an unpublished `0.3.0` candidate; public npm `latest` remains `0.2.1`. The source includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, plus privacy-minimized hooks, a bounded in-memory reducer, an optional token-authenticated `127.0.0.1` dashboard, and lifecycle CLI commands.
+The current source and public npm `latest` are `0.3.0`. The published package includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, plus privacy-minimized hooks, a bounded in-memory reducer, an optional token-authenticated `127.0.0.1` dashboard, and lifecycle CLI commands.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
 `0.2.1` adds `SessionStart`, `SessionEnd`, `UserPromptSubmit`, and `Stop` for parent-task lifecycle visibility and makes `status`, `doctor`, and the empty UI distinguish monitor health from hook delivery. In a real E2E after restarting official Codex app `26.727.40816` (`build 6067`) with plugin `0.2.1` installed and enabled, three parent sessions and three subagents appeared automatically without pre-registering task IDs. Real `SessionStart`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, and `PermissionRequest` hooks reached the sender, loopback monitor, and UI. `SessionEnd` is wired but has not yet been observed from the real official app, so compatibility for that event is not claimed.
 
-In the lead's `0.3.0` candidate E2E, the official app's built-in thread tools reported the active `kyurasi-next-supabase` task with workspace basename, title, description, explicit `inProgress` status, latest explicit agent commentary, and `subAgentActivity`. Immediately afterward, the list result changed to explicit `idle` with `hasUnreadTurn: true`. The skill separates this into a `Finished / needs review` display group instead of the running/active group, but does not infer completion or success from `idle + unread`. The separate hook/browser monitor also observed a real `SessionEnd`. This is source-candidate evidence, not a claim that `0.3.0` has been published, tagged, released, or installed from a public artifact.
+In the lead's `0.3.0` E2E, the official app's built-in thread tools reported the active `kyurasi-next-supabase` task with workspace basename, title, description, explicit `inProgress` status, latest explicit agent commentary, and `subAgentActivity`. Immediately afterward, the list result changed to explicit `idle` with `hasUnreadTurn: true`. The skill separates this into a `Finished / needs review` display group instead of the running/active group, but does not infer completion or success from `idle + unread`. The separate hook/browser monitor also observed a real `SessionEnd`.
 
-Maintainer npm 2FA is enabled in `auth-and-writes` mode, and the current public `latest`, `codex-agent-view@0.2.1`, is available from the npm registry. npm publication remains separate from Universal Plugins Directory submission; the plugin is not directory-searchable.
+Maintainer npm 2FA is enabled in `auth-and-writes` mode, and the current public `latest`, `codex-agent-view@0.3.0`, is available from the npm registry. npm publication remains separate from Universal Plugins Directory submission; the plugin is not directory-searchable.
 
 Verified `0.2.0` release: npm `gitHead` and the annotated `v0.2.0` tag both resolve to commit `00b62af56698ac875e39c7d1386905c157c3a7e8`; the registry SRI/signature and all 21 package files against the tagged source were verified. [GitHub Release v0.2.0](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.2.0) is public. A separate npm provenance attestation is optional and was not published for this release.
 
 Public `0.2.1` patch: registry `latest`, version, `Apache-2.0` license, executable mapping, 21 package files, unpacked size `144644`, npm `gitHead` `8d6a67c9aafa23f801235d747ff018d254378970`, shasum, exact SRI, and registry signature were verified. The annotated `v0.2.1` tag was created at and pushed for that same commit, and [GitHub Release v0.2.1](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.2.1) is public. A clean-cache exact-version `npx --version` passed, and all 21 registry-tarball files are byte-identical to the tagged source. This machine's global install and copied marketplace are also byte-identical to those 21 registry files; CLI `0.2.1`, installed/enabled plugin state, all nine hook declarations, automatic live reception, and a probe subagent's running → stopped/UI completion transition were verified.
+
+Public `0.3.0`: npm `latest`/version, `gitHead` `988132d0b525ee5e63f13a0d924810dd3f1bd93a`, shasum `08e2e5fa8c1133a1dcc3faae8f354535f9fc07b0`, exact SRI, registry signature, 21 files, and an unpacked size of `158.8 kB` were verified. The annotated `v0.3.0` tag was pushed and [GitHub Release v0.3.0](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.0) is public. This machine was globally reinstalled from exact public `0.3.0`; the plugin is installed/enabled with all nine hooks wired. Registry-to-global artifact diff is zero, and the copied marketplace matches aside from one ownership marker. The public install monitor received real hooks, `workspace_label: codex-agent-view`, `PermissionRequest`, tool lifecycle events, and a probe subagent's running → stopped transition with `has_out_of_order_events: false`.
 
 ### Boundaries
 
@@ -303,7 +307,7 @@ Ask `Open the live Codex Agent View in the built-in Browser` only when you want 
 
 | Runtime | Tested version | Scope |
 | --- | --- | --- |
-| Official Codex app | `26.727.40816` (`build 6067`) | `0.3.0` source snapshot confirmed active task/title/description/inProgress/commentary/subAgentActivity; browser monitor observed real `SessionEnd` |
+| Official Codex app | `26.727.40816` (`build 6067`) | Public `0.3.0` confirmed app-native task snapshots, real `SessionEnd`, workspace labeling, permission/tool lifecycle, and subagent running → stopped |
 | App-embedded Codex | `0.146.0-alpha.9.2` | isolated install/runtime and lifecycle probe |
 | Homebrew Codex CLI | `0.146.0` | isolated install/runtime probe |
 
@@ -346,10 +350,10 @@ Once the monitor is running and plugin enablement/trust is complete, hooks from 
 
 ### Install from npm
 
-The commands below install the public `0.2.1` fallback. The app-first `0.3.0` candidate is not yet published and must not be presented as available from npm.
+The commands below install the current public exact `0.3.0` release.
 
 ```bash
-npm install --global codex-agent-view@0.2.1
+npm install --global codex-agent-view@0.3.0
 codex-agent-view install
 codex-agent-view doctor
 codex-agent-view start
@@ -358,12 +362,12 @@ codex-agent-view start
 Or run the exact version without a global install:
 
 ```bash
-npx --yes codex-agent-view@0.2.1 doctor
-npx --yes codex-agent-view@0.2.1 install
-npx --yes codex-agent-view@0.2.1 start
+npx --yes codex-agent-view@0.3.0 doctor
+npx --yes codex-agent-view@0.3.0 install
+npx --yes codex-agent-view@0.3.0 start
 ```
 
-The `0.2.0` public artifact passed isolated global and exact-version `npx` CLI lifecycles and delivered fixture events to status/UI, while a later already-running official-app process reproduced zero delivered events. The separate public exact `0.2.1` artifact passed this-device global/copy verification, clean-cache exact-version `npx --version`, and tag/release/source byte comparison. A restarted official-app E2E confirmed eight real hook types and automatic listing without task-ID registration. A later `0.3.0` source E2E observed real `SessionEnd`, but no `0.3.0` public artifact evidence exists yet. See [Distribution](docs/distribution.md).
+The `0.2.0` and `0.2.1` evidence remains as historical release record. Public exact `0.3.0` passed registry metadata/signature, tag/release, this-device global reinstall, and artifact comparison checks; its monitor received real hooks, workspace labeling, permission, and tool lifecycle events. See [Distribution](docs/distribution.md).
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 

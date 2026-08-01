@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-현재 source는 아직 배포되지 않은 `0.3.0` candidate이고 public npm `latest`는 `0.2.1`이다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0`/`0.2.1` release evidence는 historical로 보존하고, `0.3.0` app-first source QA와 release acceptance를 분리한다.
+현재 source와 public npm `latest`는 `0.3.0`이다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0`/`0.2.1` release evidence는 historical로 보존하고 `0.3.0` public release acceptance를 기록한다.
 
 ## 제품 원칙
 
@@ -40,7 +40,7 @@
 - [x] 확인된 event set의 공식 GUI compatibility와 `0.2.1` npm patch publish를 검증 증거와 함께 선언한다.
 - [x] 후속 source E2E에서 실제 `SessionEnd` compatibility를 확인했다.
 
-## `0.3.0` app-first candidate
+## `0.3.0` app-first release
 
 - [x] 공식 Codex 앱 내장 thread tools를 active-task snapshot의 primary source로 사용하고 local monitor 자동 시작을 요구하지 않는다.
 - [x] Workspace basename, display-only title, explicit status, 최신 explicit commentary와 `subAgentActivity`만 표시하는 privacy-minimized skill contract를 구현한다.
@@ -51,10 +51,10 @@
 - [x] 팀장 E2E에서 `kyurasi-next-supabase` active task의 workspace/title/description/explicit `inProgress`/latest commentary/subAgentActivity를 앱 내장 tools로 확인했다.
 - [x] 같은 task 직후 list가 explicit `idle`, `hasUnreadTurn: true`로 전환되는 것을 확인하고 running/active와 별도 `완료/확인 대기` 그룹에 포함했다. 이 조합만으로 완료·성공을 추론하지 않는다.
 - [x] 별도 browser monitor에서 실제 `SessionEnd`를 관찰했다.
-- [ ] `0.3.0` 전체 test/plugin/package validation과 final tarball QA를 완료한다.
-- [ ] `0.3.0` exact artifact를 이 기기에 설치해 app snapshot, hook, in-app Browser E2E를 다시 수행한다.
-- [ ] `0.3.0`을 npm publish하고 registry metadata/signature를 검증한다.
-- [ ] Annotated `v0.3.0` tag, origin push, GitHub Release와 source/artifact byte comparison을 완료한다.
+- [x] `0.3.0` 전체 test/plugin/package validation과 final tarball QA를 완료한다.
+- [x] Public exact `0.3.0`을 이 기기에 global reinstall하고 plugin installed/enabled, hook wiring 9종과 실제 monitor hook 수신을 확인한다.
+- [x] `0.3.0`을 npm publish하고 `latest`/version, `gitHead`, shasum, exact SRI, signature, 21 files와 unpacked size를 검증한다.
+- [x] Annotated `v0.3.0` tag를 origin에 push하고 public GitHub Release와 registry/global artifact 일치를 확인한다.
 
 ## 외부 npm distribution operation
 
@@ -130,13 +130,13 @@
 
 ## Phase 3 — 설치·제거와 공개 배포 준비
 
-상태: repository 구현과 public npm `0.2.0`/`0.2.1` release, annotated Git tag, GitHub Release와 source/artifact byte comparison 완료. Directory listing은 제품 구현과 분리된 외부 작업이다.
+상태: repository 구현과 public npm `0.2.0`/`0.2.1`/`0.3.0` release, annotated Git tag, GitHub Release와 artifact comparison 완료. Directory listing은 제품 구현과 분리된 외부 작업이다.
 
 - [x] `codex-agent-view` bin과 `start/status/doctor/install/uninstall` CLI surface를 구현한다.
 - [x] npm `files` allowlist에 manifests, catalog, logo assets, hooks, CLI, sender/capture scripts, skill, runtime/UI, README, LICENSE, NOTICE를 포함한다.
 - [x] `0.2.0` public release에서 package와 plugin manifest version 및 release artifact metadata를 일치시킨다.
 - [x] `0.2.1` source에서 package와 plugin manifest version 및 final tarball metadata를 일치시킨다.
-- [x] `0.3.0` source candidate에서 package와 plugin manifest version을 일치시킨다.
+- [x] `0.3.0` source에서 package와 plugin manifest version을 일치시킨다.
 - [x] explicit install이 copied local marketplace와 plugin을 등록하고 hook trust는 사용자에게 남기도록 구현한다.
 - [x] default uninstall과 explicit `--purge`를 분리하고 unsafe target/symlink 경계를 검토한다.
 - [x] npm lifecycle에 `postinstall`을 두지 않고 사용자 설정을 자동 변경하지 않음을 확인한다.
@@ -165,8 +165,11 @@
 - Official app `0.2.1` E2E: parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 `PermissionRequest` waiting 확인
 - Source `0.3.0` app-native E2E: `kyurasi-next-supabase`의 running `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환 확인; 후자는 별도 확인 대기 그룹이며 완료·성공으로 추론하지 않음
 - Source `0.3.0` hook/browser E2E: actual `SessionEnd`와 completed 반영 확인
+- Public `0.3.0`: npm `latest`/version, `gitHead` `988132d0b525ee5e63f13a0d924810dd3f1bd93a`, shasum `08e2e5fa8c1133a1dcc3faae8f354535f9fc07b0`, exact SRI/signature, 21 files, unpacked `158.8 kB` 확인
+- Public `0.3.0` release/install: annotated tag·public GitHub Release, this-device global reinstall, plugin installed/enabled, hook wiring 9종, registry ↔ global diff 0, marketplace ownership marker 외 artifact 일치 확인
+- Public `0.3.0` live hook: `workspace_label: codex-agent-view`, 실제 `PermissionRequest`, tool lifecycle과 probe subagent running → stopped(`has_out_of_order_events: false`) 확인
 
-이 snapshot은 public `0.2.0`/`0.2.1` evidence와 unpublished `0.3.0` source evidence를 분리해 기록한다. `0.3.0` publish/tag/release/public artifact install E2E와 Universal Directory listing은 아직 증명하지 않는다. 별도 npm provenance attestation은 선택 사항이며 확인되지 않았다.
+이 snapshot은 historical public `0.2.0`/`0.2.1` evidence와 current public `0.3.0` evidence를 분리해 기록한다. Universal Directory listing은 아직 완료되지 않았다. 별도 npm provenance attestation은 선택 사항이며 확인되지 않았다.
 
 ## Phase 4 — 선택적 보강
 
