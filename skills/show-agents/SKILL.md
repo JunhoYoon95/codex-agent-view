@@ -12,22 +12,34 @@ workflow inside the calling Codex app task.
 
 ## Open the live view
 
-1. Check the packaged monitor with `codex-agent-view status --json`. Capture
-   the result internally; do not quote the command, raw output, runtime path,
-   IDs, or private URL in commentary or the final response.
-2. If the monitor is healthy, reuse it. Recover its authenticated URL from the
+1. Run `codex-agent-view doctor --json` internally and inspect only its
+   structured diagnostics. Capture the result internally; do not quote the
+   command, raw output, runtime path, IDs, or private URL in commentary or the
+   final response.
+2. If diagnostics contain `plugin_version_mismatch`, stop the workflow before
+   running `codex-agent-view status --json`, starting a monitor, or opening a
+   panel. Briefly tell the user inside the current Codex app task that the
+   installed plugin and global CLI versions differ and that the exact intended
+   `codex-agent-view` version must be globally reinstalled before they select
+   **Show Agents** again. Do not perform the reinstall, change Codex settings,
+   expose paths, or quote the diagnostic payload.
+3. Otherwise, check the packaged monitor with
+   `codex-agent-view status --json`. Capture the result internally; do not
+   quote the command, raw output, runtime path, IDs, or private URL in
+   commentary or the final response.
+4. If the monitor is healthy, reuse it. Recover its authenticated URL from the
    owned private runtime record without restarting it, because restarting would
    discard the current in-memory observation window.
-3. If the monitor is not healthy, run `codex-agent-view start --no-open` as a
+5. If the monitor is not healthy, run `codex-agent-view start --no-open` as a
    persistent internal process and capture the authenticated URL it returns.
    Never use `--open` or launch an external browser.
-4. Accept the URL only when it uses `http`, host `127.0.0.1`, a valid local
+6. Accept the URL only when it uses `http`, host `127.0.0.1`, a valid local
    port, and the expected non-empty fragment token. Treat every other target as
    invalid and do not open it.
-5. Call `codex_app__open_in_codex` for the calling task with a browser target,
+7. Call `codex_app__open_in_codex` for the calling task with a browser target,
    the validated private URL, and `placement: "right"`. Omit `threadId`; never
    navigate to or open the monitor in another task.
-6. If a previous successful call in the current context supplied the same
+8. If a previous successful call in the current context supplied the same
    monitor tab's `tabId`, prefer reopening that browser target by `tabId`.
    Otherwise open the validated URL. Do not close or replace user-owned tabs.
 

@@ -152,11 +152,15 @@ test("explicit show-agents skill opens the private live view inside Codex", asyn
   ]);
   const manifest = JSON.parse(manifestText);
 
+  const doctorIndex = skill.indexOf("codex-agent-view doctor --json");
+  const mismatchIndex = skill.indexOf("plugin_version_mismatch");
   const healthIndex = skill.indexOf("codex-agent-view status --json");
   const startIndex = skill.indexOf("codex-agent-view start --no-open");
   const openIndex = skill.indexOf("codex_app__open_in_codex");
 
-  assert(healthIndex >= 0);
+  assert(doctorIndex >= 0);
+  assert(mismatchIndex > doctorIndex);
+  assert(healthIndex > mismatchIndex);
   assert(startIndex > healthIndex);
   assert(openIndex > startIndex);
   assert.match(
@@ -173,6 +177,15 @@ test("explicit show-agents skill opens the private live view inside Codex", asyn
   assert.match(skill, /site permission is denied, do not expose the private URL/);
   assert.match(skill, /never replace it with terminal instructions/);
   assert.match(skill, /existing app-native task snapshot/);
+  assert.match(
+    skill,
+    /If diagnostics contain `plugin_version_mismatch`, stop the workflow before\n\s+running `codex-agent-view status --json`, starting a monitor, or opening a\n\s+panel/,
+  );
+  assert.match(
+    skill,
+    /the exact intended\n\s+`codex-agent-view` version must be globally reinstalled/,
+  );
+  assert.match(skill, /Do not perform the reinstall, change Codex settings/);
 
   assert.match(metadata, /display_name: "Show Agents"/);
   assert.match(metadata, /short_description: "Open the live agent monitor inside Codex"/);
