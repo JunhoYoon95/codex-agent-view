@@ -75,6 +75,7 @@ test("keeps the npm 0.4.0 executable and publish surface intact", async () => {
     "skills/",
     "src/",
     "README.md",
+    "README.ko.md",
     "LICENSE",
     "NOTICE",
   ];
@@ -90,6 +91,8 @@ test("keeps the npm 0.4.0 executable and publish surface intact", async () => {
   await assertRegularFile("public/app.js");
   await assertRegularFile("public/styles.css");
   await assertRegularFile("scripts/auto-start-monitor.mjs");
+  await assertRegularFile("README.md");
+  await assertRegularFile("README.ko.md");
 });
 
 test("keeps the executable mapping in npm pack metadata", async (t) => {
@@ -118,14 +121,32 @@ test("keeps the executable mapping in npm pack metadata", async (t) => {
 
   const packResult = JSON.parse(stdout);
   assert.equal(packResult.length, 1);
+  assert.equal(
+    packResult[0].files.some(({ path }) => path === "README.ko.md"),
+    true,
+    "npm package must include README.ko.md",
+  );
   const tarball = await readFile(join(temporaryDirectory, packResult[0].filename));
   const archive = await gunzipAsync(tarball);
+  assert.ok(readTarEntry(archive, "package/README.ko.md").length > 0);
   const packedMetadata = JSON.parse(
     readTarEntry(archive, "package/package.json").toString("utf8"),
   );
   assert.deepEqual(packedMetadata.bin, {
     "codex-agent-view": "bin/codex-agent-view.mjs",
   });
+});
+
+test("uses an English root README with an absolute GitHub link to the Korean guide", async () => {
+  const rootReadme = await readFile(resolve(projectRoot, "README.md"), "utf8");
+
+  assert.match(rootReadme, /^# Codex Agent View$/m);
+  assert.match(rootReadme, /^## Quick start\b.*$/m);
+  assert.doesNotMatch(rootReadme, /[가-힣]/);
+  assert.match(
+    rootReadme,
+    /\[Read in Korean\]\(https:\/\/github\.com\/JunhoYoon95\/codex-agent-view\/blob\/main\/README\.ko\.md\)/,
+  );
 });
 
 test("has no postinstall side effects or production dependencies", async () => {
