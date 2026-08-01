@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-현재 source version은 `0.2.0`이다. Phase 0~3의 repository 내부 제품 구현과 검증 항목은 완료되었다. Bounded in-memory live state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. 아래 남은 항목은 실제 사용자 계정·공식 앱·외부 portal이 필요한 compatibility와 listing acceptance다.
+현재 source version은 `0.2.1`이다. Bounded in-memory live state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0` 실사용에서 공식 앱 hook 전달 0건을 재현했으므로, `0.2.1` patch와 공식 앱 restart/trust/new-task E2E가 현재 최우선 release acceptance다.
 
 ## 제품 원칙
 
@@ -20,8 +20,22 @@
 
 ## 외부 compatibility acceptance
 
-- [ ] 공식 Codex 앱에서 plugin을 enable하고 hook을 trust한 **새/current GUI task**로 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse` → loopback monitor → UI E2E를 팀장이 직접 완료한다.
+- [x] 실행 중이던 공식 앱 process에 `0.2.0`을 설치·enable한 뒤 실제 subagent 2개를 실행했으나 event 0건임을 재현하고, app → plugin sender 경계의 실패로 좁혔다.
+- [x] CLI JSON으로 persisted exact-hook trust를 확인할 수 없으며, 공식 절차상 interactive `/hooks` 검토와 새 task가 필요함을 기록했다.
+- [ ] `0.2.1`을 설치한 뒤 공식 앱을 완전히 재시작하고 exact hook을 trust한 **새 GUI task**로 `SessionStart`, `UserPromptSubmit`, `SubagentStart`, `PreToolUse`, `PostToolUse`, `SubagentStop`, `Stop`, `SessionEnd` → loopback monitor → UI E2E를 팀장이 직접 완료한다.
 - [ ] 실제 approval prompt를 발생시켜 공식 앱 `PermissionRequest` payload와 read-only waiting 표시를 확인한다. 발생하지 않으면 event 미발생과 schema 문제를 분리해 기록한다.
+
+## `0.2.1` 실사용 복구 patch
+
+- [x] Parent task lifecycle 관찰을 위해 `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop` hook wiring을 추가한다.
+- [x] Root turn과 session lifecycle을 bounded in-memory state로 계산한다.
+- [x] `status`와 `doctor`가 “monitor 실행 중”과 “hook event 수신됨”을 구분한다.
+- [x] `doctor`가 plugin install/enable, 설치 bundle wiring, version mismatch, trust 미확인 상태를 actionable diagnostic으로 보고한다.
+- [x] 빈 UI가 실행 중 task 없음으로 오인되지 않도록 0-event 의미와 restart/trust/new-task 순서를 표시한다.
+- [x] Codex `0.146` App Server `thread/list` fallback을 검증하고 root/subagent `notLoaded` 때문에 live status source로 채택하지 않는다.
+- [x] Source test, plugin validation, package check를 팀장이 직접 실행한다.
+- [ ] 실제 공식 앱 restart/trust/new-task E2E를 팀장이 직접 실행하고 event가 보이지 않으면 수정→재검증 loop를 반복한다.
+- [ ] 위 E2E 통과 뒤에만 `0.2.1` 공식 GUI compatibility 성공과 npm patch release를 선언한다.
 
 ## 외부 npm distribution operation
 
@@ -38,10 +52,11 @@
 ## 외부 Universal Directory listing
 
 - [ ] maintainer가 Universal Plugins Directory portal에서 제출·심사·publish를 완료하고 실제 directory 검색 노출을 확인한다.
+- [x] Public HTTPS MCP server/domain verification이 필요한 in-app custom UI는 local-only 원칙과 충돌함을 문서화하고, npm executable 배포·localhost browser UI·Directory listing/skills 역할을 분리한다.
 
 ## Phase 0 — 기술 검증과 프로젝트 기반
 
-상태: repository 작업 완료, 공식 앱 GUI 검증은 external compatibility acceptance로 분리
+상태: repository 조사 완료. 후속 실사용에서 동일 앱 process의 hook event 0건이 확인되어 `0.2.1` acceptance에 반영
 
 - [x] 기존 파일을 보존하며 Git/npm project 기반을 정리한다.
 - [x] `README.md`, `AGENTS.md`, `ROADMAP.md`, findings 문서를 만든다.
@@ -52,6 +67,7 @@
 - [x] 실제 subagent probe에서 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse` payload를 캡처한다.
 - [x] `PermissionRequest`는 공식 지원 event이나 실제 payload 미관찰임을 추측 없이 기록한다.
 - [x] GUI current-task 미캡처를 hot-load 미지원으로 단정하지 않고 trust/config snapshot이 남은 external evidence로 분류한다.
+- [x] 설치 전부터 열린 공식 앱 process가 `hooks/list` snapshot을 유지한 정황, sender 호출 0건, CLI trust 조회 한계를 실사용 증거로 추가한다.
 - [x] default redaction, secret/capture 제외, package validation을 검증한다.
 - [x] `docs/phase-0-findings.md`에 관찰 field, CLI/App 차이, 가능/불가능 범위, 다음 architecture를 기록한다.
 
@@ -92,7 +108,8 @@
 
 - [x] `codex-agent-view` bin과 `start/status/doctor/install/uninstall` CLI surface를 구현한다.
 - [x] npm `files` allowlist에 manifests, catalog, logo assets, hooks, CLI, sender/capture scripts, skill, runtime/UI, README, LICENSE, NOTICE를 포함한다.
-- [x] package, plugin manifest, marketplace catalog version을 `0.2.0`으로 일치시킨다.
+- [x] `0.2.0` public release에서 package와 plugin manifest version 및 release artifact metadata를 일치시킨다.
+- [x] `0.2.1` source에서 package와 plugin manifest version 및 final tarball metadata를 일치시킨다.
 - [x] explicit install이 copied local marketplace와 plugin을 등록하고 hook trust는 사용자에게 남기도록 구현한다.
 - [x] default uninstall과 explicit `--purge`를 분리하고 unsafe target/symlink 경계를 검토한다.
 - [x] npm lifecycle에 `postinstall`을 두지 않고 사용자 설정을 자동 변경하지 않음을 확인한다.
@@ -103,18 +120,20 @@
 
 ## 검증 snapshot
 
-- Node tests: `49/49` pass
+- Node tests: `55/55` pass
 - Plugin scaffold validation: pass
 - Skill `quick_validate.py`: pass
-- `npm pack --dry-run`: pass, `codex-agent-view@0.2.0`, 21 files, logo assets와 skill 포함
-- Source CLI `--version`: `0.2.0`
-- Source CLI `doctor --json`: Codex `0.146.0` 탐지 및 monitor/plugin 미실행 상태 진단
+- `npm pack --dry-run`: pass, `codex-agent-view@0.2.1`, 21 files, logo assets와 skill 포함
+- Package/plugin manifest version and final tarball metadata alignment: `0.2.1`
+- Source CLI `--version`: `0.2.1`
+- Installed `0.2.1` fixture E2E: task ID 사전 등록 없이 sender → monitor → UI에서 parent/agent 자동 생성과 running/waiting/completed 반영 확인
+- Reset 뒤 source CLI `doctor --json`: plugin installed/enabled, `wiring_ok: true`, declared events 9개, `events_received: false`, trust `unknown` 확인
 - Public registry metadata: `0.2.0`, `Apache-2.0`, `codex-agent-view` → `bin/codex-agent-view.mjs`, shasum/exact SRI/signature 확인
 - Public exact artifact: isolated global install과 exact-version `npx`의 CLI lifecycle smoke 통과
 - Public exact artifact E2E: 다섯 hook event → status/UI, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 확인
 - Release source match: npm `gitHead`와 annotated `v0.2.0` tag가 `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치, origin tag와 public GitHub Release 확인, 21개 package file byte-identical
 
-이 snapshot은 local/source, public npm exact artifact, annotated Git tag와 public GitHub Release 검증 결과다. Official GUI current-task E2E, 실제 `PermissionRequest`, Universal Directory listing은 증명하지 않는다. 별도 npm provenance attestation은 선택 사항이며 `0.2.0`에는 없다.
+이 snapshot은 `0.2.1` local/source/tarball fixture와 `0.2.0` public npm exact artifact, annotated Git tag, public GitHub Release 검증 결과를 분리해 기록한다. Official app full restart + interactive `/hooks` trust + 새 GUI task E2E, 실제 `PermissionRequest`, `0.2.1` npm publish, Universal Directory listing은 증명하지 않는다. 별도 npm provenance attestation은 선택 사항이며 `0.2.0`에는 없다.
 
 ## Phase 4 — 선택적 보강
 

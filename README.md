@@ -8,17 +8,19 @@ Codex Agent View는 공식 Codex 앱을 그대로 사용하면서 부모 task와
 
 ### 현재 상태
 
-현재 source version은 `0.2.0`이다. 다음 구성은 구현되어 있다.
+현재 source version은 `0.2.1`이다. 다음 구성은 구현되어 있다.
 
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
-- `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest` hook wiring
+- 부모 task용 `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`과 subagent/tool/permission hook wiring
 - privacy-minimized hook sender와 bounded in-memory reducer
 - `127.0.0.1` 전용 token-authenticated local HTTP runtime
 - 부모 task/session, subagent, 최근 활동, permission wait 상태를 표시하는 local UI
 - `start`, `status`, `doctor`, `install`, `uninstall` CLI
 - 명시적 설치·hook trust·제거 경로
 
-Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex executable에서 plugin 설치와 실제 lifecycle payload를 검증했다. Local companion 제품 구현은 완료되었으며, 공식 Codex 앱의 **현재 GUI task에서 trusted hook → local monitor → UI 전체 흐름을 확인하는 최종 E2E**와 실제 `PermissionRequest` payload 관찰은 외부 compatibility acceptance로 남아 있다. 이는 구현되지 않은 제품 기능 목록이 아니라 현재 공식 앱 조합에 대한 미확인 검증 범위다.
+Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex executable에서는 plugin 설치와 lifecycle payload를 검증했다. 그러나 `0.2.0`을 실행 중인 공식 앱 process에 설치·enable한 실사용 재현에서는 실제 subagent 2개를 실행해도 monitor가 event를 0건 수신했다. Monitor, plugin 등록, enable, 설치 bundle은 정상이었지만 앱 log에는 sender 실행 흔적이 없었다. 같은 app process가 설치 전의 `hooks/list` snapshot을 유지한 정황이 있으며, CLI JSON으로 exact hook trust 상태를 확인할 수 없어 config snapshot과 trust 중 어느 경계에서 skip됐는지는 확정하지 않았다.
+
+`0.2.1`은 부모 task lifecycle hook을 추가하고, `status`, `doctor`, 빈 UI가 “monitor 정상”과 “hook event 수신”을 구분하도록 개선한 patch다. **공식 앱을 완전히 재시작하고 hook을 검토·trust한 뒤 새 task에서 수행하는 E2E가 끝나기 전에는 공식 GUI 호환 성공을 주장하지 않는다.**
 
 Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 `codex-agent-view@0.2.0`은 public npm registry에서 사용할 수 있다. npm publish와 별개인 Universal Plugins Directory 제출은 아직 완료되지 않아 directory 검색에는 나타나지 않는다.
 
@@ -26,7 +28,7 @@ Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 `codex-agent-vie
 
 ### 제품 경계
 
-Codex Agent View는 historical audit이나 session replay 제품이 아니라 현재 활동을 보여주는 live companion이다. Bounded in-memory state와 monitor 재시작 시 reset은 privacy와 단순한 failure boundary를 위한 의도된 `0.2.0` 완성 설계다. SQLite/영구 history는 누락된 요구사항이 아니다. 실제 사용자 요구가 입증될 때에만 retention, migration, deletion, privacy 비용을 별도 검토하는 명시적 opt-in 기능 후보로 취급한다.
+Codex Agent View는 historical audit이나 session replay 제품이 아니라 현재 활동을 보여주는 live companion이다. Bounded in-memory state와 monitor 재시작 시 reset은 privacy와 단순한 failure boundary를 위한 의도된 완성 설계다. SQLite/영구 history는 누락된 요구사항이 아니다. 실제 사용자 요구가 입증될 때에만 retention, migration, deletion, privacy 비용을 별도 검토하는 명시적 opt-in 기능 후보로 취급한다.
 
 - live 상태의 source of truth는 hook event다.
 - Live 상태는 설계대로 monitor process의 bounded memory에만 있고 재시작하면 새 관찰 window가 시작된다.
@@ -34,6 +36,14 @@ Codex Agent View는 historical audit이나 session replay 제품이 아니라 �
 - prompt, transcript path, 전체 tool input/output, assistant message를 monitor 상태나 UI에 저장·표시하지 않는다.
 - task/subagent 중지·재시작, message 전송, permission 자동 승인·거절 기능이 없다.
 - App Server는 향후 계층 metadata 보강 후보일 뿐이며 공식 앱 process와 memory를 공유한다고 가정하지 않는다.
+
+별도로 실행한 Codex `0.146` App Server의 `thread/list` fallback도 실제 확인했지만 현재 root/subagent가 모두 `notLoaded`로 나타나 공식 앱의 live running/completed 상태를 공유하지 않았다. Persisted parent ID, alias, depth 보강은 가능하나 live 판별은 불가능했고 state DB read, privacy, 복잡도만 늘어나므로 `0.2.1`에는 채택하지 않았다.
+
+### npm, local browser UI, Plugins Directory가 각각 필요한 이유
+
+- npm은 `codex-agent-view` local executable, hook sender, runtime, static UI를 사용자 machine에 배포하는 경로다.
+- Browser는 `127.0.0.1`에서만 열리는 현재 read-only companion UI다. 외부 website나 telemetry dashboard가 아니다.
+- Universal Plugins Directory는 npm의 대체재가 아니다. 공개 directory의 in-app custom UI 경로는 public HTTPS MCP server와 domain verification이 필요해 local-only/no-external-server 원칙과 충돌한다. 현재는 별도의 listing/skills 제출 가능성만 검토하며, 심사·publish 전에는 Codex plugin 검색으로 설치할 수 있다고 안내하지 않는다.
 
 Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`, `stopped_without_start`, 빈 상태는 그대로 해석해야 한다. 빈 session 목록은 “이 monitor가 event를 관찰하지 못함”이며 “실행 중인 task가 없음”의 증거가 아니다.
 
@@ -47,7 +57,7 @@ Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`,
 
 | Runtime | 확인된 버전 | 확인 범위 |
 | --- | --- | --- |
-| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | bundle metadata, GUI current-task compatibility acceptance 대기 |
+| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | 설치 전 열린 process에서 event 0건 재현; restart/trust/new-task E2E 대기 |
 | 앱 embedded Codex | `0.146.0-alpha.9.2` | isolated plugin install/runtime 및 lifecycle probe |
 | Homebrew Codex CLI | `0.146.0` | isolated plugin install/runtime probe |
 
@@ -91,7 +101,8 @@ node bin/codex-agent-view.mjs install
 2. 공식 앱의 Plugins Directory 또는 CLI `/plugins`에서 plugin이 설치·활성화됐는지 확인한다.
 3. CLI TUI composer의 `/hooks` 또는 공식 앱의 해당 hook review UI에서 `hooks/hooks.json`과 `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command를 검토한다.
 4. 현재 hook definition의 exact hash를 사용자가 직접 trust한다.
-5. 공식 앱을 완전히 재시작하고 **새 task**를 만든다.
+5. Plugin 설치 전부터 공식 앱이 열려 있었다면 앱을 완전히 종료·재실행한다.
+6. 반드시 plugin 활성화와 hook trust 이후에 **새 task**를 만든다. 설치·trust 전에 발생한 event는 재생되지 않는다.
 
 `/hooks`는 CLI TUI command이며 `codex /hooks`라는 shell command가 아니다. Hook definition이 바뀌면 hash도 바뀌므로 다시 검토한다. 일반 설치에서 trust-bypass option을 사용하지 않는다.
 
@@ -119,17 +130,20 @@ node bin/codex-agent-view.mjs doctor --json
 
 - `status`는 실행 중 monitor가 관찰한 task/session과 subagent 수를 읽는다.
 - `status --json`은 hook 기반 snapshot과 bounded diagnostics를 반환한다.
-- `doctor`는 Codex CLI, plugin 설치, monitor, runtime directory를 진단한다.
+- `doctor`는 Codex CLI, plugin 설치·enable, 설치된 hook bundle, monitor event 수신 여부, runtime directory를 진단한다.
+- `doctor`의 hook trust는 `unknown`일 수 있다. `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않으므로 interactive Codex CLI의 `/hooks`에서 직접 확인한다.
 - `Ctrl+C`는 monitor를 종료하며 in-memory state와 정상 종료된 runtime file을 정리한다.
 
 Monitor가 꺼져 있어도 hook sender는 fail-open으로 끝나 Codex task를 막지 않는다. Monitor를 나중에 켜면 꺼져 있던 동안의 event가 복구되지는 않는다.
 
+Monitor가 실행 중이고 plugin enable/trust가 끝난 뒤 생성되거나 재개되는 task는 hook이 도착하면 task ID를 미리 등록하지 않아도 자동으로 목록에 나타난다. UI 검색은 이렇게 자동 수신된 목록을 거르는 선택적 filter일 뿐이며, task 추적을 시작하거나 ID를 등록하는 기능이 아니다. Plugin 설치·trust 전이나 monitor downtime에 이미 지나간 event는 재생되지 않는다.
+
 ### npm에서 설치
 
-권장 설치 방법은 public registry의 exact version을 global로 설치하는 것이다.
+`0.2.1`이 public registry에 반영된 뒤 권장 설치 방법은 exact version을 global로 설치하는 것이다. Publish 확인 전에는 이 repository source에서 검증한다.
 
 ```bash
-npm install --global codex-agent-view@0.2.0
+npm install --global codex-agent-view@0.2.1
 codex-agent-view doctor
 codex-agent-view install
 codex-agent-view start
@@ -138,12 +152,12 @@ codex-agent-view start
 Global install 없이 exact version을 일회성으로 실행할 수도 있다.
 
 ```bash
-npx --yes codex-agent-view@0.2.0 doctor
-npx --yes codex-agent-view@0.2.0 install
-npx --yes codex-agent-view@0.2.0 start
+npx --yes codex-agent-view@0.2.1 doctor
+npx --yes codex-agent-view@0.2.1 install
+npx --yes codex-agent-view@0.2.1 start
 ```
 
-Public exact artifact는 isolated global install과 exact-version `npx` 양쪽에서 `--version`, `doctor`, `install`, ephemeral-port `start`, `status`, `uninstall`을 통과했다. 별도 E2E fixture에서는 다섯 hook event가 status/UI에 반영됐고 search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 상태까지 확인했다. Registry digest를 포함한 검증 범위는 [docs/distribution.md](docs/distribution.md)에 기록한다.
+위 public artifact 검증 기록은 `0.2.0`에 대한 것이다. Isolated global install과 exact-version `npx` 양쪽에서 CLI lifecycle을 통과했고 fixture event는 status/UI에 반영됐지만, 이후 실제 공식 앱 process에서는 event 0건이 재현됐다. `0.2.1`은 source/package QA와 공식 앱 restart/trust/new-task E2E를 다시 통과한 뒤에만 같은 수준의 검증 완료로 기록한다. Registry digest와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
@@ -186,11 +200,15 @@ Monitor가 실행 중인지, stale runtime file인지, runtime directory가 예�
 
 #### UI에 task/subagent가 없음
 
-- plugin이 설치뿐 아니라 enable됐는지 확인한다.
-- 현재 `send-hook.mjs` definition을 검토하고 trust했는지 확인한다.
-- plugin enable/trust 후 공식 앱을 재시작하고 새 task를 만들었는지 확인한다.
-- monitor가 event 발생 전에 실행 중이었는지 확인한다.
-- 빈 상태만으로 GUI hook 미지원이라고 결론내리지 않는다.
+다음 순서대로 확인한다.
+
+1. `codex-agent-view doctor --json`에서 plugin `installed`, `enabled`, hook bundle `wiring_ok`, monitor `ok`를 확인한다.
+2. `monitor.events_received`가 `false`라면 monitor 연결 성공과 hook 전달 성공을 혼동하지 않는다.
+3. Interactive Codex CLI의 `/hooks`에서 현재 `send-hook.mjs` definition의 exact hash를 검토하고 trust한다.
+4. Plugin 설치 전에 열려 있던 공식 앱은 완전히 종료·재실행한다.
+5. Plugin enable/trust 뒤 만든 새 task에서 parent prompt와 subagent를 실행한다.
+
+빈 상태는 “이 monitor observation window에 event가 도착하지 않음”을 뜻한다. Codex에 실행 중인 task가 없다는 뜻도, 반대로 GUI가 hook을 절대 지원하지 않는다는 뜻도 아니다. 위 절차 뒤에도 `events_received: false`이면 Codex 앱 version, plugin version, 앱/CLI 구분을 포함해 issue로 보고한다.
 
 #### `PermissionRequest`가 표시되지 않음
 
@@ -217,9 +235,11 @@ Codex Agent View is a lightweight, read-only companion monitor for the official 
 
 ### Status
 
-The current source version is `0.2.0`. It includes the plugin and marketplace manifests, a genuine Codex skill, privacy-minimized hooks, a bounded in-memory reducer, a token-authenticated `127.0.0.1` runtime, a local dashboard, and `start`, `status`, `doctor`, `install`, and `uninstall` commands. The local companion product implementation is complete.
+The current source version is `0.2.1`. It includes the plugin and marketplace manifests, a genuine Codex skill, privacy-minimized parent-task, subagent, tool, and permission hooks, a bounded in-memory reducer, a token-authenticated `127.0.0.1` runtime, a local dashboard, and `start`, `status`, `doctor`, `install`, and `uninstall` commands.
 
-Plugin installation and real lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. The final **trusted hook → local monitor → UI E2E in a current official Codex GUI task remains unverified**, and a real `PermissionRequest` payload has not been observed. These are external compatibility-acceptance checks for the current official app combination, not missing local product features.
+Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
+
+`0.2.1` adds `SessionStart`, `SessionEnd`, `UserPromptSubmit`, and `Stop` for parent-task lifecycle visibility and makes `status`, `doctor`, and the empty UI distinguish monitor health from hook delivery. We do **not** claim official GUI compatibility until a full app restart, explicit current-hook review/trust, and a new-task E2E succeed.
 
 Maintainer npm 2FA is enabled in `auth-and-writes` mode, and `codex-agent-view@0.2.0` is available from the public npm registry. npm publication remains separate from Universal Plugins Directory submission; the plugin is not directory-searchable.
 
@@ -227,7 +247,7 @@ Verified `0.2.0` release: npm `gitHead` and the annotated `v0.2.0` tag both reso
 
 ### Boundaries
 
-Codex Agent View is a live companion, not a historical audit or session-replay product. Bounded in-memory state and reset-on-restart semantics are the intentional completed `0.2.0` design: they keep privacy and failure boundaries small. SQLite or persistent history is not a missing requirement. Consider it only as a separate explicit opt-in feature if demonstrated user demand justifies retention, migration, deletion, and privacy costs.
+Codex Agent View is a live companion, not a historical audit or session-replay product. Bounded in-memory state and reset-on-restart semantics are intentional: they keep privacy and failure boundaries small. SQLite or persistent history is not a missing requirement. Consider it only as a separate explicit opt-in feature if demonstrated user demand justifies retention, migration, deletion, and privacy costs.
 
 - Hooks are the source of truth for live state.
 - Operational state exists by design only in bounded process memory; restart begins a new observation window.
@@ -235,6 +255,14 @@ Codex Agent View is a live companion, not a historical audit or session-replay p
 - Prompt text, transcript paths, full tool input/output, and assistant messages are not retained or displayed by the monitor.
 - The product cannot stop or restart tasks/subagents, send messages, or approve/deny permissions.
 - Missing, duplicated, or out-of-order events remain visible as empty, unknown, or degraded state instead of being guessed away.
+
+A separately launched Codex `0.146` App Server `thread/list` fallback was also tested. It reported both the current root and subagents as `notLoaded`, so it did not share the official app's live running/completed state. Persisted parent IDs, aliases, and depth could enrich metadata, but the fallback could not determine live status and would add state-database reads, privacy surface, and complexity. It is therefore not included in `0.2.1`.
+
+### Why npm, a local browser UI, and the Plugins Directory are different
+
+- npm distributes the local `codex-agent-view` executable, hook sender, runtime, and static UI to the user's machine.
+- The browser renders the current read-only companion UI on `127.0.0.1`; it is not an external website or telemetry dashboard.
+- The Universal Plugins Directory does not replace npm. A public in-app custom UI path requires a public HTTPS MCP server and domain verification, which conflicts with this project's local-only, no-external-server boundary. Only a separate listing/skills submission remains under consideration; do not expect Directory search installation until review and publication actually finish.
 
 ### Requirements and tested versions
 
@@ -244,7 +272,7 @@ Codex Agent View is a live companion, not a historical audit or session-replay p
 
 | Runtime | Tested version | Scope |
 | --- | --- | --- |
-| Official Codex app | `26.727.40816` (`build 6067`) | bundle metadata; current GUI-task E2E pending |
+| Official Codex app | `26.727.40816` (`build 6067`) | zero-event reproduction in a pre-existing process; restart/trust/new-task E2E pending |
 | App-embedded Codex | `0.146.0-alpha.9.2` | isolated install/runtime and lifecycle probe |
 | Homebrew Codex CLI | `0.146.0` | isolated install/runtime probe |
 
@@ -264,7 +292,7 @@ node bin/codex-agent-view.mjs install
 
 There are no production dependencies; the runtime uses Node.js built-ins. `install` explicitly copies the package into a local marketplace under the runtime directory and registers `codex-agent-view@codex-agent-view`. No `postinstall` script changes Codex settings.
 
-Review the installed plugin and `hooks/hooks.json`, inspect the `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command, explicitly trust the current hook hash, restart the official app, and create a new task.
+Review the installed plugin and `hooks/hooks.json`, inspect the `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command, and explicitly trust the current hook hash. If the app was open before installation, quit it completely and reopen it. Create the test task only after enablement and trust; earlier events are not replayed.
 
 Start the foreground monitor:
 
@@ -279,14 +307,18 @@ node bin/codex-agent-view.mjs status --json
 node bin/codex-agent-view.mjs doctor --json
 ```
 
+`doctor` checks installation, enablement, the installed hook bundle, monitor health, and whether any hook event reached the monitor. Hook trust can remain `unknown`: `codex plugin list --json` does not expose persisted exact-hook trust, so inspect it interactively in Codex CLI `/hooks`.
+
 An empty session list means that this monitor observed no events. It does not prove that Codex has no running task. Stopping or restarting the monitor discards its in-memory state, and downtime events are not replayed.
+
+Once the monitor is running and plugin enablement/trust is complete, hooks from newly created or resumed tasks appear automatically without pre-registering a task ID. Search is only an optional filter over that automatically received list; it does not start tracking or register a task. Events that occurred before installation/trust or while the monitor was down are not replayed.
 
 ### Install from npm
 
-Install the public exact version globally:
+After `0.2.1` appears in the public registry, install that exact version globally. Until publication is confirmed, validate from this repository source.
 
 ```bash
-npm install --global codex-agent-view@0.2.0
+npm install --global codex-agent-view@0.2.1
 codex-agent-view doctor
 codex-agent-view install
 codex-agent-view start
@@ -295,14 +327,24 @@ codex-agent-view start
 Or run the exact version without a global install:
 
 ```bash
-npx --yes codex-agent-view@0.2.0 doctor
-npx --yes codex-agent-view@0.2.0 install
-npx --yes codex-agent-view@0.2.0 start
+npx --yes codex-agent-view@0.2.1 doctor
+npx --yes codex-agent-view@0.2.1 install
+npx --yes codex-agent-view@0.2.1 start
 ```
 
-The public exact artifact passed `--version`, `doctor`, `install`, ephemeral-port `start`, `status`, and `uninstall` through both an isolated global installation and exact-version `npx`. A separate E2E fixture confirmed that all five hook events reached status/UI, search and filtering worked without browser-console errors, and purge left plugin/runtime state empty. See [Distribution](docs/distribution.md) for the registry digest and verification scope.
+That public-artifact evidence applies to `0.2.0`: isolated global and exact-version `npx` CLI lifecycles passed, and fixture events reached status/UI. A later real official-app process reproduced zero delivered events. Record `0.2.1` as verified only after source/package QA and the official-app restart/trust/new-task E2E both pass. See [Distribution](docs/distribution.md) for the registry evidence and verification boundary.
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
+
+### Troubleshooting an empty monitor
+
+1. Run `codex-agent-view doctor --json` and check plugin `installed`, `enabled`, hook `wiring_ok`, and monitor `ok`.
+2. If `monitor.events_received` is `false`, do not confuse monitor connectivity with successful hook delivery.
+3. In interactive Codex CLI `/hooks`, review and trust the exact current `send-hook.mjs` definition.
+4. Fully quit and reopen an official app process that was running before plugin installation.
+5. Create a new task after enablement/trust, then run a parent prompt and a subagent.
+
+If events are still absent, report the Codex app/CLI version, plugin version, app-versus-CLI runtime, and redacted `doctor` diagnostic codes. Never share the runtime token or a raw payload.
 
 ### Privacy
 

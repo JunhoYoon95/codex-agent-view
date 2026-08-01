@@ -6,9 +6,11 @@
 
 최소 plugin은 Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex CLI 양쪽에서 설치·실행되었다. 실제 subagent 실행으로 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse` payload를 관찰했으며, lifecycle event를 로컬 read-only monitor의 입력으로 사용하는 방향은 기술적으로 가능하다.
 
-다만 이것은 공식 앱 bundle에 포함된 CLI runtime 검증이지, Codex GUI의 현재 task가 plugin hook을 실행했다는 증거는 아니다. 현재 열린 GUI task에 plugin을 추가한 뒤 worker를 시작·종료했지만 캡처는 없었다. task 시작 시점의 config snapshot과 미신뢰 hook skip을 분리하지 못했으므로 “GUI는 hook hot-load를 지원하지 않는다”고 단정할 수 없다. `PermissionRequest`도 아직 실제 payload를 관찰하지 못했다.
+다만 이것은 공식 앱 bundle에 포함된 CLI runtime 검증이지, Codex GUI의 현재 task가 plugin hook을 실행했다는 증거는 아니다. 후속 `0.2.0` 실사용에서는 plugin 설치·enable과 monitor 실행이 정상이었는데도 동일 공식 앱 process에서 실제 subagent 2개를 실행하는 동안 event가 0건이었다. 앱 log에도 `send-hook.mjs` 실행 흔적이 없어서 문제를 UI/reducer가 아니라 app → plugin hook command 경계로 좁혔다.
 
-Phase 0의 repository 조사와 구현 입력 정리, 이후 local product 구현은 완료했다. 새 GUI task에서 plugin 활성화와 hook trust를 확인한 뒤 subagent lifecycle, tool use, approval 요청을 발생시키는 최종 공식 앱 E2E는 현재 앱 조합에 대한 외부 compatibility acceptance로 남아 있다. 이는 제품 기능 미완성을 뜻하지 않으며, 이 문서는 미관찰 compatibility evidence를 관찰 완료로 과장하지 않는다.
+해당 app process에는 plugin 설치 전 `hooks/list` 응답이 있었고 설치 뒤에도 process가 유지됐다. 이는 stale config/hook snapshot 가설과 일치하지만 인과관계를 확정하지는 않는다. 또한 `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않아 config snapshot과 untrusted hook skip을 자동 진단으로 분리할 수 없었다. 따라서 “GUI는 hook을 지원하지 않는다” 또는 “재시작만 하면 해결된다” 중 어느 쪽도 아직 확정하지 않는다. `PermissionRequest`의 실제 GUI payload도 미관찰이다.
+
+Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. `0.2.1`은 실사용 실패를 진단 가능하게 만들고 parent task lifecycle도 관찰하기 위한 patch다. 공식 앱을 완전히 재시작하고 현재 hook hash를 검토·trust한 뒤 새 GUI task에서 parent/subagent lifecycle, tool use, approval 요청을 발생시키는 E2E 전에는 공식 앱 호환 성공을 주장하지 않는다.
 
 ## 검증 환경
 
@@ -87,7 +89,9 @@ Phase 0의 repository 조사와 구현 입력 정리, 이후 local product 구�
 | Homebrew CLI | `0.146.0`에서 isolated install/runtime 성공 |
 | 앱 embedded CLI | `0.146.0-alpha.9.2`에서 isolated install/runtime 성공 및 6개 lifecycle/tool event 관찰 |
 | 현재 GUI task | plugin을 task 도중 추가한 뒤 worker를 시작·종료했으나 캡처 없음 |
-| GUI 미캡처 해석 | config snapshot 또는 untrusted hook skip 가능성을 분리하지 못함. hot-load 불가라고 단정하지 않음 |
+| `0.2.0` 실사용 재현 | 설치·enable·monitor가 정상인 상태에서 subagent 2개 실행, monitor `updated_at_ms: 0`, `sessions: []`, app log sender 실행 흔적 없음 |
+| GUI 미캡처 해석 | 설치 전 `hooks/list` snapshot 유지 정황이 있으나 config snapshot 또는 untrusted hook skip 가능성을 분리하지 못함. hot-load 불가나 restart 해결을 단정하지 않음 |
+| Trust 관찰 한계 | `codex plugin list --json`으로 installed/enabled는 확인 가능하지만 persisted exact-hook trust는 확인 불가. interactive `/hooks` 검토가 필요 |
 | GUI 최종 결론 | 새 task에서 plugin과 hook trust를 확인한 E2E 전까지 미확인 |
 
 앱 embedded executable을 직접 실행한 결과는 해당 executable과 plugin runtime의 호환성 증거다. GUI가 그 executable을 어떤 config/trust lifecycle로 실행하는지까지 증명하지는 않는다.
@@ -100,9 +104,9 @@ Phase 0의 repository 조사와 구현 입력 정리, 이후 local product 구�
 - `thread/loaded/list`: 그 App Server process에 현재 load된 thread ID 조회
 - `parentThreadId`, `ancestorThreadId`: `thread/list`의 experimental filter이며 `capabilities.experimentalApi = true` 필요
 
-격리된 임시 home으로 별도 App Server를 시작한 probe에서는 `thread/loaded/list`와 `thread/list`가 모두 비어 있었다. 공식 앱 daemon에 attach할 수 있는 control socket도 발견하지 못했다. 이 결과는 별도 instance가 자기 loaded state를 보고했으며 현재 앱 process에 attach할 근거를 찾지 못했다는 뜻이지, 가능한 모든 메모리 공유 방법이 없다는 절대 증명은 아니다. remote-control 외부 연결 위험을 넓히는 추가 probe는 Phase 0의 read-only·local-only 범위와 맞지 않아 중단했다.
+격리된 임시 home으로 별도 App Server를 시작한 probe에서는 `thread/loaded/list`와 `thread/list`가 모두 비어 있었다. 후속으로 Codex `0.146` App Server의 persisted `thread/list` fallback도 실제 검증했으나 현재 root와 subagent 모두 `notLoaded`로 나타나 공식 앱의 live running/completed 상태를 공유하지 않았다. Persisted `parentThreadId`, alias, depth는 계층 metadata로 복원할 수 있었지만 live lifecycle 판별에는 사용할 수 없었다. 공식 앱 daemon에 attach할 수 있는 control socket도 발견하지 못했다.
 
-따라서 App Server는 다음 Phase에서도 optional metadata enrichment 후보로만 둔다. `thread/loaded/list`는 별도 attach 근거가 생기기 전까지 “현재 GUI 앱 전체의 loaded set”이 아니라 요청을 받은 해당 server instance의 loaded set으로 해석한다.
+따라서 App Server는 optional metadata enrichment 후보로만 둔다. `thread/loaded/list`는 별도 attach 근거가 생기기 전까지 “현재 GUI 앱 전체의 loaded set”이 아니라 요청을 받은 해당 server instance의 loaded set으로 해석한다. Persisted fallback은 state DB read와 privacy/복잡도 비용을 추가하면서 현재 활동을 정확히 판별하지 못하므로 `0.2.1` live fallback으로 채택하지 않았다.
 
 ## 가능한 것과 아직 불가능하거나 미확인인 것
 
@@ -116,7 +120,7 @@ Phase 0의 repository 조사와 구현 입력 정리, 이후 local product 구�
 
 ### 아직 미확인인 것
 
-- 새 GUI task에서 trusted plugin hook이 실제 실행되는지
+- 공식 앱을 완전히 재시작하고 exact hook을 trust한 새 GUI task에서 plugin hook이 실제 실행되는지
 - GUI task의 plugin/hook hot-load 지원 여부
 - GUI에서 발생한 `PermissionRequest`의 실제 payload
 - 별도 App Server로 현재 GUI process의 in-memory 상태를 공유하거나 attach하는 방법
@@ -163,7 +167,7 @@ App Server (선택)
 - UI는 관찰만 하며 approval이나 task control을 제공하지 않는다.
 - App Server 실패 또는 부재가 lifecycle 상태 표시를 깨뜨리지 않아야 한다.
 
-## `0.2.0` 후속 구현: 관찰에서 runtime schema로
+## `0.2.0` 후속 구현과 `0.2.1` patch: 관찰에서 runtime schema로
 
 Phase 0 capture는 원본 payload를 영구 model로 복사하기 위한 것이 아니라 어떤 field를 버릴지 결정하는 근거로 사용했다. 이후 구현은 다음 두 단계로 관찰값을 좁혔다.
 
@@ -174,12 +178,16 @@ Phase 0 capture는 원본 payload를 영구 model로 복사하기 위한 것이 
 
 | Event | runtime에 유지하는 입력 field | derived state |
 | --- | --- | --- |
-| 공통 | `hook_event_name`, `session_id`, `turn_id`, local `received_at_ms` | normalized event type, session first/last seen |
+| turn 공통 | `hook_event_name`, `session_id`, `turn_id`, local `received_at_ms` | normalized event type, session first/last seen |
+| `SessionStart` / `SessionEnd` | `hook_event_name`, `session_id`, local `received_at_ms` | session start/end observed, observed/completed, out-of-order flag |
+| `UserPromptSubmit` / `Stop` | turn 공통 field | root turn running/completed, out-of-order flag |
 | `SubagentStart` / `SubagentStop` | `agent_id`, `agent_type` | running, stopped, stopped-without-start, out-of-order flag |
 | `PreToolUse` / `PostToolUse` | `tool_name`, `tool_use_id` | running, completed, completed-without-start, out-of-order flag |
 | `PermissionRequest` | `tool_name` | waiting-for-user permission state |
 
 `PermissionRequest` row는 공식 event schema를 바탕으로 구현한 provisional input contract다. 실제 GUI payload 관찰이 없으므로 호환성이 확인됐다는 뜻이 아니다. Missing/invalid field는 상태를 발명하지 않고 bounded diagnostic으로 남긴다.
+
+`SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`은 `0.2.1`에서 parent task가 subagent를 만들기 전에도 관찰 window에 나타나도록 추가했다. 이 wiring과 reducer fixture 통과는 공식 GUI가 해당 command hook을 실제 dispatch했다는 증거가 아니다.
 
 Reducer는 event identity가 완전히 보장된다고 가정하지 않는다. 관찰된 ID를 상관관계 key로 사용하되 duplicate, stop-before-start, post-before-pre, stale permission event를 명시적 상태로 처리한다. Session, agent, activity, diagnostic collection에 상한을 두고 monitor restart 뒤 이전 event를 복구하거나 parent completion을 추측하지 않는다.
 
@@ -211,15 +219,17 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 
 ## 외부 compatibility acceptance
 
-Local 제품 구현은 완료되었다. 사용자가 공식 Codex 앱에서 다음 작업을 수행해야 현재 앱 조합에 대한 compatibility evidence를 완료할 수 있다.
+`0.2.1` source 구현 뒤에도 다음 공식 앱 검증을 완료해야 현재 앱 조합의 compatibility evidence가 성립한다.
 
-- plugin이 활성화된 상태로 **새 GUI task** 시작
-- 새 task에서 plugin hook source와 command를 검토하고 trust
-- subagent 한 개를 실제 시작·종료
+- 실행 중 monitor를 확인하고 `doctor --json`에서 plugin installed/enabled, hook bundle wiring, `events_received`를 기록
+- 설치 전에 열려 있던 공식 앱을 완전히 종료·재실행
+- interactive `/hooks`에서 현재 plugin hook source, command, exact hash를 검토하고 trust
+- trust 뒤 **새 GUI task** 시작
+- parent prompt와 subagent 한 개를 실제 시작·종료
 - 일반 tool 한 개를 실행
 - sandbox escalation 등 실제 approval prompt가 필요한 동작을 실행해 `PermissionRequest` 발생
 
-이 과정에서 캡처가 생기지 않으면 hook browser의 loaded source/trust 상태와 앱 진단 로그가 다음 조사 증거다. 기존 GUI task의 미캡처만으로 지원 불가 결론을 내리지 않는다.
+이 과정에서 `events_received`가 계속 false이면 hook browser의 loaded source/trust 상태와 앱 진단 log를 함께 기록한다. Fixture 성공이나 monitor 연결만으로 공식 앱 호환 성공을 선언하지 않는다.
 
 ## 외부 distribution과 listing 작업
 
@@ -238,15 +248,17 @@ README는 exact-version global install과 `npx`를 public npm 사용법으로 �
 
 ## QA 결과
 
-- `npm test`: 통과, `49/49`
+- `npm test`: 통과, `55/55`
 - 프로젝트 내부 plugin validation: 통과
 - bundled skill `quick_validate.py`: 통과
-- `npm pack --dry-run`: 통과, `codex-agent-view@0.2.0`, logo assets와 skill을 포함한 21 files
-- source CLI `--version`: `0.2.0`
-- source CLI `doctor --json`: Codex CLI version, plugin/monitor 상태, runtime directory 진단 확인
+- `npm pack --dry-run`: 통과, `codex-agent-view@0.2.1`, logo assets와 skill을 포함한 21 files
+- package/plugin manifest version 및 final tarball metadata: `0.2.1` 일치
+- source CLI `--version`: `0.2.1`
+- installed `0.2.1` sender → monitor → UI fixture E2E: task ID를 사전 등록하지 않아도 parent와 agent가 hook에서 자동 생성됐고 running, waiting, completed 상태 반영 확인
+- reset 뒤 source CLI `doctor --json`: plugin `installed: true`, `enabled: true`, hook `wiring_ok: true`, declared event 9개, monitor `events_received: false`, trust `unknown` 확인
 - public registry metadata: `0.2.0`, `Apache-2.0`, `codex-agent-view` → `bin/codex-agent-view.mjs`, shasum/exact SRI/signature 확인
 - public exact artifact: isolated global install과 exact-version `npx`의 CLI lifecycle smoke 통과
 - public exact artifact E2E: 다섯 hook fixture event → status/UI, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 확인
 - release source match: npm `gitHead`와 annotated `v0.2.0` tag가 `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치, origin tag와 public GitHub Release 확인, 21개 package file byte-identical
 
-Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring으로 local live companion 제품 구현은 완료됐다. Published npm exact artifact smoke와 tag/release source 일치 검증도 완료됐다. 새 official GUI task E2E와 실제 `PermissionRequest`는 external compatibility evidence이고 Universal Directory listing은 external listing operation이다. 선택적인 npm provenance attestation은 `0.2.0`에 없으며 완료를 주장하지 않는다. 어느 항목도 SQLite/영구 history 같은 미구현 제품 기능을 뜻하지 않는다.
+Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.1` source/tarball과 installed fixture E2E는 통과했으며 `0.2.0`의 npm artifact smoke와 tag/release source 일치도 보존한다. 그러나 실제 공식 앱에서 event 0건을 재현했으므로 사용 가능한 GUI integration까지 완료됐다고 표현하지 않는다. 공식 앱 full restart + interactive `/hooks` trust + 새 GUI task E2E와 실제 `PermissionRequest`는 아직 acceptance 대상이며 `0.2.1` npm publish 성공도 주장하지 않는다. Universal Directory listing은 별도 external operation이다. 선택적인 npm provenance attestation은 `0.2.0`에 없으며 완료를 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.

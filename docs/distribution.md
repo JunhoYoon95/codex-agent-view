@@ -2,11 +2,11 @@
 
 조사일: 2026-08-01
 
-이 문서는 Codex Agent View `0.2.0`의 npm package와 Codex plugin 배포 경계를 정리한다. npm 2FA `auth-and-writes` 활성화, public registry publish, annotated Git tag와 public GitHub Release는 완료됐다. Universal Directory publish는 npm/GitHub release와 별도 절차다.
+이 문서는 Codex Agent View의 npm package와 Codex plugin 배포 경계를 정리한다. `0.2.0`의 npm publish, annotated Git tag와 public GitHub Release는 완료됐다. 현재 source는 실사용 hook 전달 실패를 보강하는 `0.2.1` patch이며, official-app E2E와 registry publish 전에는 `0.2.1` 배포·호환 성공을 주장하지 않는다. Universal Directory publish는 npm/GitHub release와 별도 절차다.
 
 ## 현재 상태
 
-- package 이름과 버전은 `codex-agent-view@0.2.0`이다.
+- package 이름은 `codex-agent-view`다. Public evidence table은 `0.2.0` release를, 현재 source와 release checklist는 `0.2.1` patch를 대상으로 한다.
 - Node.js `>=18`을 요구하며 production dependency가 없다.
 - `package.json`은 `codex-agent-view` executable을 `bin/codex-agent-view.mjs`로 노출한다.
 - 배포 bundle에는 plugin manifest/catalog, logo assets, hooks, CLI, local runtime/server, static monitor UI, scripts, genuine Codex skill, README, LICENSE, NOTICE가 포함된다.
@@ -40,7 +40,7 @@ Downloaded artifact의 계산된 SRI가 위 registry `dist.integrity`와 일치�
 | --- | --- | --- |
 | `codex-agent-view start [--port <port>] [--no-open]` | loopback monitor와 in-memory store를 foreground로 실행 | local runtime file 생성, 기본값은 browser 열기 |
 | `codex-agent-view status [--json]` | 실행 중 monitor의 상태 조회 | 없음 |
-| `codex-agent-view doctor [--json]` | Codex CLI, plugin 설치, monitor, runtime 경로 진단 | 없음 |
+| `codex-agent-view doctor [--json]` | Codex CLI, plugin 설치·enable, hook bundle wiring, monitor/event 수신, runtime 경로 진단. Persisted exact-hook trust는 `unknown`으로 보고 | 없음 |
 | `codex-agent-view install` | package를 local marketplace bundle로 복사하고 plugin 등록 | Codex plugin/marketplace 등록 변경 |
 | `codex-agent-view uninstall [--purge]` | plugin과 marketplace bundle 제거 | Codex 등록 및 local files 변경 |
 | `codex-agent-view --version` | package version 출력 | 없음 |
@@ -108,7 +108,9 @@ Global install과 `npx`는 package download만으로 Codex 설정을 바꾸지 �
 1. runtime directory 아래 `marketplace`에 package bundle을 복사한다.
 2. `codex plugin marketplace add`로 그 local marketplace를 등록한다.
 3. `codex plugin add codex-agent-view@codex-agent-view`로 plugin을 등록한다.
-4. 사용자가 hook을 검토하고 trust한 뒤 Codex를 재시작하고 새 task를 만들도록 안내한다.
+4. 등록 결과가 installed/enabled인지 다시 확인한다.
+5. CLI JSON으로 exact-hook trust를 확인할 수 없음을 알리고 interactive `/hooks`에서 검토·trust하도록 안내한다.
+6. 설치 전에 앱이 열려 있었다면 완전히 재시작하고, 그 뒤 새 task를 만들도록 안내한다.
 
 Install command 자체는 별도 confirmation prompt를 제공하지 않는다. 따라서 사용자나 agent가 명시적으로 설치를 요청한 경우에만 실행한다. npm `postinstall`에서 이를 호출하지 않는다.
 
@@ -151,7 +153,10 @@ Install command 자체는 별도 confirmation prompt를 제공하지 않는다. 
 2. plugin을 명시적으로 enable한다.
 3. CLI TUI의 `/hooks` 또는 공식 앱의 해당 UI에서 `hooks/hooks.json` command를 검토한다.
 4. current hook definition의 exact hash를 사용자가 직접 trust한다.
-5. 공식 앱을 완전히 재시작하고 새 task에서 hook → loopback runtime → UI 흐름을 확인한다.
+5. Plugin 설치 전부터 공식 앱이 열려 있었다면 앱을 완전히 종료·재실행한다.
+6. Trust 뒤 만든 새 task에서 hook → loopback runtime → UI 흐름을 확인한다. 이전 event는 재생되지 않는다.
+
+`codex plugin list --json`은 plugin installed/enabled 상태를 확인하는 근거지만 persisted exact-hook trust를 노출하지 않는다. 따라서 `doctor`는 trust를 성공으로 추측하지 않고 `unknown`과 interactive `/hooks` 확인 절차를 보고한다.
 
 ## 제거와 복구
 
@@ -195,7 +200,9 @@ codex plugin marketplace remove codex-agent-view
 - [x] Isolated Codex/runtime directories에서 `doctor` → `install` → `start --port 0 --no-open` → 다섯 hook event → `status --json`/UI → `uninstall --purge` E2E
 - [ ] monitor가 IPv4 loopback 외부에 bind하지 않고 API가 token을 요구하는지 검증
 - [ ] npm install과 Codex npm-backed marketplace install에서 lifecycle script가 실행되지 않는지 관찰
-- [ ] plugin enable 후 hook trust와 새 공식 앱 GUI task lifecycle E2E
+- [x] 실행 중이던 공식 앱 process에 `0.2.0` install/enable과 monitor가 정상인데도 실제 subagent 2개의 hook event가 0건임을 재현
+- [x] 위 재현에서 app log에 sender 실행이 없고, 설치 전 `hooks/list` snapshot 유지 정황과 non-interactive trust 확인 불가를 기록
+- [ ] `0.2.1` install 뒤 공식 앱 full restart, exact-hook trust, 새 GUI task의 parent/subagent/tool lifecycle E2E
 - [x] Public npm registry의 exact-version `npx`로 `--version`, `doctor`, `install`, ephemeral-port `start`, `status`, `uninstall` smoke
 - [x] Global/`npx` uninstall purge 뒤 plugin 등록과 runtime directory가 비어 있음을 확인
 - [x] npm `gitHead`, annotated `v0.2.0` tag, origin tag와 public GitHub Release의 source 일치 확인
@@ -203,6 +210,8 @@ codex plugin marketplace remove codex-agent-view
 - [ ] Opt-in capture가 존재하는 경우의 보존·별도 정리 경로 확인
 
 Public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest` fixture event가 status/UI에 반영됐고 search/filter가 동작했으며 browser console error가 없었다. 이는 isolated fixture 검증이다. 공식 Codex GUI에서 실제 `PermissionRequest` payload를 관찰했다는 뜻은 아니다.
+
+`0.2.1` release candidate는 `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`을 추가하고 empty UI/`status`/`doctor` 진단을 강화한다. 이 source/fixture 검증은 공식 GUI dispatch 성공의 대체 증거가 아니다. Official app restart/trust/new-task E2E가 실패하면 publish 성공 여부와 무관하게 호환성 미확인으로 남긴다.
 
 ## 외부 배포 운영 상태
 

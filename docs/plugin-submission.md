@@ -2,20 +2,22 @@
 
 조사일: 2026-08-01
 
-이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View `0.2.0`의 준비 상태를 정리한다. 실제 OpenAI Platform 제출, identity verification, review 요청, publish는 수행하지 않는다.
+이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View `0.2.1` source의 준비 상태를 정리한다. `0.2.0` npm/GitHub release evidence는 보존하지만, 실제 OpenAI Platform 제출, identity verification, review 요청, publish는 수행하지 않는다.
 
 ## 핵심 결론
 
 - OpenAI review 승인 뒤 developer가 publish해야 ChatGPT와 Codex가 공유하는 Universal Plugins Directory에 표시된다.
 - GitHub marketplace 등록이나 npm publish만으로 Universal Directory에 노출되지 않는다.
 - 공식 portal은 `Skills only`와 MCP-backed 제출을 지원한다.
-- `0.2.0`에는 genuine `skills/codex-agent-view/SKILL.md`가 있고 manifest가 `skills: "./skills/"`로 bundle한다.
+- `0.2.1` source에는 genuine `skills/codex-agent-view/SKILL.md`가 있고 manifest가 `skills: "./skills/"`로 bundle한다.
 - 이 skill은 current task/subagent status 조회, monitor 진단, explicit lifecycle action에 실제 사용자 가치를 제공한다. Directory 통과용 빈 형식 skill이 아니다.
 - 공식 공개 문서는 **skills-only submission에 local command hooks를 함께 bundle한 경우의 eligibility/review 규칙을 명시하지 않는다.** 따라서 “skills-only + hooks” 제출 가능 여부는 여전히 **미확인**이며 portal 또는 OpenAI 확인이 필요하다.
 - MCP 경로는 production HTTPS endpoint를 요구하므로 external server를 두지 않는 현재 제품 방향과 맞지 않는다.
 - Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 `codex-agent-view@0.2.0` public registry publish를 완료했다. Registry metadata/digest/signature, exact-version global install/`npx` artifact smoke, annotated `v0.2.0` tag와 public GitHub Release, tagged source 대비 21개 package file byte 일치도 확인했다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
 
-Local companion 제품 구현과 bounded in-memory architecture는 완료되어 있다. 아래 eligibility, identity, scan, portal, publish 항목은 외부 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 제품 구현 blocker가 아니다.
+Bounded in-memory local architecture와 package surface는 구현됐지만 `0.2.1` 공식 앱 restart/trust/new-task E2E는 아직 acceptance 중이다. 아래 eligibility, identity, scan, portal, publish 항목은 별도의 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 blocker가 아니다.
+
+현재 local browser monitor를 Directory의 in-app custom UI로 그대로 옮기는 것은 listing만으로 해결되지 않는다. Public in-app custom UI 경로는 public HTTPS MCP server와 domain verification을 요구하는데, 이는 local-only/no-external-server 제품 원칙과 충돌한다. npm은 local executable/runtime 배포 경로, browser는 `127.0.0.1` companion UI, Directory는 별도 listing/skills 제출 경로로 유지한다. Directory가 npm이나 local browser runtime을 대체한다고 주장하지 않는다.
 
 ## 공식 공개 흐름
 
@@ -43,7 +45,7 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 
 ## 제출 유형과 현재 적합성
 
-| 공식 또는 후보 유형 | 문서상 상태 | Codex Agent View `0.2.0` |
+| 공식 또는 후보 유형 | 문서상 상태 | Codex Agent View `0.2.1` source |
 | --- | --- | --- |
 | Skills only | 공식 지원 | genuine skill 존재. Local hooks 동시 bundle eligibility는 미확인 |
 | With MCP / MCP-only | 공식 지원 | production HTTPS MCP endpoint가 없어 현재 부적합 |
@@ -58,7 +60,7 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 2. Review environment에서 local `codex-agent-view` executable과 hook trust flow를 어떻게 fixture로 검증하는가?
 3. Local-only monitor처럼 MCP custom UI가 아닌 UI가 listing review에서 어떻게 취급되는가?
 
-## `0.2.0`에 준비된 제출 자료
+## `0.2.1` source에 준비된 제출 자료
 
 ### Genuine skill
 
@@ -77,7 +79,7 @@ Skill `quick_validate.py`와 plugin/package wiring validation은 통과했다. P
 
 `.codex-plugin/plugin.json`에는 다음이 준비되어 있다.
 
-- `0.2.0` semantic version과 display/short/long description
+- `0.2.1` semantic version과 display/short/long description
 - developer name, Productivity category, `Read` capability, starter prompts 2개
 - brand color `#123F35`
 - `assets/logo.svg` composer/logo asset과 `assets/logo-dark.svg` dark logo asset
