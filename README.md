@@ -22,6 +22,8 @@ Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex executable에서 pl
 
 Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 `codex-agent-view@0.2.0`은 public npm registry에서 사용할 수 있다. npm publish와 별개인 Universal Plugins Directory 제출은 아직 완료되지 않아 directory 검색에는 나타나지 않는다.
 
+검증된 `0.2.0` 릴리스: npm `gitHead`와 annotated `v0.2.0` tag는 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고, registry SRI/signature 및 tag source와 registry artifact의 21개 package file byte 일치를 확인했다. [GitHub Release v0.2.0](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.2.0)은 공개 상태다. 별도 npm provenance attestation은 선택 사항이며 이 릴리스에는 없다.
+
 ### 제품 경계
 
 Codex Agent View는 historical audit이나 session replay 제품이 아니라 현재 활동을 보여주는 live companion이다. Bounded in-memory state와 monitor 재시작 시 reset은 privacy와 단순한 failure boundary를 위한 의도된 `0.2.0` 완성 설계다. SQLite/영구 history는 누락된 요구사항이 아니다. 실제 사용자 요구가 입증될 때에만 retention, migration, deletion, privacy 비용을 별도 검토하는 명시적 opt-in 기능 후보로 취급한다.
@@ -141,6 +143,8 @@ npx --yes codex-agent-view@0.2.0 install
 npx --yes codex-agent-view@0.2.0 start
 ```
 
+Public exact artifact는 isolated global install과 exact-version `npx` 양쪽에서 `--version`, `doctor`, `install`, ephemeral-port `start`, `status`, `uninstall`을 통과했다. 별도 E2E fixture에서는 다섯 hook event가 status/UI에 반영됐고 search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 상태까지 확인했다. Registry digest를 포함한 검증 범위는 [docs/distribution.md](docs/distribution.md)에 기록한다.
+
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
 ### Privacy와 opt-in diagnostic capture
@@ -219,6 +223,8 @@ Plugin installation and real lifecycle payloads were verified with Homebrew Code
 
 Maintainer npm 2FA is enabled in `auth-and-writes` mode, and `codex-agent-view@0.2.0` is available from the public npm registry. npm publication remains separate from Universal Plugins Directory submission; the plugin is not directory-searchable.
 
+Verified `0.2.0` release: npm `gitHead` and the annotated `v0.2.0` tag both resolve to commit `00b62af56698ac875e39c7d1386905c157c3a7e8`; the registry SRI/signature and all 21 package files against the tagged source were verified. [GitHub Release v0.2.0](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.2.0) is public. A separate npm provenance attestation is optional and was not published for this release.
+
 ### Boundaries
 
 Codex Agent View is a live companion, not a historical audit or session-replay product. Bounded in-memory state and reset-on-restart semantics are the intentional completed `0.2.0` design: they keep privacy and failure boundaries small. SQLite or persistent history is not a missing requirement. Consider it only as a separate explicit opt-in feature if demonstrated user demand justifies retention, migration, deletion, and privacy costs.
@@ -293,6 +299,8 @@ npx --yes codex-agent-view@0.2.0 doctor
 npx --yes codex-agent-view@0.2.0 install
 npx --yes codex-agent-view@0.2.0 start
 ```
+
+The public exact artifact passed `--version`, `doctor`, `install`, ephemeral-port `start`, `status`, and `uninstall` through both an isolated global installation and exact-version `npx`. A separate E2E fixture confirmed that all five hook events reached status/UI, search and filtering worked without browser-console errors, and purge left plugin/runtime state empty. See [Distribution](docs/distribution.md) for the registry digest and verification scope.
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 

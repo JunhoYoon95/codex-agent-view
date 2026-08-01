@@ -13,7 +13,7 @@
 - 이 skill은 current task/subagent status 조회, monitor 진단, explicit lifecycle action에 실제 사용자 가치를 제공한다. Directory 통과용 빈 형식 skill이 아니다.
 - 공식 공개 문서는 **skills-only submission에 local command hooks를 함께 bundle한 경우의 eligibility/review 규칙을 명시하지 않는다.** 따라서 “skills-only + hooks” 제출 가능 여부는 여전히 **미확인**이며 portal 또는 OpenAI 확인이 필요하다.
 - MCP 경로는 production HTTPS endpoint를 요구하므로 external server를 두지 않는 현재 제품 방향과 맞지 않는다.
-- Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 `codex-agent-view@0.2.0` public registry publish를 완료했다. Exact-version global install/`npx`를 public 경로로 안내하되 artifact smoke는 아직 완료로 간주하지 않는다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
+- Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 `codex-agent-view@0.2.0` public registry publish를 완료했다. Registry metadata/digest/signature, exact-version global install/`npx` artifact smoke, annotated `v0.2.0` tag와 public GitHub Release, tagged source 대비 21개 package file byte 일치도 확인했다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
 
 Local companion 제품 구현과 bounded in-memory architecture는 완료되어 있다. 아래 eligibility, identity, scan, portal, publish 항목은 외부 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 제품 구현 blocker가 아니다.
 
@@ -152,6 +152,12 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [x] Repository plugin validator가 `shortDescription <= 30`을 검사한다.
 - [x] `codex-agent-view@0.2.0` 코드·tarball과 maintainer npm login을 준비했다.
 - [x] npm 2FA `auth-and-writes`, `pending:null`과 `0.2.0` public registry publish를 확인했다.
+- [x] npm registry의 version/license/bin과 dist shasum/integrity를 확인했다.
+- [x] Public exact artifact의 isolated global/`npx` CLI lifecycle과 다섯 hook fixture event → status/UI, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 상태를 검증했다.
+- [x] npm `gitHead`와 annotated `v0.2.0` tag가 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고 origin tag와 public GitHub Release가 존재함을 확인했다.
+- [x] Registry signature와 tagged source 대비 21개 package file byte 일치를 확인했다.
+
+별도 npm provenance attestation은 선택 사항이며 `0.2.0`에는 없다. Registry signature와 source/artifact 일치 검증을 attestation 완료로 표현하지 않는다.
 
 ## 외부 Directory 제출 전 stop 조건
 
@@ -167,7 +173,7 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [ ] Website/support/privacy/terms URL과 publisher identity가 maintainer 승인을 받지 않음
 - [ ] Verified individual/business identity가 완료되지 않음
 - [ ] `Apps Management: Write` access가 확인되지 않음
-- [ ] Published exact artifact의 global install/`npx` smoke가 완료되지 않음
+- [x] Git tag/release와 published npm artifact가 같은 source임을 입증함
 - [ ] Published npm/release artifact와 submitted skill tree의 일치 증거가 없음
 - [ ] Portal attestations, region availability, release notes가 maintainer review를 받지 않음
 

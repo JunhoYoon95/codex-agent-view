@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-현재 source version은 `0.2.0`이다. Phase 0~3의 repository 내부 제품 구현과 검증 항목은 완료되었다. Bounded in-memory live state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. 아래 남은 항목은 실제 사용자 계정·공식 앱·외부 portal이 필요한 compatibility, distribution, listing acceptance다.
+현재 source version은 `0.2.0`이다. Phase 0~3의 repository 내부 제품 구현과 검증 항목은 완료되었다. Bounded in-memory live state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. 아래 남은 항목은 실제 사용자 계정·공식 앱·외부 portal이 필요한 compatibility와 listing acceptance다.
 
 ## 제품 원칙
 
@@ -29,7 +29,11 @@
 - [x] `codex-agent-view@0.2.0` 코드와 publish tarball 준비를 완료했다.
 - [x] npm account 필수 2FA `auth-and-writes` mode와 `pending:null`을 확인했다.
 - [x] `codex-agent-view@0.2.0` public registry publish를 완료했다.
-- [ ] Publish 성공 뒤 exact artifact에서 global install과 exact-version `npx` install/start/status/uninstall smoke test를 완료한다.
+- [x] Public exact artifact의 registry metadata(`0.2.0`, `Apache-2.0`, executable mapping), shasum, exact SRI와 registry signature를 확인했다.
+- [x] Isolated global install과 exact-version `npx` 양쪽에서 `--version`, `doctor`, `install`, ephemeral-port `start`, `status`, `uninstall` smoke를 완료했다.
+- [x] Public exact artifact E2E에서 다섯 hook event의 status/UI 반영, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 상태를 확인했다.
+- [x] npm `gitHead`와 annotated `v0.2.0` tag가 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고 tag가 origin에 push됐으며 GitHub Release가 공개됐음을 확인했다.
+- [x] Tagged source와 public registry artifact의 21개 package file이 byte-identical임을 확인했다.
 
 ## 외부 Universal Directory listing
 
@@ -84,7 +88,7 @@
 
 ## Phase 3 — 설치·제거와 공개 배포 준비
 
-상태: repository/npm tarball 준비 완료. Registry publish operation과 Directory listing은 제품 구현과 분리된 외부 release 작업이다.
+상태: repository 구현, public npm release, annotated Git tag와 GitHub Release 완료. Directory listing은 제품 구현과 분리된 외부 작업이다.
 
 - [x] `codex-agent-view` bin과 `start/status/doctor/install/uninstall` CLI surface를 구현한다.
 - [x] npm `files` allowlist에 manifests, catalog, logo assets, hooks, CLI, sender/capture scripts, skill, runtime/UI, README, LICENSE, NOTICE를 포함한다.
@@ -105,8 +109,12 @@
 - `npm pack --dry-run`: pass, `codex-agent-view@0.2.0`, 21 files, logo assets와 skill 포함
 - Source CLI `--version`: `0.2.0`
 - Source CLI `doctor --json`: Codex `0.146.0` 탐지 및 monitor/plugin 미실행 상태 진단
+- Public registry metadata: `0.2.0`, `Apache-2.0`, `codex-agent-view` → `bin/codex-agent-view.mjs`, shasum/exact SRI/signature 확인
+- Public exact artifact: isolated global install과 exact-version `npx`의 CLI lifecycle smoke 통과
+- Public exact artifact E2E: 다섯 hook event → status/UI, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 확인
+- Release source match: npm `gitHead`와 annotated `v0.2.0` tag가 `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치, origin tag와 public GitHub Release 확인, 21개 package file byte-identical
 
-이 snapshot은 local/source 검증 결과다. Public registry artifact, official GUI current-task E2E, Universal Directory listing을 증명하지 않는다.
+이 snapshot은 local/source, public npm exact artifact, annotated Git tag와 public GitHub Release 검증 결과다. Official GUI current-task E2E, 실제 `PermissionRequest`, Universal Directory listing은 증명하지 않는다. 별도 npm provenance attestation은 선택 사항이며 `0.2.0`에는 없다.
 
 ## Phase 4 — 선택적 보강
 

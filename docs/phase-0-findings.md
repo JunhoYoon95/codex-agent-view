@@ -138,7 +138,7 @@ Phase 0 당시 local marketplace가 repository root를 가리키면 source tree 
 
 `codex-agent-view install`은 package에 포함된 allowlisted entry만 runtime directory 아래 copied local marketplace로 옮긴 뒤 Codex plugin을 등록한다. npm package를 받았다고 hook trust를 자동 승인하지 않으며, 사용자 설정을 몰래 바꾸는 `postinstall`도 없다.
 
-Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 `codex-agent-view@0.2.0` public registry publish를 완료했다. Exact artifact global install/`npx` smoke는 아직 별도 확인이 필요하다. Universal Plugins Directory 제출은 npm과 별도 외부 절차다.
+Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 `codex-agent-view@0.2.0` public registry publish를 완료했다. Registry의 version/license/bin, dist shasum/exact SRI와 signature를 확인했으며, public exact artifact는 isolated global install과 exact-version `npx` 양쪽에서 CLI lifecycle smoke를 통과했다. npm `gitHead`와 annotated `v0.2.0` tag는 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고 tag source와 registry artifact의 21개 package file은 byte-identical이며 GitHub Release도 공개됐다. Universal Plugins Directory 제출은 npm과 별도 외부 절차다.
 
 ## Phase 0 권장과 `0.2.0`에서 확정한 아키텍처
 
@@ -228,10 +228,13 @@ Local 제품 구현은 완료되었다. 사용자가 공식 Codex 앱에서 다�
 - [x] maintainer npm login(`kyurasi`)과 `0.2.0` 코드·tarball 준비
 - [x] npm account 필수 2FA `auth-and-writes`, `pending:null` 확인
 - [x] `0.2.0` public registry publish 성공
-- [ ] publish 성공 뒤 exact artifact global install/`npx` smoke test
+- [x] public registry metadata, dist shasum/exact SRI와 registry signature 확인
+- [x] public exact artifact isolated global install/`npx` `--version`, `doctor`, `install`, ephemeral-port `start`, `status`, `uninstall` smoke
+- [x] 다섯 hook fixture event의 status/UI 반영, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 상태 확인
+- [x] npm `gitHead`와 annotated `v0.2.0` tag의 exact commit 일치, origin push, public GitHub Release, 21개 package file byte 일치 확인
 - Universal Plugins Directory portal 제출, review, publish, search visibility 확인
 
-README는 exact-version global install과 `npx`를 public npm 사용법으로 안내한다. Exact artifact smoke는 완료라고 쓰지 않으며, Directory publish 전에는 Universal Directory에서 검색 가능하다고 주장하지 않는다.
+README는 exact-version global install과 `npx`를 public npm 사용법으로 안내하고 검증 완료 범위를 요약한다. Directory publish 전에는 Universal Directory에서 검색 가능하다고 주장하지 않는다.
 
 ## QA 결과
 
@@ -241,5 +244,9 @@ README는 exact-version global install과 `npx`를 public npm 사용법으로 �
 - `npm pack --dry-run`: 통과, `codex-agent-view@0.2.0`, logo assets와 skill을 포함한 21 files
 - source CLI `--version`: `0.2.0`
 - source CLI `doctor --json`: Codex CLI version, plugin/monitor 상태, runtime directory 진단 확인
+- public registry metadata: `0.2.0`, `Apache-2.0`, `codex-agent-view` → `bin/codex-agent-view.mjs`, shasum/exact SRI/signature 확인
+- public exact artifact: isolated global install과 exact-version `npx`의 CLI lifecycle smoke 통과
+- public exact artifact E2E: 다섯 hook fixture event → status/UI, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 확인
+- release source match: npm `gitHead`와 annotated `v0.2.0` tag가 `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치, origin tag와 public GitHub Release 확인, 21개 package file byte-identical
 
-Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring으로 local live companion 제품 구현은 완료됐다. 새 official GUI task E2E와 실제 `PermissionRequest`는 external compatibility evidence이고, published npm exact artifact smoke와 Universal Directory listing은 external distribution/listing operation이다. 어느 항목도 SQLite/영구 history 같은 미구현 제품 기능을 뜻하지 않는다.
+Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring으로 local live companion 제품 구현은 완료됐다. Published npm exact artifact smoke와 tag/release source 일치 검증도 완료됐다. 새 official GUI task E2E와 실제 `PermissionRequest`는 external compatibility evidence이고 Universal Directory listing은 external listing operation이다. 선택적인 npm provenance attestation은 `0.2.0`에 없으며 완료를 주장하지 않는다. 어느 항목도 SQLite/영구 history 같은 미구현 제품 기능을 뜻하지 않는다.
