@@ -10,7 +10,7 @@ Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task�
 
 ### 빠른 시작: 설치 후에는 Codex 앱 안에서만 사용
 
-이 README의 source release candidate와 package 버전은 `codex-agent-view@0.4.0`이다. 아직 npm에 publish되지 않았으며 현재 public npm `latest`는 `0.3.2`다. `0.4.0`이 publish된 뒤에는 **최초 설치만** 일반 터미널에서 다음 exact-version 명령으로 진행한다.
+이 README는 exact `codex-agent-view@0.4.0` release를 설명한다. **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다. npm이 해당 version을 찾지 못하면 `0.4.0` registry publish가 완료됐는지 확인한 뒤 다시 시도한다.
 
 ```bash
 npm install --global codex-agent-view@0.4.0
@@ -36,7 +36,7 @@ Trust된 첫 hook이 도착하면 plugin sender가 로컬 backend를 내부적�
 
 ### 현재 상태
 
-이 source candidate의 package version은 `0.4.0`이다. 다음 구성이 package에 포함되어 있다.
+이 repository와 package의 version은 `0.4.0`이다. 다음 구성이 package에 포함되어 있다.
 
 - 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
@@ -192,7 +192,7 @@ Plugin enable/trust와 앱 재시작 뒤 생성되거나 재개되는 task는 tr
 
 ### npm 설치 명령 참고
 
-아래 명령은 publish 뒤 이 source candidate와 일치하는 exact `0.4.0`을 지정하는 설치 명령이다. 현재 public npm `latest`는 `0.3.2`이며 `0.4.0` publish 완료 전에는 아래 명령이 성공한다고 주장하지 않는다.
+아래 명령은 이 README가 설명하는 release와 일치하는 exact `0.4.0` 설치 명령이다. Exact version 고정은 설치 package와 문서를 일치시키며, registry가 해당 version을 찾지 못하면 publish 완료 여부를 확인한 뒤 다시 시도한다.
 
 ```bash
 npm install --global codex-agent-view@0.4.0
@@ -201,15 +201,9 @@ codex-agent-view install
 
 이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화와 hook trust를 확인한 다음 새 task를 만든다. 첫 trusted hook이 backend 준비와 event 전달을 내부 처리하므로 사용자가 monitor CLI를 실행하지 않는다. 새 task의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택해 live 화면을 열며, 화면을 닫았으면 같은 skill을 다시 선택한다.
 
-Global install 없이 exact version을 일회성으로 실행할 수도 있다.
+`0.4.0`에서 지원하는 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다.
 
-```bash
-npx --yes codex-agent-view@0.4.0 install
-```
-
-`npx` 경로도 explicit `install`을 실행하는 최초 설치 방법일 뿐이다. 이후 사용은 동일하게 Codex 앱 안에서 진행한다.
-
-`0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` release evidence는 보존한다. `0.4.0`은 source candidate이며 아직 public release evidence가 없다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
+`0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` release evidence는 보존한다. `0.4.0` registry, tag와 artifact evidence는 각 release 단계의 실제 완료를 관찰한 뒤에만 기록한다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 

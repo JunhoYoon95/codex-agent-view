@@ -8,7 +8,7 @@ Codex Agent View is a read-only companion plugin that shows privacy-minimized ac
 
 ## Quick start: install once, then stay inside the Codex app
 
-This README's source release candidate and package are version `codex-agent-view@0.4.0`. It is not published yet; the current public npm `latest` remains `0.3.2`. After `0.4.0` is published, use this exact-version command for the one-time terminal installation.
+This README documents the exact `codex-agent-view@0.4.0` release. Use the exact-version command below for the one-time terminal installation. If npm reports that the version is unavailable, verify that the `0.4.0` registry publication has completed before retrying.
 
 Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
@@ -36,7 +36,7 @@ In short: install once in a terminal; perform snapshot queries, status checks, l
 
 ## Status
 
-This source candidate is version `0.4.0`. It includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, privacy-minimized hooks, a bounded in-memory reducer, a trusted-hook auto-prepared token-authenticated `127.0.0.1` live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
+This repository and package are version `0.4.0`. They include an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, privacy-minimized hooks, a bounded in-memory reducer, a trusted-hook auto-prepared token-authenticated `127.0.0.1` live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -144,7 +144,7 @@ After plugin enablement/trust and an app restart, the first trusted hook interna
 
 ## Install from npm
 
-After publication, the commands below target this source candidate's exact package version, `0.4.0`. The current public npm `latest` is still `0.3.2`; these commands are not claimed to work until the `0.4.0` publish completes.
+The commands below target the documented release's exact package version, `0.4.0`. Exact version pinning keeps the installed package aligned with this README; if the registry reports that version as unavailable, verify publication before retrying.
 
 ```bash
 npm install --global codex-agent-view@0.4.0
@@ -153,15 +153,9 @@ codex-agent-view install
 
 After these two commands, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. In that task's `@` menu, choose **Codex Agent View → Show Agents** to open the live view; select the same skill whenever a closed view needs to be reopened.
 
-Or run the exact version without a global install:
+The supported `0.4.0` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward.
 
-```bash
-npx --yes codex-agent-view@0.4.0 install
-```
-
-The `npx` form is also an initial explicit-install path only. Routine use remains inside the Codex app afterward.
-
-The `0.2.0`, `0.2.1`, `0.3.0`, `0.3.1`, and `0.3.2` release evidence is preserved. `0.4.0` is a source candidate and has no public release evidence yet. See [Distribution](docs/distribution.md).
+The `0.2.0`, `0.2.1`, `0.3.0`, `0.3.1`, and `0.3.2` release evidence is preserved. Record `0.4.0` registry, tag, and artifact evidence only after observing each completed release step. See [Distribution](docs/distribution.md).
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 
