@@ -10,10 +10,10 @@ Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task�
 
 ### 빠른 시작: 설치 후에는 Codex 앱 안에서만 사용
 
-이 README는 exact `codex-agent-view@0.4.0` release를 설명한다. **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다. npm이 해당 version을 찾지 못하면 `0.4.0` registry publish가 완료됐는지 확인한 뒤 다시 시도한다.
+이 README는 exact `codex-agent-view@0.4.1` release를 설명한다. **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다. npm이 이 version을 찾지 못하면 `0.4.1` registry publish가 완료됐는지 확인한 뒤 다시 시도한다.
 
 ```bash
-npm install --global codex-agent-view@0.4.0
+npm install --global codex-agent-view@0.4.1
 codex-agent-view install
 ```
 
@@ -25,8 +25,10 @@ codex-agent-view install
 2. Codex 앱의 **Plugins** 화면에서 `Codex Agent View`가 설치·활성화됐는지 확인한다.
 3. Hook 검토 화면이 표시되면 `hooks/hooks.json`과 `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command를 확인하고 현재 definition을 직접 trust한다. 앱 버전이 hook 검토 UI를 제공하지 않을 때만 설치 과정의 일부로 interactive Codex CLI의 `/hooks`를 사용한다.
 4. 활성화와 hook 검토를 마친 뒤 Codex 앱에서 **새 task**를 만든다. 설치 전에 시작된 task의 과거 event는 재생되지 않는다.
-5. 새 task의 `@` 메뉴에서 **Codex Agent View**를 고르고 bundled **Show Agents** skill을 선택해 실행한다.
-6. Live 화면을 닫았다면 같은 `@` 메뉴에서 **Show Agents**를 다시 선택해 재오픈한다.
+5. 새 task의 `@` picker에서 bundled **Show Agents** skill 자체를 직접 선택한다.
+6. Live 화면을 닫았다면 같은 `@` picker에서 **Show Agents**를 다시 직접 선택해 재오픈한다.
+
+Plugin 카드의 **바로 사용하기** 버튼은 `Open @ and select the bundled Show Agents skill.`이라는 안내 text만 입력한다. 이 text 자체는 skill을 호출하지 않는다. 안내에 따라 `@` picker를 열고 bundled **Show Agents** skill 자체를 직접 선택한다. `$show-agents`는 Codex 앱 GUI의 지원 사용법이 아니다.
 
 Trust된 첫 hook이 도착하면 plugin sender가 로컬 backend를 내부적으로 준비하고 같은 event 전달을 재시도한다. 사용자는 task ID를 등록하거나 `start`, `status`, `doctor`를 실행할 필요가 없다. **Show Agents**는 healthy backend를 재사용하고 Codex 앱 안에서 live 화면 열기를 시도한다. 앱이 필요한 Browser capability를 제공하지 않거나 permission이 허용되지 않으면 private URL을 노출하는 대신 화면을 열 수 없다고 안내한다. Tokenized localhost URL은 대화에 노출하지 않으며 외부 browser도 정상 사용 흐름에 포함되지 않는다.
 
@@ -36,7 +38,7 @@ Trust된 첫 hook이 도착하면 plugin sender가 로컬 backend를 내부적�
 
 ### 현재 상태
 
-이 repository와 package의 version은 `0.4.0`이다. 다음 구성이 package에 포함되어 있다.
+이 repository와 package의 version은 `0.4.1`이다. 다음 구성이 package에 포함되어 있다.
 
 - 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
@@ -66,7 +68,9 @@ Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 `codex-agent-vie
 
 공개 `0.3.2`: 배포 시 npm version/`latest` `0.3.2`, `gitHead` `4f4f92dc872d9b782efe900cc1397bdccf7d2c8a`, shasum `2851544c75a0a5fb20a2865196ab54b566b373d8`, integrity `sha512-MPwFP3CjhehkIzyV3ja0/rWzLyK4tJI7jjsczKN16aXpKEr/dvtc/aljjqW/41zatZrQG32ccKKMJjYNyW6Tww==`, registry signature, 21 files, package size `46856 B`와 unpacked size `167060 B`를 확인했다. Annotated `v0.3.2` tag와 [GitHub Release v0.3.2](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.2)가 공개됐고 main/tag CI가 통과했다. 이 기기의 global `0.3.2` install은 plugin `installed: true`, `enabled: true`이며 registry artifact와 mismatch가 0이다. App-native thread snapshot에서는 worker activity 3개를 확인했다. Codex 내장 Browser의 live monitor 연결은 성공했지만 재설치 전에 열려 있던 앱 process의 follow-up subagent 3개에서는 hook event가 0건이었으므로 exact `0.3.2` live hook E2E 완료를 주장하지 않는다. 이 검증에는 앱 완전 재시작과 새 task가 필요하다.
 
-공개 `0.4.0`: npm `latest`/version, Apache-2.0 license, executable mapping, registry signature, 25 files, package size `52614 B`, unpacked size `189181 B`, shasum `cc379e593f4cafa5dd56f32e6741eab5ba3f4497`와 exact SRI를 확인했다. Registry tarball은 release tarball과 byte-identical이다. Exact tarball publish로 npm metadata에 `gitHead`가 없으므로 그 field를 통한 source 일치는 주장하지 않는다. Annotated `v0.4.0` tag는 release commit `11f7b0511a39c5f5a61cb6da7b91fb3b8e915c6b`을 가리키고 [GitHub Release v0.4.0](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.0), main/tag CI가 공개·성공했다. 이 기기에 public exact `0.4.0`을 다시 설치해 CLI/plugin version 일치, installed/enabled, hook wiring 9종과 실제 sessions 7개 event 수신을 확인했다. Show Agents Browser request는 재설치 중 계속 열려 있던 app process에서 `queued`였고 tab을 관찰하지 못했으므로 앱 완전 재시작/new task 전까지 exact visual-panel E2E 완료는 주장하지 않는다.
+공개 `0.4.0` release 당시 evidence: npm `latest`/version, Apache-2.0 license, executable mapping, registry signature, 25 files, package size `52614 B`, unpacked size `189181 B`, shasum `cc379e593f4cafa5dd56f32e6741eab5ba3f4497`와 exact SRI를 확인했다. Registry tarball은 release tarball과 byte-identical이다. Exact tarball publish로 npm metadata에 `gitHead`가 없으므로 그 field를 통한 source 일치는 주장하지 않는다. Annotated `v0.4.0` tag는 release commit `11f7b0511a39c5f5a61cb6da7b91fb3b8e915c6b`을 가리키고 [GitHub Release v0.4.0](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.0), main/tag CI가 공개·성공했다. 이 기기에 public exact `0.4.0`을 다시 설치해 CLI/plugin version 일치, installed/enabled, hook wiring 9종과 실제 sessions 7개 event 수신을 확인했다. Show Agents Browser request는 재설치 중 계속 열려 있던 app process에서 `queued`였고 tab을 관찰하지 못했으므로 앱 완전 재시작/new task 전까지 exact visual-panel E2E 완료는 주장하지 않는다.
+
+`0.4.0` known issue: manifest의 `defaultPrompt: ["Show Agents"]`는 평문 plugin-level text starter였다. 이 text는 implicit invocation이 disabled된 `show-agents` skill을 명시적으로 호출하지 않으므로 plugin 카드나 **바로 사용하기** 동작 자체를 skill 실행으로 취급한 안내는 잘못이었다. `0.4.1`은 이를 `Open @ and select the bundled Show Agents skill.`이라는 instructional starter로 교체했다. Starter는 여전히 호출이 아니라 안내이며, 일반 사용의 유일한 canonical 실행 경로는 새 task의 `@` picker에서 bundled **Show Agents** skill 자체를 직접 선택하는 것이다. `0.4.1` public registry나 exact app E2E evidence는 별도로 검증해 기록한 범위에서만 주장한다.
 
 ### 제품 경계
 
@@ -84,7 +88,7 @@ Codex Agent View는 historical audit이나 session replay 제품이 아니라 �
 
 ### npm, Codex 앱 live view, Plugins Directory의 역할
 
-- 공식 Codex 앱의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택하는 것이 canonical UX다. 별도 monitor 실행이나 task ID 등록이 필요 없다.
+- 공식 Codex 앱의 `@` picker에서 bundled **Show Agents** skill 자체를 직접 선택하는 것이 canonical UX다. 별도 monitor 실행이나 task ID 등록이 필요 없다.
 - npm은 plugin bundle, 내부 hook sender/runtime과 static UI를 사용자 machine에 배포하는 최초 설치 경로다.
 - Live view는 사용자가 앱 안에서 **Show Agents**를 선택했을 때만 열린다. 외부 website나 telemetry dashboard가 아니다.
 - 공개 plugin API는 앱 시작 시 no-prompt sidebar/panel/Browser tab 생성을 제공하지 않는다. 최초 live view 열기에는 앱 안 skill 선택이 한 번 필요하고, 열린 tab은 같은 관찰 window에서 자동 갱신·재연결한다.
@@ -96,12 +100,12 @@ Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`,
 
 이 절차는 위의 빠른 시작에서 설치와 활성화를 마친 뒤 **새 task**에서 수행한다. 별도 terminal이나 외부 browser는 사용하지 않는다.
 
-1. 새 task의 `@` 메뉴에서 **Codex Agent View**를 고르고 bundled **Show Agents** skill을 선택한다.
+1. 새 task의 `@` picker에서 bundled **Show Agents** skill 자체를 직접 선택한다.
 2. Skill은 trusted hook이 자동 준비한 healthy backend를 재사용하고, 아직 준비되지 않았다면 내부적으로 준비한 뒤 Codex 앱에서 live 화면 열기를 시도한다.
 3. Panel은 관찰한 task와 subagent의 privacy-minimized hook 상태를 표시한다. Prompt, preview, tool input/output, full workspace path와 internal thread ID는 기본 표시하지 않는다.
 4. 앱의 Browser capability 또는 permission을 사용할 수 없으면 private localhost URL을 노출하거나 외부 browser를 여는 대신 실패를 안내한다.
 
-오른쪽 live 화면을 닫았다면 같은 `@` 메뉴에서 **Show Agents**를 다시 선택해 재오픈한다. 열린 tab은 같은 관찰 window에서 자동 갱신하고 일시 단절 뒤 재연결한다.
+오른쪽 live 화면을 닫았다면 같은 `@` picker에서 bundled **Show Agents** skill 자체를 다시 직접 선택해 재오픈한다. 열린 tab은 같은 관찰 window에서 자동 갱신하고 일시 단절 뒤 재연결한다.
 
 ### 요구사항과 검증 범위
 
@@ -164,7 +168,7 @@ node bin/codex-agent-view.mjs install
 
 ### Maintainer·고급 진단 전용 CLI
 
-이 절은 package 개발자와 문제 보고를 위한 진단 참고 자료이며 일반 사용자 사용법이 아니다. 설치가 끝난 사용자는 Codex 앱의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택한다. 아래 명령과 localhost 주소를 정상 사용 순서에 넣거나 사용자에게 직접 관리하도록 요구하지 않는다.
+이 절은 package 개발자와 문제 보고를 위한 진단 참고 자료이며 일반 사용자 사용법이 아니다. 설치가 끝난 사용자는 Codex 앱의 `@` picker에서 bundled **Show Agents** skill 자체를 직접 선택한다. 아래 명령과 localhost 주소를 정상 사용 순서에 넣거나 사용자에게 직접 관리하도록 요구하지 않는다.
 
 Source checkout에서 local runtime을 별도로 검증해야 할 때만 다음처럼 실행할 수 있다.
 
@@ -194,18 +198,18 @@ Plugin enable/trust와 앱 재시작 뒤 생성되거나 재개되는 task는 tr
 
 ### npm 설치 명령 참고
 
-아래 명령은 이 README가 설명하는 release와 일치하는 exact `0.4.0` 설치 명령이다. Exact version 고정은 설치 package와 문서를 일치시키며, registry가 해당 version을 찾지 못하면 publish 완료 여부를 확인한 뒤 다시 시도한다.
+아래 명령은 이 release와 일치하는 exact `0.4.1` 설치 명령이다. npm이 이 version을 찾지 못하면 registry publish가 완료됐는지 확인한 뒤 다시 시도한다.
 
 ```bash
-npm install --global codex-agent-view@0.4.0
+npm install --global codex-agent-view@0.4.1
 codex-agent-view install
 ```
 
-이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화와 hook trust를 확인한 다음 새 task를 만든다. 첫 trusted hook이 backend 준비와 event 전달을 내부 처리하므로 사용자가 monitor CLI를 실행하지 않는다. 새 task의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택해 live 화면을 열며, 화면을 닫았으면 같은 skill을 다시 선택한다.
+이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화와 hook trust를 확인한 다음 새 task를 만든다. 첫 trusted hook이 backend 준비와 event 전달을 내부 처리하므로 사용자가 monitor CLI를 실행하지 않는다. 새 task의 `@` picker에서 bundled **Show Agents** skill 자체를 직접 선택해 live 화면을 열며, 화면을 닫았으면 같은 skill을 다시 선택한다.
 
-`0.4.0`에서 지원하는 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다.
+`0.4.1`에서 지원하는 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다.
 
-`0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` release evidence는 보존한다. 검증된 `0.4.0` registry, tag, CI, public install과 artifact evidence는 위의 현재 상태와 [docs/distribution.md](docs/distribution.md)에 기록했다.
+`0.2.0`부터 `0.4.0`까지의 release evidence는 보존한다. `0.4.1` public release evidence는 해당 registry, artifact 또는 app 검증이 완료된 뒤에만 [docs/distribution.md](docs/distribution.md)에 추가한다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
@@ -243,7 +247,7 @@ Source checkout을 직접 실행한 경우에만 같은 명령의 `node bin/code
 
 ### Maintainer troubleshooting
 
-이 절의 CLI 확인은 명시적인 문제 조사용이다. 정상 사용자는 Codex 앱의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택한다.
+이 절의 CLI 확인은 명시적인 문제 조사용이다. 정상 사용자는 Codex 앱의 `@` picker에서 bundled **Show Agents** skill 자체를 직접 선택한다.
 
 #### `status`가 runtime file 또는 connection error를 출력함
 
