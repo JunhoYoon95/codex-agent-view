@@ -62,6 +62,8 @@ Public `0.4.0` evidence at the time of that release: npm `latest`/version, Apach
 
 Known `0.4.0` issue: manifest `defaultPrompt: ["Show Agents"]` created a plain plugin-level text starter. That text did not explicitly invoke the `show-agents` skill, whose implicit invocation was disabled, so treating the plugin card or its Quick start action as skill execution was incorrect. Version `0.4.1` replaces it with the instructional starter `Open @ and select the bundled Show Agents skill.` The starter remains guidance rather than invocation; the only canonical routine-use execution path is direct selection of the bundled **Show Agents** skill in a new task's `@` picker. Public registry and exact app E2E evidence for `0.4.1` are claimed only where separately verified and recorded.
 
+Public `0.4.1`: npm `latest`/version, Apache-2.0 license, executable mapping, registry signature, 25 files, package size `53650 B`, unpacked size `193424 B`, shasum `ee2ae0b8b36016f5c57bade067027202b1508d1d`, and integrity `sha512-WC4f5MPmvpkXeKM+1BVAYqW4+hoaUrB4yQFoUYgc0pnjyY7hP1CdSR5NJ3QWmvJ6Ikmmb1d+58UL4hkKoyhm1Q==` were verified. The release tarball and registry tarball are byte-identical. npm metadata has no `gitHead` because the exact tarball was published, so source identity is not claimed through that field. The annotated `v0.4.1` tag points to commit `a1de67be5413fa38b8dd1b62f74353463f6e641e`; [GitHub Release v0.4.1](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.1), main CI run `30710490358`, and tag CI run `30710848474` are public and successful. This machine has matching CLI/plugin `0.4.1`, the plugin is installed/enabled, and all nine hooks are wired. The runtime was cleanly stopped while installation replaced it, so it currently reports `monitor_not_running`; persisted hook trust remains `unknown`. Because the Codex app process predates installation, direct **Show Agents** visual E2E remains unverified until a full app restart and a new task.
+
 ## Boundaries
 
 Codex Agent View is a live companion, not a historical audit or session-replay product. Bounded in-memory state and reset-on-restart semantics are intentional: they keep privacy and failure boundaries small. SQLite or persistent history is not a missing requirement. Consider it only as a separate explicit opt-in feature if demonstrated user demand justifies retention, migration, deletion, and privacy costs.
@@ -161,7 +163,7 @@ After these two commands, fully reopen the Codex app, verify installation, enabl
 
 The supported `0.4.1` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward.
 
-The `0.2.0` through `0.4.0` release evidence is preserved. Public release evidence for `0.4.1` is added to [Distribution](docs/distribution.md) only after the corresponding registry, artifact, or app verification is complete.
+The `0.2.0` through `0.4.1` release evidence is preserved. Verified public `0.4.1` evidence and the remaining app-restart/direct-skill visual E2E boundary are recorded in [Distribution](docs/distribution.md).
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 

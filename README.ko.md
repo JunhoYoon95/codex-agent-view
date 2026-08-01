@@ -72,6 +72,8 @@ Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 `codex-agent-vie
 
 `0.4.0` known issue: manifest의 `defaultPrompt: ["Show Agents"]`는 평문 plugin-level text starter였다. 이 text는 implicit invocation이 disabled된 `show-agents` skill을 명시적으로 호출하지 않으므로 plugin 카드나 **바로 사용하기** 동작 자체를 skill 실행으로 취급한 안내는 잘못이었다. `0.4.1`은 이를 `Open @ and select the bundled Show Agents skill.`이라는 instructional starter로 교체했다. Starter는 여전히 호출이 아니라 안내이며, 일반 사용의 유일한 canonical 실행 경로는 새 task의 `@` picker에서 bundled **Show Agents** skill 자체를 직접 선택하는 것이다. `0.4.1` public registry나 exact app E2E evidence는 별도로 검증해 기록한 범위에서만 주장한다.
 
+공개 `0.4.1`: npm `latest`/version, Apache-2.0 license, executable mapping, registry signature, 25 files, package size `53650 B`, unpacked size `193424 B`, shasum `ee2ae0b8b36016f5c57bade067027202b1508d1d`, integrity `sha512-WC4f5MPmvpkXeKM+1BVAYqW4+hoaUrB4yQFoUYgc0pnjyY7hP1CdSR5NJ3QWmvJ6Ikmmb1d+58UL4hkKoyhm1Q==`를 확인했다. Release tarball과 registry tarball은 byte-identical이다. Exact tarball publish로 npm metadata에 `gitHead`가 없으므로 그 field를 통한 source 일치는 주장하지 않는다. Annotated `v0.4.1` tag는 commit `a1de67be5413fa38b8dd1b62f74353463f6e641e`을 가리키며 [GitHub Release v0.4.1](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.1), main CI run `30710490358`, tag CI run `30710848474`가 공개·성공했다. 이 기기의 CLI/plugin은 `0.4.1`로 일치하고 plugin installed/enabled 및 hook wiring 9종을 확인했다. Runtime은 install 교체 중 정상 종료돼 현재 `monitor_not_running`이고 persisted hook trust는 `unknown`이다. Codex 앱 process가 설치 전부터 열려 있었으므로 앱 완전 재시작/new task 전까지 direct **Show Agents** visual E2E는 미확인이다.
+
 ### 제품 경계
 
 Codex Agent View는 historical audit이나 session replay 제품이 아니라 현재 활동을 보여주는 live companion이다. Bounded in-memory state와 monitor 재시작 시 reset은 privacy와 단순한 failure boundary를 위한 의도된 완성 설계다. SQLite/영구 history는 누락된 요구사항이 아니다. 실제 사용자 요구가 입증될 때에만 retention, migration, deletion, privacy 비용을 별도 검토하는 명시적 opt-in 기능 후보로 취급한다.
@@ -209,7 +211,7 @@ codex-agent-view install
 
 `0.4.1`에서 지원하는 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다.
 
-`0.2.0`부터 `0.4.0`까지의 release evidence는 보존한다. `0.4.1` public release evidence는 해당 registry, artifact 또는 app 검증이 완료된 뒤에만 [docs/distribution.md](docs/distribution.md)에 추가한다.
+`0.2.0`부터 `0.4.1`까지의 release evidence는 보존한다. 검증된 public `0.4.1` evidence와 남은 app restart/direct-skill visual E2E 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 

@@ -2,7 +2,7 @@
 
 조사일: 2026-08-01
 
-이 문서는 Codex Agent View `0.4.1` release candidate의 Universal Plugins Directory 제출 경계와 준비 상태를 정리한다. Public npm `latest`는 아직 `0.4.0`이고 `0.2.0`부터 `0.4.0`까지의 public release evidence는 candidate와 구분해 보존한다. `0.4.1` public release, 실제 Directory 제출·검색 노출은 주장하지 않는다.
+이 문서는 public Codex Agent View `0.4.1`의 Universal Plugins Directory 제출 경계와 준비 상태를 정리한다. Public npm `latest`/version은 `0.4.1`이고 `0.2.0`부터 `0.4.0`까지의 public release evidence는 historical record로 보존한다. 실제 Directory 제출·검색 노출은 주장하지 않는다.
 
 ## 핵심 결론
 
@@ -10,16 +10,18 @@
 - GitHub marketplace 등록이나 npm publish만으로 Universal Directory에 노출되지 않는다.
 - 공식 portal은 `Skills only`와 MCP-backed 제출을 지원한다.
 - Public `0.3.2` package에는 genuine `skills/codex-agent-view/SKILL.md`가 있고 manifest가 `skills: "./skills/"`로 bundle한다.
-- `0.4.1` candidate package는 기존 app-native task snapshot skill과 explicit live-panel **Show Agents** skill, 총 2개를 bundle한다. 둘 다 Directory 통과용 빈 형식 skill이 아니다.
+- Public `0.4.1` package는 기존 app-native task snapshot skill과 explicit live-panel **Show Agents** skill, 총 2개를 bundle한다. 둘 다 Directory 통과용 빈 형식 skill이 아니다.
 - 공식 공개 문서는 **skills-only submission에 local command hooks를 함께 bundle한 경우의 eligibility/review 규칙을 명시하지 않는다.** 따라서 “skills-only + hooks” 제출 가능 여부는 여전히 **미확인**이며 portal 또는 OpenAI 확인이 필요하다.
 - MCP 경로는 production HTTPS endpoint를 요구하므로 external server를 두지 않는 현재 제품 방향과 맞지 않는다.
 - Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했다. Historical `codex-agent-view@0.3.2`는 registry metadata/digest/signature, annotated tag·public GitHub Release, main/tag CI와 this-device exact global install의 plugin installed/enabled 및 registry/install artifact match를 확인했다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
 
 Bounded in-memory local architecture와 package surface를 구현했다. Historical `0.2.1` 공식 앱 E2E에서 핵심 hook lifecycle과 실제 `PermissionRequest`를 확인했고, 후속 `0.3.0` source E2E에서는 앱 내장 thread tools로 `kyurasi-next-supabase` active task의 workspace/title/description/explicit `inProgress`/latest commentary/`subAgentActivity`를 확인했으며 optional browser monitor에서 실제 `SessionEnd`도 관찰했다. 아래 항목은 별도의 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 blocker가 아니다.
 
-`0.4.1` candidate의 primary flow는 최초 npm 설치 뒤 공식 Codex 앱의 새 task에서 `@` picker를 열고 bundled **Show Agents** skill 자체를 직접 선택하는 것이다. 이 skill은 app-native text snapshot query를 수행한다고 주장하지 않는다. Healthy local monitor를 재사용하거나 필요 시 내부적으로 준비한 뒤 Codex 앱의 live panel 열기를 시도한다. 화면을 닫았으면 같은 `@` picker에서 skill 자체를 다시 직접 선택한다. Plugin 카드의 **바로 사용하기**/Quick start는 `Open @ and select the bundled Show Agents skill.`이라는 안내 text만 붙이며 skill을 호출하지 않는다. `$show-agents`도 Codex 앱 GUI의 지원 진입점이 아니다. 앱의 Browser capability 또는 permission을 사용할 수 없으면 private URL을 노출하거나 외부 browser를 여는 대신 실패를 안내한다. npm/terminal은 최초 설치, 명시적 제거와 maintainer 진단 경계이며 외부 browser는 정상 사용자 흐름이 아니다. 별도로 실행한 App Server는 앱 내장 tools와 다른 process이며 live source로 취급하지 않는다.
+`0.4.1`의 primary flow는 최초 npm 설치 뒤 공식 Codex 앱의 새 task에서 `@` picker를 열고 bundled **Show Agents** skill 자체를 직접 선택하는 것이다. 이 skill은 app-native text snapshot query를 수행한다고 주장하지 않는다. Healthy local monitor를 재사용하거나 필요 시 내부적으로 준비한 뒤 Codex 앱의 live panel 열기를 시도한다. 화면을 닫았으면 같은 `@` picker에서 skill 자체를 다시 직접 선택한다. Plugin 카드의 **바로 사용하기**/Quick start는 `Open @ and select the bundled Show Agents skill.`이라는 안내 text만 붙이며 skill을 호출하지 않는다. `$show-agents`도 Codex 앱 GUI의 지원 진입점이 아니다. 앱의 Browser capability 또는 permission을 사용할 수 없으면 private URL을 노출하거나 외부 browser를 여는 대신 실패를 안내한다. npm/terminal은 최초 설치, 명시적 제거와 maintainer 진단 경계이며 외부 browser는 정상 사용자 흐름이 아니다. 별도로 실행한 App Server는 앱 내장 tools와 다른 process이며 live source로 취급하지 않는다.
 
-Public `0.4.0`의 `defaultPrompt: ["Show Agents"]`는 plain plugin-level text starter였고, implicit invocation이 disabled된 `show-agents` skill을 명시적으로 호출하지 않았다. `0.4.1` candidate는 이를 `Open @ and select the bundled Show Agents skill.`이라는 instructional starter로 교체한다. 이 starter도 invocation이 아니라 direct skill 선택 안내다. Publish 뒤 public exact artifact를 재설치하고 앱 완전 재시작/new task에서 직접 skill 선택과 live panel을 관찰하기 전에는 이 수정의 external release acceptance를 완료로 기록하지 않는다.
+Public `0.4.0`의 `defaultPrompt: ["Show Agents"]`는 plain plugin-level text starter였고, implicit invocation이 disabled된 `show-agents` skill을 명시적으로 호출하지 않았다. Public `0.4.1`은 이를 `Open @ and select the bundled Show Agents skill.`이라는 instructional starter로 교체했다. 이 starter도 invocation이 아니라 direct skill 선택 안내다. Public exact artifact 재설치까지 확인했지만 앱 process가 설치 전부터 열려 있었으므로, 앱 완전 재시작/new task에서 직접 skill 선택과 live panel을 관찰하기 전에는 visual E2E 완료를 기록하지 않는다.
+
+Public `0.4.1`은 npm `latest`/version, Apache-2.0, bin mapping, shasum `ee2ae0b8b36016f5c57bade067027202b1508d1d`, integrity `sha512-WC4f5MPmvpkXeKM+1BVAYqW4+hoaUrB4yQFoUYgc0pnjyY7hP1CdSR5NJ3QWmvJ6Ikmmb1d+58UL4hkKoyhm1Q==`, registry signature, 25 files, package `53650 B`, unpacked `193424 B`를 확인했다. Release/registry tarball은 byte-identical이고 annotated `v0.4.1`은 commit `a1de67be5413fa38b8dd1b62f74353463f6e641e`을 가리킨다. [GitHub Release v0.4.1](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.1), main CI `30710490358`, tag CI `30710848474`가 공개·성공했다. 이 기기의 CLI/plugin `0.4.1`, installed/enabled와 hook wiring 9종을 확인했다. Runtime은 install 교체 중 정상 종료돼 `monitor_not_running`, trust는 `unknown`이며 direct Show Agents visual E2E는 미확인이다. 이 npm/GitHub release evidence는 Universal Directory 제출·승인을 뜻하지 않는다.
 
 Public exact `0.3.2`의 app-native thread snapshot에서는 worker activity 3개를 확인했다. Codex 내장 Browser의 live monitor 연결은 성공했지만 재설치 전에 열려 있던 앱 process의 follow-up subagent 3개가 hook event를 0건 전달했으므로 live hook E2E는 앱 full restart/new-task 뒤 다시 확인해야 한다.
 
@@ -51,7 +53,7 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 
 ## 제출 유형과 현재 적합성
 
-| 공식 또는 후보 유형 | 문서상 상태 | Codex Agent View `0.4.1` candidate package |
+| 공식 또는 후보 유형 | 문서상 상태 | Codex Agent View `0.4.1` public package |
 | --- | --- | --- |
 | Skills only | 공식 지원 | genuine bundled skill 2개 존재. Local hooks 동시 bundle eligibility는 미확인 |
 | With MCP / MCP-only | 공식 지원 | production HTTPS MCP endpoint가 없어 현재 부적합 |
@@ -66,7 +68,7 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 2. Review environment에서 local `codex-agent-view` executable과 hook trust flow를 어떻게 fixture로 검증하는가?
 3. Local-only monitor처럼 MCP custom UI가 아닌 UI가 listing review에서 어떻게 취급되는가?
 
-## `0.4.1` candidate package에 준비된 제출 자료
+## Public `0.4.1` package에 준비된 제출 자료
 
 ### Bundled skills
 
@@ -174,9 +176,11 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [x] Annotated `v0.3.2` tag·GitHub Release, main/tag CI, this-device exact global install의 plugin installed/enabled와 registry artifact mismatch 0을 확인했다.
 - [x] App-native thread snapshot에서 worker activity 3개를 확인했다.
 - [ ] Public exact `0.3.2` live hook E2E는 앱 full restart/new-task 뒤 확인한다.
-- [x] `0.4.0`의 plain `defaultPrompt`가 skill invocation이 아니었던 결함을 기록하고 `0.4.1` candidate에서 instructional starter로 교체했다.
+- [x] `0.4.0`의 plain `defaultPrompt`가 skill invocation이 아니었던 결함을 기록하고 `0.4.1`에서 instructional starter로 교체했다.
 - [x] `0.4.1` 정상 사용 test entry를 새 task의 `@` picker에서 bundled **Show Agents** skill 자체를 직접 선택하는 흐름으로 고정했다.
-- [ ] Public exact `0.4.1` artifact와 앱 완전 재시작/new task direct-skill live panel E2E는 publish 뒤 검증한다.
+- [x] Public exact `0.4.1` registry/release metadata, digest/signature, tarball byte 일치, tag/GitHub Release와 main/tag CI를 확인했다.
+- [x] This-device CLI/plugin `0.4.1`, installed/enabled와 hook wiring 9종을 확인했다. Runtime은 `monitor_not_running`, trust는 `unknown`이다.
+- [ ] 앱 완전 재시작/new task direct-skill live panel E2E는 아직 미확인이다.
 
 별도 npm provenance attestation은 선택 사항이며 `0.2.0`에는 없다. Registry signature와 source/artifact 일치 검증을 attestation 완료로 표현하지 않는다.
 
