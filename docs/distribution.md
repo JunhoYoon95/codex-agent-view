@@ -4,7 +4,7 @@
 
 릴리스 증거 갱신일: 2026-08-02
 
-이 문서는 public Codex Agent View `0.4.3`과 Codex plugin의 배포 경계를 정리한다. Public npm `latest`/version은 `0.4.3`이며 `0.2.0`부터 `0.4.3`까지의 public evidence를 보존한다. `0.4.3`의 npm/install/migration E2E는 완료됐지만 annotated tag와 GitHub Release는 아직 생성 전이라 pending이다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
+이 문서는 public Codex Agent View `0.4.3`과 Codex plugin의 배포 경계를 정리한다. Public npm `latest`/version은 `0.4.3`이며 `0.2.0`부터 `0.4.3`까지의 public evidence를 보존한다. `0.4.3`의 npm/install/migration E2E, annotated tag, GitHub Release와 final main/tag CI가 완료됐다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
 
 ## 현재 상태
 
@@ -17,9 +17,9 @@
 - `postinstall`과 다른 npm lifecycle installer는 없다. npm package를 받는 것만으로 Codex 설정을 바꾸지 않는다.
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
-- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Current public exact `codex-agent-view@0.4.2`의 this-device global install, plugin installed/enabled, hook wiring 9종, installed artifact match와 official Codex in-app Browser visual E2E를 확인했다.
+- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Current public exact `codex-agent-view@0.4.3`의 this-device global install, plugin installed/enabled, hook wiring 9종, installed artifact match, `doctor` event observation과 official Codex migration E2E를 확인했다.
 
-### Public `0.4.3` release evidence와 남은 tag 경계
+### Public `0.4.3` release evidence
 
 Public `0.4.3`은 `0.4.2`에서 도입한 exact `$show-agents` starter를 유지한다. Plugin 카드의 **지금 사용해보기**가 이 starter로 bundled **Show Agents** skill을 명시 호출하고, 닫힌 panel은 Codex 앱 task에서 `@codex-agent-view $show-agents`를 입력해 같은 skill을 다시 호출한다. 둘 다 terminal이나 외부 browser가 아닌 공식 Codex 앱 안의 실행 경로다.
 
@@ -39,7 +39,8 @@ Upgrade install은 기존 viewer credential이 있으면 그대로 보존한다.
 | Artifact comparison | Local release tarball과 registry tarball byte-identical; this-device installed artifact 일치 |
 | This-device install | Exact global `0.4.3`, plugin installed/enabled, hook wiring 9종, `doctor` event observed |
 | Official app migration E2E | Connected `0.4.2` legacy tab → install seeds viewer token → old monitor shutdown 동안 retrying/no auth error → `0.4.3` hook sender auto-start → same tab connected/no auth error/workspace+agent rendered |
-| Annotated tag / GitHub Release | 아직 생성 전, pending |
+| Annotated tag / GitHub Release | `v0.4.3` → `dea9f39890387ed509cfa0bb511c8167abe11148` / [public, non-draft, non-prerelease](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.3) |
+| Final docs/tag CI | main `30714110050` / tag `30714144940`, 성공 |
 
 ### Public `0.4.2` registry evidence
 
@@ -418,7 +419,7 @@ codex plugin marketplace remove codex-agent-view
 - [x] Public exact `0.4.2` this-device global install, plugin installed/enabled, hook wiring 9종, installed artifact match와 official Codex in-app Browser visual E2E 확인
 - [x] Public `0.4.3` npm publish, commits/main CI, metadata/signature/digest와 local release↔registry tarball byte 일치
 - [x] Public exact `0.4.3` this-device install/artifact/plugin/hooks/doctor 및 official Codex legacy-tab migration E2E
-- [ ] Annotated `v0.4.3` tag와 GitHub Release 생성·공개
+- [x] Annotated `v0.4.3` tag, public non-draft/non-prerelease GitHub Release와 final main/tag CI 확인
 - [ ] Opt-in capture가 존재하는 경우의 보존·별도 정리 경로 확인
 
 Historical `0.2.0` public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest` fixture event가 status/UI에 반영됐고 search/filter가 동작했으며 browser console error가 없었다. 별도의 `0.2.1` 공식 앱 E2E에서는 실제 `PermissionRequest` hook과 read-only waiting 표시를 포함한 위 8종 event를 확인했다.
@@ -445,7 +446,7 @@ Historical `0.2.0` public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `P
 - [ ] Public exact `0.4.1` direct **Show Agents** visual E2E는 app restart/new task 뒤 검증해야 한다.
 - [x] Current public `0.4.2`: registry metadata/signature, pushed commits, main CI Node.js 18/20/22, release/registry tarball byte 일치, annotated tag/GitHub Release, this-device exact install/artifact match, plugin installed/enabled, hook wiring 9종과 official Codex in-app Browser visual E2E를 확인했다.
 - [x] Current public `0.4.3`: npm/CI/artifact/this-device install과 persistent viewer credential migration/restart reconnect official app E2E를 확인했다.
-- [ ] Annotated `v0.4.3` tag와 GitHub Release는 pending이다.
+- [x] Annotated `v0.4.3` tag, GitHub Release와 final main/tag CI를 확인했다.
 - [ ] npm-backed marketplace catalog를 제공한다면 package, version range, registry와 authentication policy를 확정한다.
 - [x] Historical `0.2.1` 공식 앱에서 plugin installed/enabled와 새 task 핵심 lifecycle/permission 및 task ID 등록 없는 자동 표시를 실제 사용자 환경에서 검증했다.
 - [x] 후속 `0.3.0` source에서 실제 `SessionEnd`를 독립 검증했다.
