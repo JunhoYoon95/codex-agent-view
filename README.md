@@ -6,6 +6,35 @@ Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task�
 
 ## 한국어 사용법
 
+### 빠른 시작: 설치 후에는 Codex 앱 안에서만 사용
+
+현재 공개 버전은 `codex-agent-view@0.3.0`이다. Universal Plugins Directory 검색 등록은 아직 완료되지 않았으므로 **최초 설치만** 일반 터미널에서 다음 두 명령으로 진행한다.
+
+```bash
+npm install --global codex-agent-view@0.3.0
+codex-agent-view install
+```
+
+첫 번째 명령은 npm package를 설치하고, 두 번째 명령은 그 package를 Codex의 local plugin으로 명시적으로 등록한다. `npm install`만으로는 Codex 설정을 바꾸지 않으며 이 package에는 설정을 몰래 수정하는 `postinstall` script가 없다.
+
+설치 후에는 다음 순서만 따르면 된다.
+
+1. 설치 전에 Codex 앱이 열려 있었다면 앱을 완전히 종료한 뒤 다시 연다.
+2. Codex 앱의 **Plugins** 화면에서 `Codex Agent View`가 설치·활성화됐는지 확인한다.
+3. Hook 검토 화면이 표시되면 `hooks/hooks.json`과 `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command를 확인하고 현재 definition을 직접 trust한다. 앱 버전이 hook 검토 UI를 제공하지 않을 때만 설치 과정의 일부로 interactive Codex CLI의 `/hooks`를 사용한다.
+4. 활성화와 hook 검토를 마친 뒤 Codex 앱에서 **새 task**를 만든다. 설치 전에 시작된 task의 과거 event는 재생되지 않는다.
+5. 새 task의 `@` 메뉴에서 `codex-agent-view`를 선택하고 다음처럼 요청한다.
+
+   > 현재 실행 중인 task와 subagent 상태를 보여줘.
+
+6. Hook 단위의 live 화면이 필요할 때는 같은 Codex 앱 task에서 다음처럼 요청한다.
+
+   > Codex Agent View live 화면을 앱 안에서 열어줘.
+
+Plugin은 live 화면 요청 시 healthy local monitor를 내부적으로 재사용하거나 필요할 때 시작하고, 결과를 **Codex 내장 Browser**에서 연다. 일반 사용자는 `start`, `status`, `doctor`를 실행하거나 localhost 주소와 token을 복사할 필요가 없다. 외부 browser도 정상 사용 흐름에 포함되지 않는다.
+
+요약하면 설치는 터미널에서 한 번, 조회·상태 확인·live 화면 열기와 이후 사용은 Codex 앱 안에서 수행한다.
+
 ### 현재 상태
 
 현재 source와 public npm `latest`는 `0.3.0`이다. 다음 구성이 공개 package에 포함되어 있다.
@@ -46,24 +75,26 @@ Codex Agent View는 historical audit이나 session replay 제품이 아니라 �
 
 별도로 실행한 Codex `0.146` App Server의 `thread/list` fallback도 실제 확인했지만 현재 root/subagent가 모두 `notLoaded`로 나타나 공식 앱의 live running/completed 상태를 공유하지 않았다. Persisted parent ID, alias, depth 보강은 가능했지만 live 판별에는 채택하지 않았다. `0.3.0`의 primary snapshot은 이 별도 server가 아니라 현재 공식 앱이 직접 제공하는 내장 thread tools를 사용한다.
 
-### npm, local browser UI, Plugins Directory가 각각 필요한 이유
+### npm, Codex 앱 live view, Plugins Directory의 역할
 
 - 공식 Codex 앱에서 plugin에게 `Show active tasks`라고 요청하는 것이 `0.3.0`의 primary UX다. 별도 monitor 실행이나 task ID 등록이 필요 없다.
-- npm은 plugin bundle과 optional local executable, hook sender, runtime, static UI를 사용자 machine에 배포하는 fallback 경로다.
-- Codex in-app Browser는 명시적으로 live view를 요청했을 때만 `127.0.0.1` monitor를 보여준다. 외부 website나 telemetry dashboard가 아니다.
+- npm은 plugin bundle, 내부 hook sender/runtime과 static UI를 사용자 machine에 배포하는 최초 설치 경로다.
+- Live view는 사용자가 앱 안에서 명시적으로 요청했을 때만 Codex 내장 Browser에 열린다. 외부 website나 telemetry dashboard가 아니다.
 - Universal Plugins Directory는 npm의 대체재가 아니다. 공개 directory의 in-app custom UI 경로는 public HTTPS MCP server와 domain verification이 필요해 local-only/no-external-server 원칙과 충돌한다. 현재는 별도의 listing/skills 제출 가능성만 검토하며, 심사·publish 전에는 Codex plugin 검색으로 설치할 수 있다고 안내하지 않는다.
 
 Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`, `stopped_without_start`, 빈 상태는 그대로 해석해야 한다. 빈 session 목록은 “이 monitor가 event를 관찰하지 못함”이며 “실행 중인 task가 없음”의 증거가 아니다.
 
 ### 공식 Codex 앱에서 사용 — 권장
 
-1. Codex 앱에서 Codex Agent View plugin을 선택한다.
+이 절차는 위의 빠른 시작에서 설치와 활성화를 마친 뒤 **새 task**에서 수행한다. 별도 terminal이나 외부 browser는 사용하지 않는다.
+
+1. 새 task의 `@` 메뉴에서 `codex-agent-view`를 선택한다.
 2. `Show active tasks` 또는 “현재 active task와 subagent를 보여줘”라고 요청한다.
 3. Plugin은 여러 workspace의 running/active task와 explicit `idle + hasUnreadTurn` task를 조회한다. 후자는 별도 `완료/확인 대기` 그룹에 표시하되 완료·성공으로 단정하지 않는다.
 4. Workspace basename, 표시용 title, explicit status, 최신 explicit agent commentary와 `subAgentActivity`만 간결하게 보여준다.
 5. Prompt, preview, tool input/output, full workspace path와 internal thread ID는 기본 표시하지 않는다.
 
-Live hook detail이 필요할 때만 “Open the live Codex Agent View in the built-in Browser”라고 요청한다. Plugin은 healthy monitor를 재사용하며 tokenized localhost URL을 대화에 노출하지 않는다.
+Live hook detail이 필요할 때만 앱 안에서 “Open the live Codex Agent View in the built-in Browser”라고 요청한다. Plugin은 healthy monitor를 내부적으로 재사용하거나 시작하며 tokenized localhost URL을 대화에 노출하지 않는다.
 
 ### 요구사항과 검증 범위
 
@@ -124,19 +155,17 @@ node bin/codex-agent-view.mjs install
 
 `/hooks`는 CLI TUI command이며 `codex /hooks`라는 shell command가 아니다. Hook definition이 바뀌면 hash도 바뀌므로 다시 검토한다. 일반 설치에서 trust-bypass option을 사용하지 않는다.
 
-### 선택적 live monitor 실행과 상태 확인
+### Maintainer·고급 진단 전용 CLI
 
-앱 내 `Show active tasks` snapshot이 기본이며 monitor는 필요하지 않다. 사용자가 live hook 화면을 명시적으로 요청했을 때만 foreground monitor를 실행한다. 권장 명령은 다음과 같다.
+이 절은 package 개발자와 문제 보고를 위한 진단 참고 자료이며 일반 사용자 사용법이 아니다. 설치가 끝난 사용자는 Codex 앱에서 snapshot이나 live 화면을 요청해야 한다. 아래 명령과 localhost 주소를 정상 사용 순서에 넣거나 사용자에게 직접 관리하도록 요구하지 않는다.
+
+Source checkout에서 local runtime을 별도로 검증해야 할 때만 다음처럼 실행할 수 있다.
 
 ```bash
 node bin/codex-agent-view.mjs start --no-open
 ```
 
-기본 주소는 `127.0.0.1:43127`이다. 현재 `start`와 `start --no-open`은 모두 URL만 출력하며 운영체제의 외부 browser를 자동으로 열지 않는다. `--no-open`은 설치된 skill과 일치하는 명시적 권장형이다. 외부 browser 열기는 사용자가 명시적으로 원할 때만 다음처럼 실행한다.
-
-```bash
-node bin/codex-agent-view.mjs start --open
-```
+Runtime은 loopback interface에만 bind된다. `--no-open`은 운영체제의 외부 browser를 열지 않는 진단용 형태다. 출력되는 tokenized URL은 비밀로 취급하고 공유하거나 문서·issue에 붙이지 않는다.
 
 다른 terminal에서 상태를 확인한다.
 
@@ -156,26 +185,24 @@ Monitor가 꺼져 있어도 hook sender는 fail-open으로 끝나 Codex task를 
 
 Monitor가 실행 중이고 plugin enable/trust가 끝난 뒤 생성되거나 재개되는 task는 hook이 도착하면 task ID를 미리 등록하지 않아도 자동으로 목록에 나타난다. UI 검색은 이렇게 자동 수신된 목록을 거르는 선택적 filter일 뿐이며, task 추적을 시작하거나 ID를 등록하는 기능이 아니다. Plugin 설치·trust 전이나 monitor downtime에 이미 지나간 event는 재생되지 않는다.
 
-### npm에서 설치
+### npm 설치 명령 참고
 
 아래 명령은 현재 public `latest`인 exact `0.3.0`을 설치한다.
 
 ```bash
 npm install --global codex-agent-view@0.3.0
 codex-agent-view install
-codex-agent-view doctor
 ```
 
-설치 뒤 monitor 시작은 필수가 아니다. 앱 내 snapshot을 먼저 사용하고, live hook 화면을 명시적으로 요청했을 때만 `codex-agent-view start --no-open`을 실행한다.
+이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화를 확인한 다음, 새 task에서 `@codex-agent-view`를 선택한다. Monitor 시작과 상태 조회는 plugin이 앱 안의 요청에 맞춰 처리하므로 사용자가 CLI를 실행하지 않는다.
 
 Global install 없이 exact version을 일회성으로 실행할 수도 있다.
 
 ```bash
-npx --yes codex-agent-view@0.3.0 doctor
 npx --yes codex-agent-view@0.3.0 install
 ```
 
-Global install 없이 live monitor까지 명시적으로 요청한 경우에만 `npx --yes codex-agent-view@0.3.0 start --no-open`을 추가로 실행한다.
+`npx` 경로도 explicit `install`을 실행하는 최초 설치 방법일 뿐이다. 이후 사용은 동일하게 Codex 앱 안에서 진행한다.
 
 `0.2.0`/`0.2.1` evidence는 historical record로 보존한다. Public exact `0.3.0`은 registry metadata/signature, tag/release, 이 기기 global reinstall과 artifact comparison을 통과했고 실제 hook, workspace label, permission/tool lifecycle 수신을 확인했다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
 
@@ -193,10 +220,9 @@ npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` c
 
 ### 제거와 복구
 
-Public npm/global 설치를 제거할 때는 가능하면 monitor를 `Ctrl+C`로 먼저 종료한 뒤 다음을 실행한다.
+제거는 최초 설치와 마찬가지로 terminal을 사용하는 명시적 lifecycle 작업이다. Maintainer 진단용 foreground monitor를 따로 실행 중인 경우에만 먼저 `Ctrl+C`로 종료하고 다음을 실행한다.
 
 ```bash
-codex-agent-view doctor --json
 codex-agent-view uninstall
 ```
 
@@ -210,7 +236,9 @@ Source checkout을 직접 실행한 경우에만 같은 명령의 `node bin/code
 
 별도 `PLUGIN_DATA`, `CODEX_AGENT_VIEW_CAPTURE_DIR`, project working directory에 만든 opt-in diagnostic capture는 runtime directory 밖에 있을 수 있다. 정확한 위치를 검토해 별도로 정리하고 broad Codex/home directory를 삭제하지 않는다.
 
-### Troubleshooting
+### Maintainer troubleshooting
+
+이 절의 CLI 확인은 명시적인 문제 조사용이다. 정상 사용자는 Codex 앱 안에서 plugin에게 상태 확인을 요청한다.
 
 #### `status`가 runtime file 또는 connection error를 출력함
 
@@ -218,7 +246,7 @@ Source checkout을 직접 실행한 경우에만 같은 명령의 `node bin/code
 node bin/codex-agent-view.mjs doctor --json
 ```
 
-Monitor가 실행 중인지, stale runtime file인지, runtime directory가 예상한 위치인지 확인한다. Monitor가 실행되지 않았다면 사용자가 live 화면을 명시적으로 요청했을 때만 `start --no-open`으로 시작한다. 현재 plain `start`도 외부 browser를 자동으로 열지 않으며 외부 browser는 `--open`을 명시한 경우에만 열린다.
+Monitor가 실행 중인지, stale runtime file인지, runtime directory가 예상한 위치인지 확인한다. 진단 과정에서 runtime을 직접 시작해야 한다면 외부 browser를 열지 않는 `start --no-open`만 사용한다.
 
 #### UI에 task/subagent가 없음
 
@@ -255,6 +283,35 @@ Codex Agent View is a read-only companion plugin that shows privacy-minimized ac
 
 > This is an unofficial community project. It is not an OpenAI product, affiliate, or officially supported project.
 
+### Quick start: install once, then stay inside the Codex app
+
+The current public version is `codex-agent-view@0.3.0`. Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
+
+```bash
+npm install --global codex-agent-view@0.3.0
+codex-agent-view install
+```
+
+The first command installs the npm package. The second explicitly registers that package as a local Codex plugin. `npm install` alone does not change Codex settings, and the package has no `postinstall` script that silently modifies them.
+
+After installation:
+
+1. If the Codex app was open during installation, quit it completely and reopen it.
+2. In the Codex app's **Plugins** screen, confirm that `Codex Agent View` is installed and enabled.
+3. If a hook-review screen is shown, inspect `hooks/hooks.json` and the `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command, then explicitly trust the current definition. Use interactive Codex CLI `/hooks` only as part of installation when the app version does not expose hook review.
+4. After enablement and hook review, create a **new task** in the Codex app. Events that occurred before installation are not replayed.
+5. In the new task, open the `@` menu, select `codex-agent-view`, and ask:
+
+   > Show the currently active tasks and subagents.
+
+6. For hook-level live detail, ask in that same Codex app task:
+
+   > Open the Codex Agent View live view inside the app.
+
+For a live-view request, the plugin internally reuses a healthy local monitor or starts one when needed, then opens it in the **Codex built-in Browser**. Normal users do not run `start`, `status`, or `doctor`, copy localhost URLs or tokens, or manage an external browser.
+
+In short: install once in a terminal; perform snapshot queries, status checks, live-view opening, and all routine use inside the Codex app.
+
 ### Status
 
 The current source and public npm `latest` are `0.3.0`. The published package includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, plus privacy-minimized hooks, a bounded in-memory reducer, an optional token-authenticated `127.0.0.1` dashboard, and lifecycle CLI commands.
@@ -286,22 +343,24 @@ Codex Agent View is a live companion, not a historical audit or session-replay p
 
 A separately launched Codex `0.146` App Server `thread/list` fallback was also tested. It reported both the current root and subagents as `notLoaded`, so it did not share the official app's live running/completed state. That separate process is not the same as the built-in thread tools exposed directly by the current official app; `0.3.0` uses the latter for its primary snapshot.
 
-### Why npm, a local browser UI, and the Plugins Directory are different
+### The roles of npm, the Codex app live view, and the Plugins Directory
 
 - Asking the plugin `Show active tasks` inside the official Codex app is the primary `0.3.0` UX; it does not require starting a monitor or registering task IDs.
-- npm distributes the plugin bundle and optional local executable, hook sender, runtime, and static UI as a fallback path.
-- The Codex in-app Browser opens the `127.0.0.1` live monitor only when explicitly requested; it is not an external website or telemetry dashboard.
+- npm is the initial installation path that distributes the plugin bundle, its internal hook sender/runtime, and static UI to the user's machine.
+- The live view opens in the Codex built-in Browser only after an explicit in-app request; it is not an external website or telemetry dashboard.
 - The Universal Plugins Directory does not replace npm. A public in-app custom UI path requires a public HTTPS MCP server and domain verification, which conflicts with this project's local-only, no-external-server boundary. Only a separate listing/skills submission remains under consideration; do not expect Directory search installation until review and publication actually finish.
 
 ### Use in the official Codex app — recommended
 
-1. Select the Codex Agent View plugin in the Codex app.
+Use this flow in a **new task** after completing installation and enablement in the quick start. It requires neither another terminal nor an external browser.
+
+1. Open the `@` menu and select `codex-agent-view`.
 2. Ask `Show active tasks`.
 3. The plugin queries running/active tasks plus tasks with explicit `idle` and `hasUnreadTurn: true`. It places the latter in a separate `Finished / needs review` display group without claiming completion or success.
 4. It displays only workspace basename, display-only title, explicit status, latest explicit agent commentary, and a small `subAgentActivity` tree.
 5. Prompts, previews, tool input/output, full workspace paths, and internal thread IDs remain hidden by default.
 
-Ask `Open the live Codex Agent View in the built-in Browser` only when you want hook-level live detail. The plugin reuses a healthy monitor and never exposes its tokenized localhost URL in chat.
+Ask `Open the live Codex Agent View in the built-in Browser` inside the app only when you want hook-level live detail. The plugin internally reuses or starts a healthy monitor and never exposes its tokenized localhost URL in chat.
 
 ### Requirements and tested versions
 
@@ -317,7 +376,7 @@ Ask `Open the live Codex Agent View in the built-in Browser` only when you want 
 
 These versions are a test matrix, not a minimum-version guarantee.
 
-### Validate and run from source
+### Validate from source
 
 ```bash
 git clone https://github.com/JunhoYoon95/codex-agent-view.git
@@ -333,13 +392,17 @@ There are no production dependencies; the runtime uses Node.js built-ins. `insta
 
 Review the installed plugin and `hooks/hooks.json`, inspect the `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command, and explicitly trust the current hook hash. If the app was open before installation, quit it completely and reopen it. Create the test task only after enablement and trust; earlier events are not replayed.
 
-The app-native `Show active tasks` snapshot is the default and does not require the monitor. Start the foreground monitor only when the user explicitly requests the live hook view. The recommended command is:
+### Maintainer and advanced diagnostics CLI
+
+This section is reference material for package maintainers and explicit troubleshooting. It is not the normal user workflow. After installation, users should request snapshots and live views inside the Codex app; do not make them manage these commands or localhost URLs.
+
+Only when validating the local runtime from a source checkout, a maintainer can start it without opening an operating-system browser:
 
 ```bash
 node bin/codex-agent-view.mjs start --no-open
 ```
 
-Both `start` and `start --no-open` currently print the local URL without opening an operating-system browser. The explicit `--no-open` form matches the installed skill and is recommended. Use `--open` only when you explicitly want an external browser. In another terminal:
+The runtime binds only to the loopback interface. Treat the printed tokenized URL as a secret; never share it or paste it into documentation or an issue. In another diagnostic terminal:
 
 ```bash
 node bin/codex-agent-view.mjs status --json
@@ -359,25 +422,23 @@ The commands below install the current public exact `0.3.0` release.
 ```bash
 npm install --global codex-agent-view@0.3.0
 codex-agent-view install
-codex-agent-view doctor
 ```
 
-Starting the monitor is not required after installation. Use the app-native snapshot first, and run `codex-agent-view start --no-open` only when the live hook view is explicitly requested.
+After these two commands, fully reopen the Codex app, verify installation and enablement in Plugins, create a new task, and select `@codex-agent-view`. The plugin handles monitor startup and status checks in response to in-app requests; users do not run those CLI commands.
 
 Or run the exact version without a global install:
 
 ```bash
-npx --yes codex-agent-view@0.3.0 doctor
 npx --yes codex-agent-view@0.3.0 install
 ```
 
-Without a global install, add `npx --yes codex-agent-view@0.3.0 start --no-open` only when the live monitor was explicitly requested.
+The `npx` form is also an initial explicit-install path only. Routine use remains inside the Codex app afterward.
 
 The `0.2.0` and `0.2.1` evidence remains as historical release record. Public exact `0.3.0` passed registry metadata/signature, tag/release, this-device global reinstall, and artifact comparison checks; its monitor received real hooks, workspace labeling, permission, and tool lifecycle events. See [Distribution](docs/distribution.md).
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 
-### Troubleshooting an empty monitor
+### Maintainer troubleshooting for an empty monitor
 
 1. Run `codex-agent-view doctor --json` and check plugin `installed`, `enabled`, hook `wiring_ok`, and monitor `ok`.
 2. If `monitor.events_received` is `false`, do not confuse monitor connectivity with successful hook delivery.
@@ -397,10 +458,9 @@ Read [Privacy](docs/privacy.md), [Security](SECURITY.md), and [Support](SUPPORT.
 
 ### Uninstall
 
-For a public npm/global installation, stop the monitor with `Ctrl+C` when practical, then run:
+Uninstall is an explicit terminal lifecycle action, like initial installation. Only when a maintainer foreground monitor is already running, stop that diagnostic process with `Ctrl+C`, then run:
 
 ```bash
-codex-agent-view doctor --json
 codex-agent-view uninstall
 ```
 

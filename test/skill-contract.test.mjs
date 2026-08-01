@@ -114,6 +114,10 @@ test("skill uses app task tools before the CLI and keeps sensitive content out o
   assert.match(skill, /Do not display or paraphrase previews, user prompts, transcripts, tool inputs,/);
   assert.match(skill, /tool outputs, command output, tokens, credentials/);
   assert.match(skill, /Only when the user explicitly asks to open, show, or start the live view/);
+  assert.match(skill, /agent-internal diagnostic path, not a normal user workflow/);
+  assert.match(skill, /Never tell the user to open a terminal, type a CLI command/);
+  assert.match(skill, /user's entire interaction after installation remains inside the official\nCodex app/);
+  assert.match(skill, /do not turn the commands below into instructions for the user/);
   assert.match(skill, /Codex in-app Browser capability/);
   assert.match(skill, /Do not use Chrome,\n\s+Safari/);
 

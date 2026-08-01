@@ -90,6 +90,11 @@ Use the packaged CLI only when the Codex app thread tools are not available in
 the current surface. Do not switch to the CLI merely because one app task lacks
 details or the bounded list is empty.
 
+This fallback is an agent-internal diagnostic path, not a normal user workflow.
+Run every command below through the plugin's available execution capability.
+Never tell the user to open a terminal, type a CLI command, copy a localhost
+URL, or manage the monitor process for ordinary status viewing.
+
 1. Run `codex-agent-view status --json`.
 2. If it succeeds, summarize its observed sessions, subagent states,
    permission state, update time, and diagnostics without exposing IDs or
@@ -107,6 +112,10 @@ observation window.
 ## Open the live view only on request
 
 Only when the user explicitly asks to open, show, or start the live view:
+
+The plugin agent performs the health check and any required start internally.
+The user's entire interaction after installation remains inside the official
+Codex app; do not turn the commands below into instructions for the user.
 
 1. Check monitor health with the packaged CLI.
 2. If it is not running, start it with `codex-agent-view start --no-open` so the
