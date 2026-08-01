@@ -32,6 +32,7 @@ async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "codex-agent-view-cli-"));
   t.after(async () => rm(root, { force: true, recursive: true }));
   const fakeBin = join(root, "fake-bin");
+  const browserLog = join(root, "browser-calls.jsonl");
   const log = join(root, "codex-calls.jsonl");
   await mkdir(fakeBin);
   const fakeCodex = join(fakeBin, "codex");
@@ -50,7 +51,7 @@ if (args.join(" ") === "plugin marketplace list --json") {
   process.stdout.write(JSON.stringify({ installed: [{
     pluginId: "codex-agent-view@codex-agent-view",
     enabled: process.env.FAKE_PLUGIN_DISABLED !== "1",
-    version: "0.2.1",
+    version: "0.3.0",
     source: { source: "local", path: sourcePath }
   }] }) + "\\n");
 } else {
@@ -60,7 +61,22 @@ if (args.join(" ") === "plugin marketplace list --json") {
     { mode: 0o700 },
   );
   await chmod(fakeCodex, 0o700);
-  return { fakeBin, log, root };
+
+  if (process.platform !== "win32") {
+    const browserCommand = process.platform === "darwin" ? "open" : "xdg-open";
+    const fakeBrowser = join(fakeBin, browserCommand);
+    await writeFile(
+      fakeBrowser,
+      `#!/usr/bin/env node
+const { appendFileSync } = require("node:fs");
+appendFileSync(process.env.FAKE_BROWSER_LOG, JSON.stringify(process.argv.slice(2)) + "\\n");
+`,
+      { mode: 0o700 },
+    );
+    await chmod(fakeBrowser, 0o700);
+  }
+
+  return { browserLog, fakeBin, log, root };
 }
 
 function cliEnvironment(setup, runtimeRoot, extra = {}) {
@@ -68,6 +84,7 @@ function cliEnvironment(setup, runtimeRoot, extra = {}) {
     ...process.env,
     PATH: `${setup.fakeBin}${delimiter}${process.env.PATH || ""}`,
     CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot,
+    FAKE_BROWSER_LOG: setup.browserLog,
     FAKE_CODEX_LOG: setup.log,
     ...extra,
   };
@@ -150,6 +167,56 @@ async function writeStaleRuntime(runtimeRoot, token = "s".repeat(43)) {
 
 async function assertMissing(path) {
   await assert.rejects(access(path), { code: "ENOENT" });
+}
+
+function waitForMonitorStart(child) {
+  return new Promise((resolvePromise, reject) => {
+    let stderr = "";
+    let stdout = "";
+    const timeout = setTimeout(
+      () => reject(new Error(`monitor did not start; stdout: ${stdout}; stderr: ${stderr}`)),
+      5_000,
+    );
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+      if (stdout.includes("Codex Agent View is running at")) {
+        clearTimeout(timeout);
+        resolvePromise(stdout);
+      }
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.once("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once("close", (code) => {
+      if (!stdout.includes("Codex Agent View is running at")) {
+        clearTimeout(timeout);
+        reject(new Error(`monitor exited before start with code ${code}; stderr: ${stderr}`));
+      }
+    });
+  });
+}
+
+function stopMonitorChild(child) {
+  return new Promise((resolvePromise) => {
+    child.once("close", (code, signal) => resolvePromise({ code, signal }));
+    child.kill("SIGTERM");
+  });
+}
+
+async function waitForBrowserCall(path) {
+  const deadline = Date.now() + 2_000;
+  while (Date.now() < deadline) {
+    const calls = await readCalls(path);
+    if (calls.length > 0) return calls;
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 20));
+  }
+  return [];
 }
 
 test("refuses to replace or uninstall an unmanaged marketplace directory", async (t) => {
@@ -315,6 +382,98 @@ test("start rejects a live runtime without orphaning it and replaces a valid sta
   await assertMissing(runtimeFile({ CODEX_AGENT_VIEW_RUNTIME_DIR: staleRoot }));
 });
 
+test("start opens an external browser only when --open is explicit", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("signal and fake executable fixture is POSIX-specific");
+    return;
+  }
+  const setup = await fixture(t);
+
+  const defaultRoot = join(setup.root, "default-no-open-runtime");
+  const defaultChild = spawnCli(setup, defaultRoot, ["start", "--port", "0"]);
+  const defaultStdout = await waitForMonitorStart(defaultChild);
+  assert.match(defaultStdout, /http:\/\/127\.0\.0\.1:\d+\/#token=/);
+  await new Promise((resolvePromise) => setTimeout(resolvePromise, 150));
+  assert.deepEqual(await readCalls(setup.browserLog), []);
+  const defaultStopped = await stopMonitorChild(defaultChild);
+  assert.equal(defaultStopped.code, 0);
+
+  const explicitRoot = join(setup.root, "explicit-open-runtime");
+  const explicitChild = spawnCli(setup, explicitRoot, [
+    "start",
+    "--port",
+    "0",
+    "--open",
+  ]);
+  await waitForMonitorStart(explicitChild);
+  const browserCalls = await waitForBrowserCall(setup.browserLog);
+  assert.equal(browserCalls.length, 1);
+  assert.equal(browserCalls[0].length, 1);
+  assert.match(browserCalls[0][0], /^http:\/\/127\.0\.0\.1:\d+\/#token=/);
+  const explicitStopped = await stopMonitorChild(explicitChild);
+  assert.equal(explicitStopped.code, 0);
+});
+
+test("start accepts legacy --no-open and rejects conflicting or unknown arguments", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("signal and fake executable fixture is POSIX-specific");
+    return;
+  }
+  const setup = await fixture(t);
+
+  const legacyRoot = join(setup.root, "legacy-no-open-runtime");
+  const legacyChild = spawnCli(setup, legacyRoot, [
+    "start",
+    "--port",
+    "0",
+    "--no-open",
+  ]);
+  await waitForMonitorStart(legacyChild);
+  await new Promise((resolvePromise) => setTimeout(resolvePromise, 150));
+  assert.deepEqual(await readCalls(setup.browserLog), []);
+  const legacyStopped = await stopMonitorChild(legacyChild);
+  assert.equal(legacyStopped.code, 0);
+
+  const invalidCases = [
+    {
+      args: ["start", "--open", "--no-open"],
+      message: /--open and --no-open cannot be used together/,
+    },
+    {
+      args: ["start", "--unknown"],
+      message: /unknown start option: --unknown/,
+    },
+    {
+      args: ["start", "unexpected"],
+      message: /unexpected start argument: unexpected/,
+    },
+    {
+      args: ["start", "--port"],
+      message: /--port requires a value/,
+    },
+    {
+      args: ["start", "--port", "0", "--port", "1"],
+      message: /--port may only be specified once/,
+    },
+  ];
+
+  for (const [index, invalidCase] of invalidCases.entries()) {
+    const runtimeRoot = join(setup.root, `invalid-runtime-${index}`);
+    const result = await runCli(setup, runtimeRoot, invalidCase.args);
+    assert.equal(result.code, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, invalidCase.message);
+    await assertMissing(runtimeFile({ CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot }));
+  }
+
+  assert.deepEqual(await readCalls(setup.browserLog), []);
+
+  const help = await runCli(setup, join(setup.root, "help-runtime"), ["help"]);
+  assert.equal(help.code, 0, help.stderr);
+  assert.match(help.stdout, /start \[--port <port>\] \[--open\]/);
+  assert.doesNotMatch(help.stdout, /\[--no-open\]/);
+});
+
 test("doctor distinguishes valid registration from unobservable hook trust and no events", async (t) => {
   if (process.platform === "win32") {
     t.skip("fake executable fixture uses a POSIX shebang");
@@ -338,7 +497,7 @@ test("doctor distinguishes valid registration from unobservable hook trust and n
     enabled: true,
     installed: true,
     source_path: join(runtimeRoot, "marketplace"),
-    version: "0.2.1",
+    version: "0.3.0",
   });
   assert.equal(report.hook.wiring_ok, true);
   assert.equal(report.hook.trust, "unknown");

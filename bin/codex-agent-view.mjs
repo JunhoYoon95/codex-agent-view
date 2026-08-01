@@ -52,7 +52,7 @@ function printHelp() {
   process.stdout.write(`Codex Agent View
 
 Usage:
-  codex-agent-view start [--port <port>] [--no-open]
+  codex-agent-view start [--port <port>] [--open]
   codex-agent-view status [--json]
   codex-agent-view doctor [--json]
   codex-agent-view install
@@ -60,12 +60,53 @@ Usage:
   codex-agent-view --version
 
 The monitor is read-only and binds only to 127.0.0.1.
+Start prints the local URL without opening an external browser unless --open is set.
 `);
 }
 
-function optionValue(args, name) {
-  const index = args.indexOf(name);
-  return index === -1 ? undefined : args[index + 1];
+function parseStartArgs(args) {
+  let open = false;
+  let legacyNoOpen = false;
+  let port = DEFAULT_PORT;
+  let portSeen = false;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "--open") {
+      open = true;
+      continue;
+    }
+    if (argument === "--no-open") {
+      legacyNoOpen = true;
+      continue;
+    }
+    if (argument === "--port") {
+      if (portSeen) {
+        throw new Error("--port may only be specified once");
+      }
+      const value = args[index + 1];
+      if (value === undefined || value.startsWith("--")) {
+        throw new Error("--port requires a value");
+      }
+      port = Number(value);
+      portSeen = true;
+      index += 1;
+      continue;
+    }
+    if (argument.startsWith("-")) {
+      throw new Error(`unknown start option: ${argument}`);
+    }
+    throw new Error(`unexpected start argument: ${argument}`);
+  }
+
+  if (open && legacyNoOpen) {
+    throw new Error("--open and --no-open cannot be used together");
+  }
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error("--port must be an integer from 0 to 65535");
+  }
+
+  return { open, port };
 }
 
 function run(command, args, { allowFailure = false } = {}) {
@@ -114,11 +155,7 @@ function openBrowser(url) {
 }
 
 async function start(args) {
-  const requestedPort = optionValue(args, "--port");
-  const port = requestedPort === undefined ? DEFAULT_PORT : Number(requestedPort);
-  if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    throw new Error("--port must be an integer from 0 to 65535");
-  }
+  const options = parseStartArgs(args);
 
   const runtime = await inspectRuntime();
   if (runtime.kind === "unknown") {
@@ -130,10 +167,10 @@ async function start(args) {
     throw new Error("a Codex Agent View monitor is already running; stop it before starting another");
   }
 
-  const monitor = await startMonitorServer({ port });
+  const monitor = await startMonitorServer({ port: options.port });
   process.stdout.write(`Codex Agent View is running at ${monitor.url}\n`);
   process.stdout.write("Press Ctrl+C to stop the in-memory monitor.\n");
-  if (!args.includes("--no-open")) {
+  if (options.open) {
     openBrowser(monitor.url);
   }
 
