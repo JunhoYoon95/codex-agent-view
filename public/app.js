@@ -17,6 +17,42 @@ const STATUS_ORDER = Object.freeze({
   completed: 3,
 });
 
+const ACTIVITY_LABELS = Object.freeze({
+  session_started: "관찰 시작",
+  session_ended: "관찰 종료",
+  turn_started: "부모 작업 시작",
+  turn_stopped: "부모 작업 응답 완료",
+  subagent_started: "작업 에이전트 시작",
+  subagent_stopped: "작업 에이전트 완료",
+  tool_started: "도구 작업",
+  tool_completed: "도구 작업",
+  permission_requested: "사용자 승인 요청",
+});
+
+const TOOL_LABELS = Object.freeze({
+  apply_patch: "파일 수정",
+  bash: "터미널 작업",
+  collaborationfollowup_task: "에이전트 후속 작업 요청",
+  collaborationinterrupt_agent: "에이전트 작업 중단 요청",
+  collaborationlist_agents: "에이전트 상태 확인",
+  collaborationsend_message: "에이전트에게 메시지 전달",
+  collaborationspawn_agent: "작업 에이전트 시작",
+  collaborationwait_agent: "에이전트 응답 대기",
+  exec_command: "터미널 작업",
+  request_user_input: "사용자 입력 요청",
+  wait: "작업 완료 대기",
+  write_stdin: "터미널 입력",
+});
+
+const AGENT_ROLE_LABELS = Object.freeze({
+  explorer: "조사 담당",
+  reviewer: "검토 담당",
+  worker: "작업 담당",
+});
+
+const HIDDEN_AGENT_ROLES = new Set(["", "default", "unknown"]);
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/g;
+
 function consumeAccessToken() {
   const fragment = new URLSearchParams(window.location.hash.slice(1));
   const fragmentToken = fragment.get("token")?.trim() || "";
@@ -81,6 +117,59 @@ function safeString(value, fallback) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+function sanitizedFallbackLabel(value, fallback) {
+  const normalized = safeString(value, "")
+    .replace(CONTROL_CHARACTERS, " ")
+    .replace(/([a-z\d])([A-Z])/g, "$1 $2")
+    .replace(/[_./:-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 48);
+
+  if (!normalized) {
+    return fallback;
+  }
+
+  return normalized.replace(/\b[a-z]/g, (character) => character.toUpperCase());
+}
+
+function normalizedLookupKey(value) {
+  return safeString(value, "").replace(/[^a-zA-Z0-9_]/g, "").toLocaleLowerCase();
+}
+
+function formatAgentRole(agentType) {
+  const key = normalizedLookupKey(agentType);
+  if (HIDDEN_AGENT_ROLES.has(key)) {
+    return "";
+  }
+  return AGENT_ROLE_LABELS[key] || sanitizedFallbackLabel(agentType, "");
+}
+
+function formatToolLabel(toolName) {
+  const key = normalizedLookupKey(toolName);
+  return TOOL_LABELS[key] || `도구 · ${sanitizedFallbackLabel(toolName, "이름 미상")}`;
+}
+
+function formatActivityLabel(activity) {
+  if (activity.eventName === "subagent_started" && activity.agentOrdinal !== null) {
+    return `작업 에이전트 ${activity.agentOrdinal} 시작`;
+  }
+  if (activity.eventName === "subagent_stopped" && activity.agentOrdinal !== null) {
+    return `작업 에이전트 ${activity.agentOrdinal} 완료`;
+  }
+  if (activity.eventName === "permission_requested" && activity.toolName) {
+    return `${formatToolLabel(activity.toolName)} 승인 요청`;
+  }
+  if (
+    (activity.eventName === "tool_started" || activity.eventName === "tool_completed") &&
+    activity.toolName
+  ) {
+    return formatToolLabel(activity.toolName);
+  }
+  return ACTIVITY_LABELS[activity.eventName] ||
+    `활동 · ${sanitizedFallbackLabel(activity.eventName, "알 수 없음")}`;
+}
+
 function safeTimestamp(value) {
   return Number.isFinite(value) && value >= 0 && value <= 8_640_000_000_000_000
     ? value
@@ -122,14 +211,70 @@ function normalizeAgent(value, index) {
   };
 }
 
+function agentOrderTimestamp(agent) {
+  return agent.startedAtMs ?? agent.stoppedAtMs ?? agent.lastActivityAtMs ?? Number.MAX_SAFE_INTEGER;
+}
+
+function assignStableAgentOrdinals(agents) {
+  const ordinalByAgentId = new Map(
+    [...agents]
+      .sort((left, right) => (
+        agentOrderTimestamp(left) - agentOrderTimestamp(right) ||
+        left.agentId.localeCompare(right.agentId)
+      ))
+      .map((agent, index) => [agent.agentId, index + 1]),
+  );
+
+  return agents.map((agent) => ({
+    ...agent,
+    ordinal: ordinalByAgentId.get(agent.agentId),
+  }));
+}
+
 function normalizeActivity(value) {
   const activity = isRecord(value) ? value : {};
   return {
     eventName: safeString(activity.type, "unknown_event"),
+    agentId: safeString(activity.agent_id, ""),
+    agentOrdinal: null,
     toolName: safeString(activity.tool_name, ""),
+    toolUseId: safeString(activity.tool_use_id, ""),
     status: normalizeCoreStatus(activity.status),
     occurredAtMs: safeTimestamp(activity.received_at_ms),
   };
+}
+
+function isToolLifecycle(activity) {
+  return activity.eventName === "tool_started" || activity.eventName === "tool_completed";
+}
+
+function shouldReplaceToolActivity(candidate, current) {
+  const candidateTime = candidate.occurredAtMs ?? -1;
+  const currentTime = current.occurredAtMs ?? -1;
+  if (candidateTime !== currentTime) {
+    return candidateTime > currentTime;
+  }
+  return candidate.eventName === "tool_completed" && current.eventName !== "tool_completed";
+}
+
+function collapseToolActivities(activities) {
+  const latestByToolUseId = new Map();
+
+  for (const activity of activities) {
+    if (!activity.toolUseId || !isToolLifecycle(activity)) {
+      continue;
+    }
+    const current = latestByToolUseId.get(activity.toolUseId);
+    if (!current || shouldReplaceToolActivity(activity, current)) {
+      latestByToolUseId.set(activity.toolUseId, activity);
+    }
+  }
+
+  return activities.filter((activity) => (
+    !activity.toolUseId ||
+    !isToolLifecycle(activity) ||
+    latestByToolUseId.get(activity.toolUseId) === activity
+  ));
 }
 
 function normalizeDiagnostic(value) {
@@ -160,10 +305,18 @@ function deriveSessionStatus(session, agents, recentActivities) {
 function normalizeSession(value, index) {
   const session = isRecord(value) ? value : {};
   const agents = Array.isArray(session.agents)
-    ? session.agents.map(normalizeAgent)
+    ? assignStableAgentOrdinals(session.agents.map(normalizeAgent))
     : [];
+  const agentOrdinalById = new Map(
+    agents.map((agent) => [agent.agentId, agent.ordinal]),
+  );
   const recentActivities = Array.isArray(session.recent_activities)
-    ? session.recent_activities.map(normalizeActivity)
+    ? collapseToolActivities(session.recent_activities.map(normalizeActivity)).map(
+      (activity) => ({
+        ...activity,
+        agentOrdinal: agentOrdinalById.get(activity.agentId) ?? null,
+      }),
+    )
     : [];
 
   return {
@@ -199,6 +352,11 @@ function compareByActivity(left, right) {
 }
 
 function compareAgents(left, right) {
+  const statusDifference = STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
+  return statusDifference || compareByActivity(left, right);
+}
+
+function compareSessions(left, right) {
   const statusDifference = STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
   return statusDifference || compareByActivity(left, right);
 }
@@ -293,21 +451,53 @@ function createTime(timestampMs, prefix) {
   return wrapper;
 }
 
+function createTechnicalDetails(rows) {
+  const details = document.createElement("details");
+  details.className = "technical-details";
+
+  const summary = document.createElement("summary");
+  summary.textContent = "기술 정보";
+  const list = document.createElement("dl");
+
+  for (const [label, value] of rows) {
+    if (!value) {
+      continue;
+    }
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const description = document.createElement("dd");
+    const code = document.createElement("code");
+    code.textContent = value;
+    description.append(code);
+    list.append(term, description);
+  }
+
+  details.append(summary, list);
+  return details;
+}
+
 function createAgentItem(agent) {
   const item = document.createElement("li");
   item.className = "agent-item";
+  item.dataset.status = agent.status;
 
   const heading = document.createElement("div");
   heading.className = "agent-heading";
 
   const identity = document.createElement("div");
   identity.className = "agent-identity";
-  const type = document.createElement("span");
-  type.className = "agent-type";
-  type.textContent = agent.agentType;
-  const id = document.createElement("code");
-  id.textContent = agent.agentId;
-  identity.append(type, id);
+  const name = document.createElement("strong");
+  name.className = "agent-name";
+  name.textContent = `작업 에이전트 ${agent.ordinal}`;
+  identity.append(name);
+
+  const roleLabel = formatAgentRole(agent.agentType);
+  if (roleLabel) {
+    const role = document.createElement("span");
+    role.className = "agent-role";
+    role.textContent = roleLabel;
+    identity.append(role);
+  }
   heading.append(identity, createStatusBadge(agent.status));
 
   const metadata = document.createElement("div");
@@ -317,7 +507,12 @@ function createAgentItem(agent) {
     document.createTextNode(` · ${formatDuration(agent.startedAtMs, agent.stoppedAtMs)}`),
   );
 
-  item.append(heading, metadata);
+  const technicalRows = [["에이전트 ID", agent.agentId]];
+  if (roleLabel) {
+    technicalRows.push(["원본 역할", agent.agentType]);
+  }
+
+  item.append(heading, metadata, createTechnicalDetails(technicalRows));
   return item;
 }
 
@@ -334,20 +529,19 @@ function createActivityItem(activity) {
   const title = document.createElement("div");
   title.className = "activity-title";
   const eventName = document.createElement("strong");
-  eventName.textContent = activity.eventName;
+  eventName.textContent = formatActivityLabel(activity);
   title.append(eventName);
-
-  if (activity.toolName) {
-    const tool = document.createElement("code");
-    tool.textContent = activity.toolName;
-    title.append(tool);
-  }
 
   const metadata = document.createElement("div");
   metadata.className = "activity-metadata";
   metadata.append(createStatusBadge(activity.status), createTime(activity.occurredAtMs, ""));
 
-  content.append(title, metadata);
+  const technicalRows = [["원본 이벤트", activity.eventName]];
+  if (activity.toolName) {
+    technicalRows.push(["원본 도구", activity.toolName]);
+  }
+
+  content.append(title, metadata, createTechnicalDetails(technicalRows));
   item.append(marker, content);
   return item;
 }
@@ -363,6 +557,7 @@ function createSessionCard(session) {
   const listItem = document.createElement("li");
   const article = document.createElement("article");
   article.className = "session-card";
+  article.dataset.status = session.status;
 
   const cardHeader = document.createElement("header");
   cardHeader.className = "session-header";
@@ -371,13 +566,14 @@ function createSessionCard(session) {
   identity.className = "session-identity";
   const eyebrow = document.createElement("span");
   eyebrow.className = "session-kind";
-  eyebrow.append("PARENT TASK · ");
-  const id = document.createElement("code");
-  id.textContent = session.sessionId;
-  eyebrow.append(id);
+  eyebrow.textContent = "부모 작업";
   const title = document.createElement("h3");
   title.textContent = session.workspaceLabel || "프로젝트 정보 없음";
-  identity.append(eyebrow, title);
+  identity.append(
+    eyebrow,
+    title,
+    createTechnicalDetails([["세션 ID", session.sessionId]]),
+  );
 
   const sessionState = document.createElement("div");
   sessionState.className = "session-state";
@@ -394,7 +590,7 @@ function createSessionCard(session) {
   const agentPanel = document.createElement("section");
   agentPanel.className = "session-panel";
   const agentTitle = document.createElement("h4");
-  agentTitle.textContent = `Subagents · ${session.agents.length}`;
+  agentTitle.textContent = `작업 에이전트 · ${session.agents.length}`;
   agentPanel.append(agentTitle);
 
   if (session.agents.length) {
@@ -405,7 +601,7 @@ function createSessionCard(session) {
     });
     agentPanel.append(list);
   } else {
-    agentPanel.append(createEmptyPanel("이 task에서 관찰된 subagent가 없습니다."));
+    agentPanel.append(createEmptyPanel("이 부모 작업에서 관찰된 작업 에이전트가 없습니다."));
   }
 
   const activityPanel = document.createElement("section");
@@ -422,7 +618,7 @@ function createSessionCard(session) {
     });
     activityPanel.append(list);
   } else {
-    activityPanel.append(createEmptyPanel("표시할 lifecycle event가 없습니다."));
+    activityPanel.append(createEmptyPanel("표시할 최근 활동이 없습니다."));
   }
 
   panels.append(agentPanel, activityPanel);
@@ -440,7 +636,11 @@ function sessionMatchesQuery(session, query) {
     session.sessionId,
     session.workspaceLabel,
     session.status,
-    ...session.agents.flatMap((agent) => [agent.agentId, agent.agentType, agent.status]),
+    ...session.agents.flatMap((agent) => [
+      agent.agentId,
+      formatAgentRole(agent.agentType),
+      agent.status,
+    ]),
     ...session.recentActivities.flatMap((activity) => [
       activity.eventName,
       activity.toolName,
@@ -466,7 +666,7 @@ function filteredSessions() {
   return [...viewState.sessions]
     .filter((session) => sessionMatchesQuery(session, query))
     .filter((session) => sessionMatchesStatus(session, status))
-    .sort(compareByActivity);
+    .sort(compareSessions);
 }
 
 function renderMetrics() {
@@ -481,7 +681,7 @@ function renderMetrics() {
   elements.metricWaiting.textContent = String(waitingCount);
   elements.metricCompleted.textContent = String(countStatus("completed"));
   elements.lastUpdated.textContent = !viewState.updatedAtMs
-    ? "수신된 hook 없음"
+    ? "수신된 활동 없음"
     : formatDateTime(viewState.updatedAtMs);
 }
 
@@ -513,11 +713,11 @@ function setEmptyObservationMessage() {
   const copy = document.createElement("span");
 
   if (viewState.diagnostics.length) {
-    heading.textContent = "표시 가능한 task가 없습니다.";
-    copy.textContent = `Monitor가 hook 입력 ${viewState.diagnostics.length}건을 받았지만 유효한 session으로 적용하지 않았습니다.`;
+    heading.textContent = "표시 가능한 부모 작업이 없습니다.";
+    copy.textContent = `로컬 모니터가 활동 정보 ${viewState.diagnostics.length}건을 받았지만 표시 가능한 부모 작업으로 적용하지 못했습니다.`;
   } else {
-    heading.textContent = "이 관찰 창에서 수신된 hook event가 0건입니다.";
-    copy.textContent = "로컬 monitor 연결은 정상입니다. 이 결과만으로 Codex에 실행 중인 task나 agent가 없다고 판단할 수 없습니다.";
+    heading.textContent = "이 관찰 화면에서 수신된 작업 활동이 없습니다.";
+    copy.textContent = "로컬 모니터 연결은 정상입니다. 이 결과만으로 Codex에 실행 중인 부모 작업이나 작업 에이전트가 없다고 판단할 수 없습니다.";
   }
 
   const guidance = document.createElement("div");
@@ -528,13 +728,13 @@ function setEmptyObservationMessage() {
 
   const automaticTracking = document.createElement("p");
   automaticTracking.className = "automatic-tracking";
-  automaticTracking.textContent = "task ID를 입력하거나 task별로 등록할 필요가 없습니다. Trusted hook event가 자동으로 이 목록에 추가됩니다.";
+  automaticTracking.textContent = "작업 ID를 입력하거나 작업별로 등록할 필요가 없습니다. 신뢰한 hook의 작업 활동이 이 목록에 자동으로 추가됩니다.";
 
   const steps = document.createElement("ol");
   for (const step of [
-    "Plugin을 설치한 뒤 공식 Codex 앱을 완전히 재시작했는지 확인합니다.",
-    "새 task에서 표시되는 Codex Agent View hook command를 검토하고 직접 trust합니다.",
-    "Trust 이후 새 task를 시작해 subagent 작업을 실행합니다. Hook event가 이 목록에 자동으로 추가됩니다.",
+    "플러그인을 설치한 뒤 공식 Codex 앱을 완전히 재시작했는지 확인합니다.",
+    "새 작업에서 표시되는 Codex Agent View hook 명령을 검토하고 직접 신뢰합니다.",
+    "신뢰 설정 후 새 작업을 시작해 작업 에이전트를 실행합니다. 새 활동은 이 목록에 자동으로 추가됩니다.",
   ]) {
     const item = document.createElement("li");
     item.textContent = step;
@@ -543,7 +743,7 @@ function setEmptyObservationMessage() {
 
   const boundary = document.createElement("p");
   boundary.className = "observation-boundary";
-  boundary.textContent = "관찰 window는 첫 trusted hook에서 시작합니다. 그 전에 이미 지나간 event와 로컬 상태 수집이 중단된 동안의 event는 재생되지 않으며, 수집이 다시 시작되면 새 관찰 window가 열립니다.";
+  boundary.textContent = "관찰 화면은 첫 번째로 신뢰한 hook을 받은 시점부터 시작합니다. 그 전에 이미 지나간 활동과 로컬 상태 수집이 중단된 동안의 활동은 재생되지 않으며, 수집이 다시 시작되면 새 관찰 화면이 열립니다.";
 
   guidance.append(guidanceTitle, automaticTracking, steps, boundary);
 
@@ -551,7 +751,7 @@ function setEmptyObservationMessage() {
     const diagnostics = document.createElement("details");
     diagnostics.className = "diagnostic-details";
     const summary = document.createElement("summary");
-    summary.textContent = `검증 diagnostic ${viewState.diagnostics.length}건`;
+    summary.textContent = `검증 정보 ${viewState.diagnostics.length}건`;
     const codes = document.createElement("ul");
     const diagnosticCounts = new Map();
     for (const { code } of viewState.diagnostics) {
@@ -585,11 +785,11 @@ function renderSessions() {
 
   elements.resultsSummary.textContent = hasFilters
     ? `전체 ${viewState.sessions.length}개 중 ${visibleSessions.length}개 표시`
-    : `${viewState.sessions.length}개 부모 task`;
+    : `${viewState.sessions.length}개 부모 작업`;
 
   if (!viewState.hasLoaded) {
     elements.sessionList.hidden = true;
-    setStateMessage("loading", "상태를 불러오는 중입니다.", "로컬 monitor에 연결하고 있습니다.");
+    setStateMessage("loading", "상태를 불러오는 중입니다.", "로컬 모니터에 연결하고 있습니다.");
     return;
   }
 
@@ -604,7 +804,7 @@ function renderSessions() {
       "error",
       viewState.canRetry
         ? "로컬 상태 연결이 끊겨 다시 시도 중입니다."
-        : "이 live view를 인증할 수 없습니다.",
+        : "이 실시간 화면을 인증할 수 없습니다.",
       description,
       viewState.canRetry,
     );
@@ -641,7 +841,7 @@ function setConnectionStatus(status, labelOverride = "") {
   elements.connectionStatus.dataset.status = status;
   const labels = {
     connecting: "로컬 상태 연결 중",
-    connected: "로컬 monitor 연결됨",
+    connected: "로컬 모니터 연결됨",
     error: "연결 끊김 · 재시도 중",
   };
   elements.connectionLabel.textContent = labelOverride || labels[status];
@@ -656,8 +856,8 @@ async function refreshState() {
     viewState.hasLoaded = true;
     viewState.canRetry = false;
     viewState.authenticationFailed = true;
-    viewState.errorMessage = "이 탭에는 접근 token이 없습니다. Codex 앱에서 Codex Agent View에 live view 열기를 다시 요청하세요.";
-    setConnectionStatus("error", "live view 인증 필요");
+    viewState.errorMessage = "이 탭에는 접근 토큰이 없습니다. Codex 앱에서 Codex Agent View의 실시간 화면 열기를 다시 요청하세요.";
+    setConnectionStatus("error", "실시간 화면 인증 필요");
     render();
     return;
   }
@@ -682,8 +882,8 @@ async function refreshState() {
       viewState.hasLoaded = true;
       viewState.canRetry = false;
       viewState.authenticationFailed = true;
-      viewState.errorMessage = "이 live view의 인증이 더 이상 유효하지 않습니다. Codex 앱에서 Codex Agent View에 live view 열기를 다시 요청하세요.";
-      setConnectionStatus("error", "live view 인증 필요");
+      viewState.errorMessage = "이 실시간 화면의 인증이 더 이상 유효하지 않습니다. Codex 앱에서 Codex Agent View의 실시간 화면 열기를 다시 요청하세요.";
+      setConnectionStatus("error", "실시간 화면 인증 필요");
       return;
     }
 

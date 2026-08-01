@@ -141,15 +141,8 @@ test("skill uses app task tools before the CLI and keeps sensitive content out o
 
   assert.equal(manifest.version, packageMetadata.version);
   assert.equal(manifest.interface.shortDescription, "View active Codex tasks.");
-  assert.deepEqual(manifest.interface.defaultPrompt, [
-    "Open @ and select the bundled Show Agents skill.",
-  ]);
-  assert.notEqual(
-    manifest.interface.defaultPrompt[0],
-    "Show Agents",
-    "plugin starter prompt is an instruction to select the skill, not a skill invocation",
-  );
-  assert.doesNotMatch(manifest.interface.defaultPrompt[0], /\$show-agents/);
+  assert.deepEqual(manifest.interface.defaultPrompt, ["$show-agents"]);
+  assert.doesNotMatch(manifest.interface.defaultPrompt[0], /@codex-agent-view/);
 });
 
 test("explicit show-agents skill opens the private live view inside Codex", async () => {
@@ -173,7 +166,7 @@ test("explicit show-agents skill opens the private live view inside Codex", asyn
   assert(openIndex > startIndex);
   assert.match(
     skill,
-    /selection of the bundled \*\*Show Agents\*\* skill from the Codex app's `@`\nmenu as an explicit request to open the live monitor/,
+    /explicit `\$show-agents` invocation, including one inserted by the\nplugin Quick start starter, as a request to open the live monitor/,
   );
   assert.match(skill, /browser target/);
   assert.match(skill, /`placement: "right"`/);
@@ -197,16 +190,17 @@ test("explicit show-agents skill opens the private live view inside Codex", asyn
 
   assert.match(metadata, /display_name: "Show Agents"/);
   assert.match(metadata, /short_description: "Open the live agent monitor inside Codex"/);
-  assert.match(metadata, /default_prompt: "Open the live agent monitor\."/);
+  assert.match(metadata, /default_prompt: "Use \$show-agents to open the live agent monitor\."/);
   assert.match(metadata, /allow_implicit_invocation: false/);
-  const appContract = `${skill}\n${metadata}\n${manifestText}`;
-  assert.doesNotMatch(appContract, /\$/);
-  assert.equal(appContract.includes(`@${manifest.name}`), false);
+  const bundledSkillContract = `${skill}\n${metadata}`;
+  assert.match(bundledSkillContract, /\$show-agents/);
+  assert.equal(bundledSkillContract.includes(`@${manifest.name}`), false);
   assert.deepEqual(
     manifest.interface.defaultPrompt,
-    ["Open @ and select the bundled Show Agents skill."],
-    "plugin starter prompt only explains explicit selection; skill-level default_prompt performs the selected skill request",
+    ["$show-agents"],
+    "plugin starter prompt explicitly invokes the bundled skill; skill-level default_prompt supplies the selected action",
   );
+  assert.equal(manifest.interface.defaultPrompt[0].includes(`@${manifest.name}`), false);
 });
 
 test("newest-first read_thread fixture selects latest commentary and deduplicates agents", () => {

@@ -200,14 +200,12 @@ assert(
 assert(
   Array.isArray(manifest.interface?.defaultPrompt) &&
     manifest.interface.defaultPrompt.length === 1 &&
-    manifest.interface.defaultPrompt[0] ===
-      "Open @ and select the bundled Show Agents skill.",
-  "plugin starter prompt must only instruct the user to explicitly select the bundled skill; it must not claim to invoke or execute it",
+    manifest.interface.defaultPrompt[0] === "$show-agents",
+  "plugin starter prompt must explicitly invoke the bundled Show Agents skill",
 );
 assert(
-  manifest.interface.defaultPrompt[0] !== "Show Agents" &&
-    !manifest.interface.defaultPrompt[0].includes("$show-agents"),
-  "plugin starter prompt must not use plain Show Agents or $show-agents as an invocation shortcut",
+  !manifest.interface.defaultPrompt[0].includes(`@${manifest.name}`),
+  "plugin starter prompt must not include an app @mention",
 );
 for (const requiredText of [
   "Show Agents",
@@ -230,16 +228,16 @@ assert(
       'short_description: "Open the live agent monitor inside Codex"',
     ) &&
     showAgentsMetadataText.includes(
-      'default_prompt: "Open the live agent monitor."',
+      'default_prompt: "Use $show-agents to open the live agent monitor."',
     ) &&
     showAgentsMetadataText.includes("allow_implicit_invocation: false"),
   "Show Agents metadata must expose the explicit app action, safe skill prompt, and disabled implicit invocation",
 );
 const showAgentsAppContract = `${showAgentsSkillText}\n${showAgentsMetadataText}`;
 assert(
-  !showAgentsAppContract.includes("$") &&
+  showAgentsAppContract.includes("$show-agents") &&
     !showAgentsAppContract.includes(`@${manifest.name}`),
-  "Show Agents app contract must not advertise unsupported prompt syntax",
+  "Show Agents app contract must use the explicit skill invocation without an app @mention",
 );
 for (const field of ["composerIcon", "logo", "logoDark"]) {
   const value = manifest.interface?.[field];

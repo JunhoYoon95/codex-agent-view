@@ -52,11 +52,11 @@ function npmPackEnvironment() {
   return env;
 }
 
-test("keeps the npm 0.4.1 executable and publish surface intact", async () => {
+test("keeps the npm 0.4.2 executable and publish surface intact", async () => {
   const packageMetadata = await readJson("package.json");
 
   assert.equal(packageMetadata.name, "codex-agent-view");
-  assert.equal(packageMetadata.version, "0.4.1");
+  assert.equal(packageMetadata.version, "0.4.2");
   assert.match(packageMetadata.description, /trusted-hook auto-prepared local live backend/);
   assert.deepEqual(packageMetadata.bin, {
     "codex-agent-view": "bin/codex-agent-view.mjs",
@@ -168,14 +168,13 @@ test("has no postinstall side effects or production dependencies", async () => {
 
 test("keeps legal links secure and branding assets local", async () => {
   const manifest = await readJson(".codex-plugin/plugin.json");
-  assert.equal(manifest.version, "0.4.1");
+  assert.equal(manifest.version, "0.4.2");
   assert.deepEqual(
     manifest.interface?.defaultPrompt,
-    ["Open @ and select the bundled Show Agents skill."],
-    "plugin starter prompt is display guidance for explicit skill selection, not skill invocation or execution",
+    ["$show-agents"],
+    "plugin starter prompt explicitly invokes the bundled Show Agents skill",
   );
-  assert.notEqual(manifest.interface.defaultPrompt[0], "Show Agents");
-  assert.doesNotMatch(manifest.interface.defaultPrompt[0], /\$show-agents/);
+  assert.doesNotMatch(manifest.interface.defaultPrompt[0], /@codex-agent-view/);
   assert.match(manifest.description, /trusted-hook auto-prepared local live backend/);
   assert.match(manifest.interface.longDescription, /trusted-hook auto-prepared local live backend/);
 

@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark">
     <meta
       name="description"
-      content="공식 Codex 앱의 부모 task와 subagent 상태를 로컬에서 읽기 전용으로 확인합니다."
+      content="공식 Codex 앱의 부모 작업과 작업 에이전트 상태를 로컬에서 읽기 전용으로 확인합니다."
     >
     <title>Codex Agent View</title>
     <link rel="stylesheet" href="/assets/styles.css">
@@ -21,7 +21,7 @@
           <span class="brand-mark" aria-hidden="true">CA</span>
           <span>
             <strong>Codex Agent View</strong>
-            <small>Local companion monitor</small>
+            <small>로컬 읽기 전용 모니터</small>
           </span>
         </a>
 
@@ -41,10 +41,10 @@
       <main id="main-content" tabindex="-1">
         <section class="hero" aria-labelledby="page-title">
           <div>
-            <p class="eyebrow">LOCAL · READ ONLY</p>
+            <p class="eyebrow">로컬 · 읽기 전용</p>
             <h1 id="page-title">작업 흐름을 한눈에</h1>
             <p class="hero-copy">
-              공식 Codex 앱은 그대로 두고, 부모 task와 subagent의 현재 상태만
+              공식 Codex 앱은 그대로 두고, 부모 작업과 작업 에이전트의 현재 상태만
               로컬에서 확인합니다.
             </p>
           </div>
@@ -63,32 +63,32 @@
 
         <section class="metrics" aria-label="작업 상태 요약">
           <article class="metric-card">
-            <p>부모 task</p>
+            <p>부모 작업</p>
             <strong id="metric-sessions">0</strong>
             <span>현재 관찰 중</span>
           </article>
           <article class="metric-card metric-running">
-            <p>실행 중 agent</p>
+            <p>실행 중 에이전트</p>
             <strong id="metric-running">0</strong>
             <span>작업 수행 중</span>
           </article>
           <article class="metric-card metric-waiting">
             <p>대기 상태</p>
             <strong id="metric-waiting">0</strong>
-            <span>사용자 또는 다음 작업 대기</span>
+            <span>사용자 응답 또는 다음 작업 대기</span>
           </article>
           <article class="metric-card metric-completed">
-            <p>완료 agent</p>
+            <p>완료 에이전트</p>
             <strong id="metric-completed">0</strong>
-            <span>현재 snapshot 기준</span>
+            <span>현재 화면 기준</span>
           </article>
         </section>
 
         <section class="workspace" aria-labelledby="sessions-heading">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">LIVE SESSIONS</p>
-              <h2 id="sessions-heading">부모 task와 subagent</h2>
+              <p class="eyebrow">실시간 작업</p>
+              <h2 id="sessions-heading">부모 작업과 작업 에이전트</h2>
             </div>
             <p id="results-summary" class="results-summary" role="status" aria-live="polite">
               상태를 불러오는 중입니다.
@@ -98,7 +98,7 @@
           <form
             class="toolbar"
             role="search"
-            aria-label="자동 수신된 task와 subagent 목록 필터"
+            aria-label="자동 수신된 부모 작업과 작업 에이전트 목록 필터"
             hidden
           >
             <div class="field field-search">
@@ -107,7 +107,7 @@
                 id="session-search"
                 name="query"
                 type="search"
-                placeholder="자동 수신된 task·agent 목록에서 찾기"
+                placeholder="부모 작업·작업 에이전트 목록에서 찾기"
                 autocomplete="off"
                 spellcheck="false"
               >
@@ -129,13 +129,13 @@
             <span>Codex 앱의 로컬 상태에 연결하고 있습니다.</span>
           </div>
 
-          <ul id="session-list" class="session-list" aria-label="Codex 부모 task 목록" hidden></ul>
+          <ul id="session-list" class="session-list" aria-label="Codex 부모 작업 목록" hidden></ul>
         </section>
       </main>
 
       <footer>
-        <p>이 화면은 prompt와 tool input을 표시하지 않습니다.</p>
-        <p>데이터는 이 기기의 로컬 monitor에서만 읽습니다.</p>
+        <p>이 화면은 사용자 요청 내용과 도구 입력 내용을 표시하지 않습니다.</p>
+        <p>데이터는 이 기기의 로컬 모니터에서만 읽습니다.</p>
       </footer>
     </div>
   </body>

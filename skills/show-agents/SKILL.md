@@ -1,14 +1,14 @@
 ---
 name: show-agents
-description: Open the Codex Agent View live task and subagent monitor in the official Codex app. Use when the user explicitly selects the bundled Show Agents skill from the app's @ menu.
+description: Open the Codex Agent View live task and subagent monitor in the official Codex app. Use when the user explicitly invokes $show-agents, including from the plugin Quick start starter.
 ---
 
 # Show Agents
 
-Treat selection of the bundled **Show Agents** skill from the Codex app's `@`
-menu as an explicit request to open the live monitor, not as a request for
-terminal instructions or a text-only snapshot. Keep the whole ordinary-use
-workflow inside the calling Codex app task.
+Treat an explicit `$show-agents` invocation, including one inserted by the
+plugin Quick start starter, as a request to open the live monitor. It is not a
+request for terminal instructions or a text-only snapshot. Keep the whole
+ordinary-use workflow inside the calling Codex app task.
 
 ## Open the live view
 
@@ -20,8 +20,8 @@ workflow inside the calling Codex app task.
    running `codex-agent-view status --json`, starting a monitor, or opening a
    panel. Briefly tell the user inside the current Codex app task that the
    installed plugin and global CLI versions differ and that the exact intended
-   `codex-agent-view` version must be globally reinstalled before they select
-   **Show Agents** again. Do not perform the reinstall, change Codex settings,
+   `codex-agent-view` version must be globally reinstalled before they invoke
+   `$show-agents` again. Do not perform the reinstall, change Codex settings,
    expose paths, or quote the diagnostic payload.
 3. Otherwise, check the packaged monitor with
    `codex-agent-view status --json`. Capture the result internally; do not
