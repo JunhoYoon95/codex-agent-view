@@ -64,6 +64,8 @@ Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 `codex-agent-vie
 
 공개 `0.3.1`: npm version/당시 `latest` `0.3.1`, `gitHead` `c515ea28be201dc24d31e13bf465a38145050b69`, shasum `4405b183012c04e7b0bc265d4eb14bf85291dcd9`, integrity `sha512-8oF5uHqZobgPt75I2ymoq3/tx4Ab1YX/cvMPjaJHjV7zxVC5Dh318isoCdsKNi6emXEbiTIdxOgX7GcclyuP8A==`, 21 files를 확인했다. Annotated `v0.3.1` tag와 [GitHub Release v0.3.1](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.1)이 공개됐다. 이 기기에 exact `0.3.1`을 재설치했고 plugin `installed: true`, `enabled: true`를 확인했다. Public exact `0.3.1` app-only E2E 완료는 주장하지 않는다.
 
+공개 `0.3.2`: 배포 시 npm version/`latest` `0.3.2`, `gitHead` `4f4f92dc872d9b782efe900cc1397bdccf7d2c8a`, shasum `2851544c75a0a5fb20a2865196ab54b566b373d8`, integrity `sha512-MPwFP3CjhehkIzyV3ja0/rWzLyK4tJI7jjsczKN16aXpKEr/dvtc/aljjqW/41zatZrQG32ccKKMJjYNyW6Tww==`, registry signature, 21 files, package size `46856 B`와 unpacked size `167060 B`를 확인했다. Annotated `v0.3.2` tag와 [GitHub Release v0.3.2](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.2)가 공개됐고 main/tag CI가 통과했다. 이 기기의 global `0.3.2` install은 plugin `installed: true`, `enabled: true`이며 registry artifact와 mismatch가 0이다. App-native thread snapshot에서는 worker activity 3개를 확인했다. Codex 내장 Browser의 live monitor 연결은 성공했지만 재설치 전에 열려 있던 앱 process의 follow-up subagent 3개에서는 hook event가 0건이었으므로 exact `0.3.2` live hook E2E 완료를 주장하지 않는다. 이 검증에는 앱 완전 재시작과 새 task가 필요하다.
+
 ### 제품 경계
 
 Codex Agent View는 historical audit이나 session replay 제품이 아니라 현재 활동을 보여주는 live companion이다. Bounded in-memory state와 monitor 재시작 시 reset은 privacy와 단순한 failure boundary를 위한 의도된 완성 설계다. SQLite/영구 history는 누락된 요구사항이 아니다. 실제 사용자 요구가 입증될 때에만 retention, migration, deletion, privacy 비용을 별도 검토하는 명시적 opt-in 기능 후보로 취급한다.
@@ -206,7 +208,7 @@ npx --yes codex-agent-view@0.3.2 install
 
 `npx` 경로도 explicit `install`을 실행하는 최초 설치 방법일 뿐이다. 이후 사용은 동일하게 Codex 앱 안에서 진행한다.
 
-`0.2.0`/`0.2.1`/`0.3.0`/`0.3.1` evidence는 historical record로 보존한다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
+`0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` release evidence는 보존한다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
@@ -336,6 +338,8 @@ Public `0.3.0`: npm `latest`/version at release time, `gitHead` `988132d0b525ee5
 
 Public `0.3.1`: npm version/`latest` at release time `0.3.1`, `gitHead` `c515ea28be201dc24d31e13bf465a38145050b69`, shasum `4405b183012c04e7b0bc265d4eb14bf85291dcd9`, integrity `sha512-8oF5uHqZobgPt75I2ymoq3/tx4Ab1YX/cvMPjaJHjV7zxVC5Dh318isoCdsKNi6emXEbiTIdxOgX7GcclyuP8A==`, and 21 files were verified. The annotated `v0.3.1` tag and [GitHub Release v0.3.1](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.1) are public. Exact `0.3.1` was reinstalled on this machine, with plugin `installed: true` and `enabled: true`. Public exact `0.3.1` app-only E2E is not claimed.
 
+Public `0.3.2`: npm version/`latest` at release time `0.3.2`, `gitHead` `4f4f92dc872d9b782efe900cc1397bdccf7d2c8a`, shasum `2851544c75a0a5fb20a2865196ab54b566b373d8`, integrity `sha512-MPwFP3CjhehkIzyV3ja0/rWzLyK4tJI7jjsczKN16aXpKEr/dvtc/aljjqW/41zatZrQG32ccKKMJjYNyW6Tww==`, registry signature, 21 files, package size `46856 B`, and unpacked size `167060 B` were verified. The annotated `v0.3.2` tag and [GitHub Release v0.3.2](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.2) are public, and the main/tag CI runs passed. This machine's global `0.3.2` install reports plugin `installed: true` and `enabled: true`, with zero artifact mismatches against the registry package. The app-native thread snapshot showed activity for three workers. The live monitor connected successfully in the Codex built-in Browser, but three follow-up subagents in the app process that predated the reinstall delivered zero hook events. Exact `0.3.2` live-hook E2E is therefore not claimed; it requires a full app restart and a new task.
+
 ### Boundaries
 
 Codex Agent View is a live companion, not a historical audit or session-replay product. Bounded in-memory state and reset-on-restart semantics are intentional: they keep privacy and failure boundaries small. SQLite or persistent history is not a missing requirement. Consider it only as a separate explicit opt-in feature if demonstrated user demand justifies retention, migration, deletion, and privacy costs.
@@ -440,7 +444,7 @@ npx --yes codex-agent-view@0.3.2 install
 
 The `npx` form is also an initial explicit-install path only. Routine use remains inside the Codex app afterward.
 
-The `0.2.0`, `0.2.1`, `0.3.0`, and `0.3.1` evidence remains as historical release record. See [Distribution](docs/distribution.md).
+The `0.2.0`, `0.2.1`, `0.3.0`, `0.3.1`, and `0.3.2` release evidence is preserved. See [Distribution](docs/distribution.md).
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 

@@ -10,7 +10,7 @@
 
 해당 app process에는 plugin 설치 전 `hooks/list` 응답이 있었고 설치 뒤에도 process가 유지됐다. 이는 stale config/hook snapshot 가설과 일치하지만 인과관계를 확정하지는 않는다. 또한 `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않아 config snapshot과 untrusted hook skip을 자동 진단으로 분리할 수 없었다. 따라서 당시 실패 원인을 “재시작 부족”으로 단정하지 않는다.
 
-Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. 현재 source/package는 `0.3.2` release candidate이고 public npm `latest`는 `0.3.1`이다. Historical `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했다. `0.3.0` E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 explicit `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환을 확인했으며, 후자는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Browser monitor에서는 실제 `SessionEnd` lifecycle 반영을 관찰했다. Public exact `0.3.0` 재설치 뒤 실제 hook, workspace label, permission/tool lifecycle과 subagent running → stopped를 추가 확인했다. Public `0.3.1` registry metadata/digest, annotated tag/GitHub Release와 this-device plugin installed/enabled를 확인했다. `0.3.2` candidate는 immutable published README의 잘못된 release-state 안내를 수정하지만 npm publish, tag 또는 exact public artifact E2E를 아직 주장하지 않는다.
+Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. 현재 source/package와 public npm `latest`는 `0.3.2`다. Historical `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했다. `0.3.0` E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 explicit `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환을 확인했으며, 후자는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Browser monitor에서는 실제 `SessionEnd` lifecycle 반영을 관찰했다. Public exact `0.3.0` 재설치 뒤 실제 hook, workspace label, permission/tool lifecycle과 subagent running → stopped를 추가 확인했다. Public `0.3.2` registry metadata/digest/signature, annotated tag/GitHub Release, main/tag CI, this-device exact global install과 registry/install artifact match를 확인했다. App-native thread snapshot은 worker activity 3개를 확인했지만, 재설치 전 앱 process의 follow-up subagent 3개 hook은 0건이어서 live hook E2E는 앱 restart/new-task 전까지 미완료다.
 
 ## 검증 환경
 
@@ -152,7 +152,9 @@ Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인
 
 Historical `codex-agent-view@0.3.0`은 릴리스 당시 public npm `latest`였다. npm `gitHead` `988132d0b525ee5e63f13a0d924810dd3f1bd93a`, shasum `08e2e5fa8c1133a1dcc3faae8f354535f9fc07b0`, exact SRI, registry signature, 21 files와 unpacked `158.8 kB`를 확인했다. Annotated `v0.3.0` tag가 origin에 push됐고 [public GitHub Release](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.0)가 공개됐다. 이 기기의 exact global reinstall은 plugin installed/enabled와 hook wiring 9종을 확인했고 registry tarball ↔ global diff는 0, marketplace는 ownership marker 1개 외 artifact files가 동일했다. Public install monitor는 `workspace_label: codex-agent-view`, 실제 `PermissionRequest`와 tool lifecycle을 수신했고, probe subagent는 `SubagentStart` running → `SubagentStop` stopped, `has_out_of_order_events: false`로 반영됐다.
 
-현재 public npm `latest`인 `codex-agent-view@0.3.1`은 npm `gitHead` `c515ea28be201dc24d31e13bf465a38145050b69`, shasum `4405b183012c04e7b0bc265d4eb14bf85291dcd9`, integrity `sha512-8oF5uHqZobgPt75I2ymoq3/tx4Ab1YX/cvMPjaJHjV7zxVC5Dh318isoCdsKNi6emXEbiTIdxOgX7GcclyuP8A==`, 21 files를 확인했다. Annotated `v0.3.1` tag와 [public GitHub Release](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.1)가 공개됐고, 이 기기 재설치에서 plugin `installed: true`, `enabled: true`를 확인했다. App-only E2E 완료는 아직 주장하지 않는다.
+Historical `codex-agent-view@0.3.1`은 npm `gitHead` `c515ea28be201dc24d31e13bf465a38145050b69`, shasum `4405b183012c04e7b0bc265d4eb14bf85291dcd9`, integrity `sha512-8oF5uHqZobgPt75I2ymoq3/tx4Ab1YX/cvMPjaJHjV7zxVC5Dh318isoCdsKNi6emXEbiTIdxOgX7GcclyuP8A==`, 21 files를 확인했다. Annotated `v0.3.1` tag와 [public GitHub Release](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.1)가 공개됐고, 이 기기 재설치에서 plugin `installed: true`, `enabled: true`를 확인했다. Exact `0.3.1` app-only E2E 완료는 주장하지 않는다.
+
+현재 public npm `latest`인 `codex-agent-view@0.3.2`는 npm `gitHead` `4f4f92dc872d9b782efe900cc1397bdccf7d2c8a`, shasum `2851544c75a0a5fb20a2865196ab54b566b373d8`, integrity `sha512-MPwFP3CjhehkIzyV3ja0/rWzLyK4tJI7jjsczKN16aXpKEr/dvtc/aljjqW/41zatZrQG32ccKKMJjYNyW6Tww==`, registry signature, 21 files, package `46856 B`, unpacked `167060 B`를 확인했다. Annotated `v0.3.2` tag와 [public GitHub Release](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.3.2)가 공개됐고 main/tag CI가 통과했다. 이 기기의 exact global install은 plugin `installed: true`, `enabled: true`이고 registry artifact mismatch는 0이다. App-native thread snapshot은 worker activity 3개를 확인했다. 내장 Browser monitor 연결은 성공했지만 재설치 전 앱 process의 follow-up subagent 3개는 hook event를 0건 전달했으므로 exact live hook E2E는 앱 full restart/new-task 뒤 검증한다.
 
 ## Phase 0 권장과 `0.2.0`에서 확정한 아키텍처
 
@@ -260,11 +262,13 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 - [x] Public exact `0.3.0` 실제 workspace label, permission/tool lifecycle, subagent running → stopped (`has_out_of_order_events: false`) 확인
 - [x] `0.3.1` public registry gitHead/shasum/integrity/21 files, annotated tag·GitHub Release와 this-device plugin installed/enabled 확인
 - [ ] Public exact `0.3.1` app-only E2E
-- [ ] `0.3.2` publish, tag/GitHub Release, exact install과 app-only E2E
+- [x] `0.3.2` registry metadata/digest/signature, tag/GitHub Release, main/tag CI, exact install과 artifact match
+- [x] Public exact `0.3.2` app-native thread snapshot의 worker activity 3개 확인
+- [ ] Public exact `0.3.2` 앱 full restart/new-task live hook E2E
 - [x] Registry tarball과 this-device global install/copied marketplace 21개 file byte comparison
 - Universal Plugins Directory portal 제출, review, publish, search visibility 확인
 
-`0.3.2` candidate README는 immutable publish artifact 안에서 exact `@0.3.2` 설치와 앱 안의 정상 사용 흐름을 안내한다. Directory publish 전에는 Universal Directory에서 검색 가능하다고 주장하지 않는다.
+`0.3.2` README는 immutable publish artifact 안에서 exact `@0.3.2` 설치와 앱 안의 정상 사용 흐름을 안내한다. Directory publish 전에는 Universal Directory에서 검색 가능하다고 주장하지 않는다.
 
 ## QA 결과
 
@@ -283,8 +287,9 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 - historical `0.2.1` release source: annotated tag/origin push/public GitHub Release, clean-cache exact-version `npx --version`, registry tarball ↔ tagged source 21 files byte-identical 확인
 - this-device public exact `0.2.1`: global reinstall/copied marketplace ↔ registry tarball 21 files byte-identical, CLI `0.2.1`, plugin installed/enabled, hook wiring 9종, 실제 session 자동 수신과 probe subagent running → stopped/UI 완료 반영
 - official app `0.2.1`: parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 `PermissionRequest` waiting 확인; 실제 `SessionEnd` 미관찰
-- current public `0.3.1`: npm gitHead/shasum/integrity/21 files, annotated tag/GitHub Release와 this-device plugin installed/enabled 확인; app-only E2E 미확인
-- source `0.3.2` candidate: immutable README correction과 package/plugin/test fixture version alignment; publish/tag/install/E2E 미완료
-- source `0.3.2` candidate QA: Node tests `67/67`, plugin/skill validation, package contract와 pack 21 files 통과
+- historical public `0.3.1`: npm gitHead/shasum/integrity/21 files, annotated tag/GitHub Release와 this-device plugin installed/enabled 확인; app-only E2E 미확인
+- historical source `0.3.2` candidate QA: immutable README correction과 package/plugin/test fixture version alignment, Node tests `67/67`, plugin/skill validation, package contract와 pack 21 files 통과
+- current public `0.3.2`: npm gitHead/shasum/integrity/signature, 21 files와 package/unpacked size, annotated tag/GitHub Release, main/tag CI, this-device global install/plugin installed/enabled와 artifact mismatch 0 확인
+- public exact `0.3.2` app acceptance: app-native worker activity 3개 확인. 내장 Browser monitor 연결은 성공했지만 재설치 전 앱 process의 follow-up subagent 3개 hook은 0건; app full restart/new-task live hook E2E 미완료
 
-Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.0`/`0.2.1` evidence는 historical record로 보존하고 `0.3.0`은 npm publish, tag/GitHub Release, exact artifact의 this-device reinstall과 live hook QA까지 확인했다. Public `0.3.1`은 registry metadata/digest, tag/GitHub Release와 plugin installed/enabled까지 확인했다. Source `0.3.2`는 immutable README correction release candidate이며 public evidence는 아직 없다. Universal Directory listing은 별도 external operation이며 아직 제출하지 않았다. 선택적인 npm provenance attestation 완료도 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.
+Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1` evidence는 historical record로 보존한다. Public `0.3.2`는 registry metadata/digest/signature, tag/GitHub Release, main/tag CI, exact artifact의 this-device install과 app-native snapshot까지 확인했다. Live hook E2E는 앱 full restart/new-task가 필요한 미완료 항목이다. Universal Directory listing은 별도 external operation이며 아직 제출하지 않았다. 선택적인 npm provenance attestation 완료도 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.

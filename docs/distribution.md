@@ -2,29 +2,41 @@
 
 조사일: 2026-08-01
 
-이 문서는 Codex Agent View의 npm package와 Codex plugin 배포 경계를 정리한다. 현재 source/package는 `0.3.2` release candidate이고 public npm `latest`는 `0.3.1`이다. `0.2.0`/`0.2.1`/`0.3.0` evidence는 historical record로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
+이 문서는 Codex Agent View의 npm package와 Codex plugin 배포 경계를 정리한다. 현재 source/package와 public npm `latest`는 `0.3.2`다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1` evidence는 historical record로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
 
 ## 현재 상태
 
-- package 이름은 `codex-agent-view`다. Public evidence table은 historical `0.2.0`/`0.2.1`/`0.3.0`과 current public `0.3.1`, source-only `0.3.2` candidate를 구분한다.
-- Public `0.3.1`은 설치 후 정상 사용을 공식 Codex 앱 안으로 한정하는 README/skill patch release다. npm metadata/digest, tag/GitHub Release와 this-device plugin installed/enabled를 확인했지만 app-only E2E는 아직 미확인이다.
+- package 이름은 `codex-agent-view`다. Public evidence table은 historical `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`과 current public `0.3.2`를 구분한다.
+- Public `0.3.2`는 immutable packaged README의 잘못된 release-state 안내를 수정한 patch다. Registry metadata/digest/signature, tag/GitHub Release, main/tag CI, this-device exact install과 registry/install artifact match를 확인했다. App-native snapshot은 worker activity 3개를 확인했지만 live hook E2E는 앱 restart/new-task 전이라 미완료다.
 - Node.js `>=18`을 요구하며 production dependency가 없다.
 - `package.json`은 `codex-agent-view` executable을 `bin/codex-agent-view.mjs`로 노출한다.
 - 배포 bundle에는 plugin manifest/catalog, logo assets, hooks, CLI, local runtime/server, static monitor UI, scripts, genuine Codex skill, README, LICENSE, NOTICE가 포함된다.
 - `postinstall`과 다른 npm lifecycle installer는 없다. npm package를 받는 것만으로 Codex 설정을 바꾸지 않는다.
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
-- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. `codex-agent-view@0.3.1`은 public npm registry의 `latest`이며 이 기기에 exact version을 재설치했다.
+- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. `codex-agent-view@0.3.2`는 public npm registry의 `latest`이며 이 기기에 exact version을 global install했다.
 
-### Source `0.3.2` release candidate
+### Current `0.3.2` public registry evidence
 
 `0.3.1`의 immutable published README가 자신을 미배포 candidate/public latest `0.3.0`으로 안내하는 결함을 수정하기 위한 patch다. Package/plugin/test fixture version을 `0.3.2`로 맞추고 packaged README는 exact `@0.3.2` 설치를 안내한다.
 
-아직 `0.3.2` npm publish, registry metadata/digest, tag/GitHub Release, exact public install 또는 app-only E2E 완료를 주장하지 않는다.
+| 확인 항목 | 결과 |
+| --- | --- |
+| npm `latest` / `version` | `0.3.2` |
+| npm `gitHead` | `4f4f92dc872d9b782efe900cc1397bdccf7d2c8a` |
+| Dist shasum | `2851544c75a0a5fb20a2865196ab54b566b373d8` |
+| Exact integrity | `sha512-MPwFP3CjhehkIzyV3ja0/rWzLyK4tJI7jjsczKN16aXpKEr/dvtc/aljjqW/41zatZrQG32ccKKMJjYNyW6Tww==` |
+| Registry signature | 확인 |
+| Package contents / size | 21 files, package `46856 B`, unpacked `167060 B` |
+| Annotated tag / GitHub Release | `v0.3.2` tag와 public GitHub Release 확인 |
+| CI | main/tag CI 통과 |
+| This-device exact artifact | global install, plugin `installed: true`, `enabled: true`, registry artifact mismatch 0 |
+| App-native snapshot | worker activity 3개 확인 |
+| Live hook E2E | 내장 Browser monitor 연결 성공. 재설치 전 앱 process의 follow-up subagent 3개 hook event 0건; 앱 full restart/new-task 필요 |
 
-Candidate QA는 Node tests `67/67`, plugin/skill validation, package contract와 `npm pack --dry-run`을 통과했다. Pack metadata는 `codex-agent-view@0.3.2`, 21 files, unpacked `167.1 kB`다. 이는 local candidate evidence이며 public registry digest가 아니다.
+Pre-publish QA는 Node tests `67/67`, plugin/skill validation, package contract와 `npm pack --dry-run`을 통과했다. Exact `0.3.2` live hook E2E는 monitor 연결과 분리해 미완료로 유지하며, 앱을 완전히 재시작한 뒤 새 task에서 다시 검증한다.
 
-### Current `0.3.1` public registry evidence
+### Historical `0.3.1` public registry evidence
 
 `0.3.1`은 package/plugin manifest version과 package contract를 맞추고, 최초 설치·제거를 제외한 snapshot, 상태 확인과 live view 열기를 Codex 앱 안에서 끝내도록 README와 bundled skill을 강화한다. CLI와 localhost runtime은 plugin 내부 구현 또는 maintainer 진단 경계에 남는다.
 
@@ -133,7 +145,7 @@ npm에 package를 publish하는 것만으로 Universal Plugins Directory에 등�
 
 현재 `.agents/plugins/marketplace.json`은 repository 또는 copied package root를 가리키는 local source(`source.path: "./"`)다. `codex-agent-view install`은 npm으로 받은 package라도 이 local catalog를 `~/.codex-agent-view/marketplace` 아래에 복사한 뒤 Codex CLI로 등록한다. 이것은 catalog가 npm registry를 직접 resolve하는 “npm-backed marketplace source”와 구분해야 한다.
 
-## Source 및 tarball 검증
+## Maintainer·고급 진단: source 및 tarball 검증
 
 Source checkout에서는 registry publish 없이 실제 CLI를 실행할 수 있다.
 
@@ -156,28 +168,30 @@ Release candidate 검증에서는 `npm pack`으로 만든 exact tarball을 임�
 
 ## Public npm 사용자 경로
 
-다음 명령은 현재 public `codex-agent-view@0.3.1`을 사용한다. Mutable `latest`보다 문서와 함께 검증한 exact version을 우선한다.
-
-일회성 실행:
+다음 명령은 현재 public `codex-agent-view@0.3.2`를 최초 설치한다. Mutable `latest`보다 문서와 함께 검증한 exact version을 우선한다.
 
 ```bash
-npx --yes codex-agent-view@0.3.1 doctor
-npx --yes codex-agent-view@0.3.1 install
-npx --yes codex-agent-view@0.3.1 start
-```
-
-`0.3.1`의 plain `start`는 외부 browser를 열지 않는다. 외부 browser는 `--open`으로만 연다.
-
-또는 명시적인 global install:
-
-```bash
-npm install --global codex-agent-view@0.3.1
-codex-agent-view doctor
+npm install --global codex-agent-view@0.3.2
 codex-agent-view install
-codex-agent-view start
 ```
 
-Global install과 `npx`는 package download만으로 Codex 설정을 바꾸지 않는다. 사용자가 `install`을 명시적으로 실행할 때만 local plugin registration이 바뀌며, hook command와 trust boundary를 먼저 보여준다.
+Global install을 원하지 않으면 다음 exact-version 일회성 설치 명령만 사용한다.
+
+```bash
+npx --yes codex-agent-view@0.3.2 install
+```
+
+Global install과 `npx` package download만으로는 Codex 설정을 바꾸지 않는다. 사용자가 `install`을 명시적으로 실행할 때만 local plugin registration이 바뀌며, hook command와 trust boundary를 먼저 보여준다.
+
+최초 설치 뒤 정상 사용은 다음 순서로 공식 Codex 앱 안에서 수행한다.
+
+1. Codex 앱을 완전히 종료한 뒤 다시 연다.
+2. 앱의 **Plugins** 화면에서 `Codex Agent View`가 설치·활성화됐는지 확인한다.
+3. 앱의 hook review 화면에서 현재 hook definition을 검토하고 trust한다. 앱 version이 hook review UI를 제공하지 않을 때만 설치 절차의 일부로 interactive Codex CLI `/hooks`를 사용한다.
+4. 앱에서 새 task를 만들고 `@` 메뉴에서 `codex-agent-view`를 선택한다.
+5. Snapshot은 “현재 active task와 subagent를 보여줘”, live detail은 “Codex Agent View live 화면을 앱 안에서 열어줘”처럼 앱 task 안에서 요청한다.
+
+Runtime 진단 명령과 localhost 관리는 위 **Maintainer·고급 진단** 절의 source/tarball 검증 경계에만 속한다.
 
 `codex-agent-view install`의 현재 동작은 다음과 같다.
 
@@ -302,9 +316,11 @@ codex plugin marketplace remove codex-agent-view
 - [ ] Public exact `0.3.1` 공식 Codex 앱 새 task app-only E2E
 - [x] Annotated `v0.3.1` tag와 public GitHub Release 확인
 - [x] Source `0.3.2` Node tests `67/67`, plugin/skill validation, package contract와 pack 21 files QA
-- [ ] `0.3.2` public registry publish와 registry metadata/digest 검증
-- [ ] Public exact `0.3.2` install, plugin installed/enabled와 app-only E2E
-- [ ] Annotated `v0.3.2` tag, GitHub Release와 registry/source artifact comparison
+- [x] `0.3.2` public registry publish와 version/`latest`, gitHead, shasum, integrity, signature, 21 files, package/unpacked size 검증
+- [x] Public exact `0.3.2` global install, plugin installed/enabled와 registry artifact mismatch 0 확인
+- [x] Public exact `0.3.2` app-native thread snapshot에서 worker activity 3개 확인
+- [ ] Public exact `0.3.2` live hook E2E: 앱 full restart 후 새 task에서 검증
+- [x] Annotated `v0.3.2` tag, GitHub Release, main/tag CI와 registry/tagged-source artifact comparison
 - [ ] Opt-in capture가 존재하는 경우의 보존·별도 정리 경로 확인
 
 Historical `0.2.0` public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest` fixture event가 status/UI에 반영됐고 search/filter가 동작했으며 browser console error가 없었다. 별도의 `0.2.1` 공식 앱 E2E에서는 실제 `PermissionRequest` hook과 read-only waiting 표시를 포함한 위 8종 event를 확인했다.
@@ -319,9 +335,10 @@ Historical `0.2.0` public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `P
 - [x] Historical `0.2.0`: npm `gitHead`와 annotated tag, origin tag, public GitHub Release가 같은 source를 가리키고 21개 package file이 byte-identical임을 확인했다.
 - [x] Historical `0.2.1`: public registry evidence, exact-version global install, annotated tag, GitHub Release와 source/artifact byte comparison을 검증했다.
 - [x] Historical `0.3.0`: public registry metadata/signature, annotated tag, GitHub Release, exact-version global reinstall과 registry/global artifact comparison을 검증했다.
-- [x] Current `0.3.1`: public registry metadata/digest, annotated tag/GitHub Release와 this-device reinstall의 plugin installed/enabled를 확인했다.
-- [ ] `0.3.1` app-only E2E는 아직 미완료다.
-- [ ] Source `0.3.2`는 publish·tag·exact install·app-only E2E 전이다.
+- [x] Historical `0.3.1`: public registry metadata/digest, annotated tag/GitHub Release와 this-device reinstall의 plugin installed/enabled를 확인했다.
+- [x] Current `0.3.2`: public registry metadata/digest/signature, annotated tag/GitHub Release, main/tag CI, exact global install과 registry/install artifact match를 확인했다.
+- [x] `0.3.2` app-native thread snapshot에서 worker activity 3개를 확인했다.
+- [ ] `0.3.2` live hook E2E는 앱 full restart/new-task 전이라 미완료다.
 - [ ] npm-backed marketplace catalog를 제공한다면 package, version range, registry와 authentication policy를 확정한다.
 - [x] 공식 앱에서 plugin installed/enabled와 새 task 핵심 lifecycle/permission/자동 표시를 실제 사용자 환경에서 검증했다.
 - [x] 후속 `0.3.0` source에서 실제 `SessionEnd`를 독립 검증했다.

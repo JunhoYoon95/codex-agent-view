@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-현재 source/package는 `0.3.2` release candidate이고 public npm `latest`는 `0.3.1`이다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1` release evidence는 historical/public evidence로 보존한다.
+현재 source/package와 public npm `latest`는 `0.3.2`다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` release evidence를 보존한다.
 
 ## 제품 원칙
 
@@ -68,14 +68,16 @@
 - [ ] Public exact `0.3.1`의 공식 Codex 앱 새 task app-only E2E를 확인한다.
 - [x] Annotated `v0.3.1` tag와 public GitHub Release를 생성한다.
 
-## `0.3.2` immutable README correction release candidate
+## `0.3.2` immutable README correction release
 
 - [x] Package, plugin manifest와 test fixture version contract를 `0.3.2`로 일치시킨다.
 - [x] Packaged README가 자신을 미배포 candidate로 안내하지 않고 exact-version install `@0.3.2`를 안내하도록 고친다.
 - [x] `0.3.2` release candidate의 full test/plugin/package validation과 tarball QA를 완료한다.
-- [ ] `0.3.2`를 npm publish하고 registry metadata/digest와 exact artifact를 검증한다.
-- [ ] Public exact `0.3.2`을 이 기기에 설치하고 plugin installed/enabled와 공식 Codex 앱 app-only E2E를 확인한다.
-- [ ] Annotated `v0.3.2` tag와 public GitHub Release를 생성하고 registry/source artifact 일치를 확인한다.
+- [x] `0.3.2`를 npm publish하고 registry version/`latest`, `gitHead`, shasum, integrity, signature, 21 files와 package/unpacked size를 검증한다.
+- [x] Public exact `0.3.2`를 이 기기에 global install하고 plugin installed/enabled와 registry artifact mismatch 0을 확인한다.
+- [x] 공식 Codex 앱의 app-native thread snapshot에서 worker activity 3개를 확인한다.
+- [ ] 앱을 완전히 재시작하고 새 task에서 public exact `0.3.2` live hook E2E를 확인한다. 재설치 전 앱 process의 follow-up subagent 3개는 내장 Browser monitor에 hook event를 0건 전달했다.
+- [x] Annotated `v0.3.2` tag와 public GitHub Release, main/tag CI 통과와 registry/tagged-source artifact 일치를 확인한다.
 
 ## 외부 npm distribution operation
 
@@ -151,7 +153,7 @@
 
 ## Phase 3 — 설치·제거와 공개 배포 준비
 
-상태: repository 구현과 public npm `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1` publish, annotated tag와 GitHub Release 완료. Source는 `0.3.2` release candidate이며 publish·tag·exact install·app-only E2E는 아직 미완료다. Directory listing은 제품 구현과 분리된 외부 작업이다.
+상태: repository 구현과 public npm `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` publish, annotated tag와 GitHub Release 완료. Exact `0.3.2` install과 app-native snapshot은 확인했고, app full restart/new-task live hook E2E만 미완료다. Directory listing은 제품 구현과 분리된 외부 작업이다.
 
 - [x] `codex-agent-view` bin과 `start/status/doctor/install/uninstall` CLI surface를 구현한다.
 - [x] npm `files` allowlist에 manifests, catalog, logo assets, hooks, CLI, sender/capture scripts, skill, runtime/UI, README, LICENSE, NOTICE를 포함한다.
@@ -194,10 +196,12 @@
 - Current public `0.3.1`: version/`latest`, npm `gitHead` `c515ea28be201dc24d31e13bf465a38145050b69`, shasum `4405b183012c04e7b0bc265d4eb14bf85291dcd9`, integrity `sha512-8oF5uHqZobgPt75I2ymoq3/tx4Ab1YX/cvMPjaJHjV7zxVC5Dh318isoCdsKNi6emXEbiTIdxOgX7GcclyuP8A==`, 21 files 확인
 - Public `0.3.1` release/install: annotated tag·public GitHub Release, this-device reinstall, plugin `installed: true`, `enabled: true`; app-only E2E evidence는 아직 없음
 - Historical source `0.3.1` candidate validation: Node tests `67/67`, plugin validation, skill quick validation, package contract와 `npm pack --dry-run` 통과; 21 files, unpacked `167.1 kB`
-- Source `0.3.2` release candidate: immutable packaged README correction과 package/plugin/test version alignment 완료; publish·tag·exact install·E2E evidence는 아직 없음
-- Source `0.3.2` candidate validation: Node tests `67/67`, plugin/skill validation, package contract와 `npm pack --dry-run` 통과; 21 files, unpacked `167.1 kB`
+- Historical source `0.3.2` candidate validation: immutable packaged README correction과 package/plugin/test version alignment, Node tests `67/67`, plugin/skill validation, package contract와 `npm pack --dry-run` 통과; 21 files, unpacked `167.1 kB`
+- Current public `0.3.2`: version/`latest`, npm `gitHead` `4f4f92dc872d9b782efe900cc1397bdccf7d2c8a`, shasum `2851544c75a0a5fb20a2865196ab54b566b373d8`, integrity `sha512-MPwFP3CjhehkIzyV3ja0/rWzLyK4tJI7jjsczKN16aXpKEr/dvtc/aljjqW/41zatZrQG32ccKKMJjYNyW6Tww==`, signature, 21 files, package `46856 B`, unpacked `167060 B` 확인
+- Public `0.3.2` release/install: annotated tag·public GitHub Release, main/tag CI 통과, this-device global install, plugin `installed: true`, `enabled: true`, registry artifact mismatch 0 확인
+- Public `0.3.2` app acceptance: app-native thread snapshot에서 worker activity 3개 확인. 내장 Browser monitor 연결은 성공했지만 재설치 전 앱 process의 follow-up subagent 3개 hook은 0건이므로 app restart/new-task live hook E2E는 미완료
 
-이 snapshot은 historical public `0.2.0`/`0.2.1`/`0.3.0`, current public `0.3.1` evidence와 source-only `0.3.2` release candidate를 분리해 기록한다. Universal Directory listing은 아직 완료되지 않았다. 별도 npm provenance attestation은 선택 사항이며 확인되지 않았다.
+이 snapshot은 historical public `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`과 current public `0.3.2` evidence를 분리해 기록한다. Universal Directory listing은 아직 완료되지 않았다. 별도 npm provenance attestation은 선택 사항이며 확인되지 않았다.
 
 ## Phase 4 — 선택적 보강
 
