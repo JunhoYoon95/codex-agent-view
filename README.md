@@ -146,8 +146,8 @@ Monitor가 실행 중이고 plugin enable/trust가 끝난 뒤 생성되거나 �
 
 ```bash
 npm install --global codex-agent-view@0.2.1
-codex-agent-view doctor
 codex-agent-view install
+codex-agent-view doctor
 codex-agent-view start
 ```
 
@@ -323,8 +323,8 @@ The recommended installation for the current public `0.2.1` release is the exact
 
 ```bash
 npm install --global codex-agent-view@0.2.1
-codex-agent-view doctor
 codex-agent-view install
+codex-agent-view doctor
 codex-agent-view start
 ```
 
