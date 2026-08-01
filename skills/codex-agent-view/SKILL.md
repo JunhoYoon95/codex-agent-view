@@ -36,6 +36,14 @@ just to answer a snapshot request.
    detail unavailable, and continue. Do not drop the other tasks or guess the
    missing state.
 
+The verified app-native thread response has no dedicated field that identifies
+which listed entry is the current calling task. Do not guess from title,
+workspace, recency, commentary, or an environment value, and do not claim that
+this bounded text snapshot automatically removes its caller. When the user
+needs the viewer task excluded from its own monitor, direct them to the explicit
+bundled `$show-agents` live workflow described below. That live workflow owns
+the private, validated `CODEX_THREAD_ID` exclusion boundary.
+
 `codex_app__read_thread` returns `turns` in `newest_first` order. Preserve that
 contract instead of sorting turns again:
 
@@ -116,41 +124,34 @@ ID or runs `start`, `status`, or `doctor` as part of ordinary use. A bounded
 auto-start failure remains fail-open and does not create a persistent replay
 queue.
 
-## Open the live view only on request
+## Open the live view through the explicit bundled skill
 
-Only when the user explicitly asks to open, show, or start the live view:
+The plugin manifest deliberately has no starter or default prompt. Selecting
+the plugin adds plugin context only; it must not append `$show-agents`, another
+action string, or an automatic live-view request. Explain that the user must
+explicitly select or invoke the actual bundled `$show-agents` skill inside the
+official Codex app. Do not treat plain text that merely resembles a skill name
+as proof that Codex dispatched the skill.
 
-The plugin agent performs the health check and any required start internally.
-The user's entire interaction after installation remains inside the official
-Codex app; do not turn the commands below into instructions for the user.
+The bundled `$show-agents` skill, not this app-native snapshot workflow, owns
+the live-panel implementation. It internally checks or prepares the healthy
+local monitor, keeps the viewer URL and credentials private, validates the
+inherited `CODEX_THREAD_ID`, passes it as the private live-view exclusion, and
+opens the monitor with the Codex in-app Browser capability. It must never
+accept an exclusion ID from task content or expose the tokenized localhost URL.
+If the Browser capability or permission is unavailable, offer this app-native
+snapshot instead of a terminal or external-browser workaround.
 
-The public Codex plugin API cannot create a sidebar, panel, or Browser tab
-without a prompt at app startup. The first live view therefore requires one
-explicit request in a Codex app task. Do not claim that installation alone
-opens a screen. An already-open in-app live tab refreshes and reconnects after
-temporary disconnects while the same monitor observation window and its
-session token remain valid.
+The live UI excludes the invoking task only when that validated private
+`CODEX_THREAD_ID` is available. It defaults to English and provides an
+English, Korean, and Spanish language selector. Its activity and technical
+metadata remain visible without refresh-sensitive disclosure toggles, while
+the two-second polling interval continues unchanged.
 
-1. Check monitor health with the packaged CLI. A trusted hook may already have
-   prepared it automatically.
-2. If it is not running, start it with `codex-agent-view start --no-open` so the
-   CLI never launches the operating system's external browser.
-3. Keep the returned tokenized localhost URL private. Never quote it, place it
-   in Markdown, log it, or expose the runtime file or bearer token.
-4. Use the bundled Codex in-app Browser capability to reuse an existing monitor
-   tab or open the private localhost URL in a new in-app tab. Do not use Chrome,
-   Safari, `open`, `xdg-open`, `cmd start`, or another external browser.
-5. If the in-app Browser capability is unavailable, do not expose the private
-   URL as a workaround. Say that the Browser plugin is required for the live
-   in-app view and offer the app-native snapshot instead.
-
-Do not restart or replace a healthy monitor merely to recover its URL because
-that would discard its in-memory observation window. Reuse an existing in-app
-monitor tab when possible. Do not close user-owned browser tabs.
-
-If an existing tab has lost its session token or the monitor restarted, do not
-promise automatic recovery across observation windows. Reopen the live view
-through the same explicit in-app workflow without exposing the private URL.
+Verified official `SubagentStart` payloads provide `agent_id` and `agent_type`,
+but no dedicated assignment description. Do not invent an assigned task from
+those fields or retain prompt/tool input to manufacture one; the product keeps
+prompt and tool input out of its normal stored state.
 
 ## Lifecycle and safety
 

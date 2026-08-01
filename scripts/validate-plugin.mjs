@@ -198,14 +198,16 @@ assert(
   "Codex app thread discovery must precede the CLI fallback",
 );
 assert(
-  Array.isArray(manifest.interface?.defaultPrompt) &&
-    manifest.interface.defaultPrompt.length === 1 &&
-    manifest.interface.defaultPrompt[0] === "$show-agents",
-  "plugin starter prompt must explicitly invoke the bundled Show Agents skill",
+  !Object.hasOwn(manifest.interface ?? {}, "defaultPrompt"),
+  "plugin selection must not inject a starter prompt or plain-text skill name",
 );
 assert(
-  !manifest.interface.defaultPrompt[0].includes(`@${manifest.name}`),
-  "plugin starter prompt must not include an app @mention",
+  typeof manifest.interface?.longDescription === "string" &&
+    manifest.interface.longDescription.includes("official Codex app") &&
+    manifest.interface.longDescription.includes("explicitly invoke") &&
+    manifest.interface.longDescription.includes("$show-agents") &&
+    manifest.interface.longDescription.includes("does not append or auto-run action text"),
+  "plugin description must explain manual $show-agents use inside Codex without implying automatic dispatch",
 );
 for (const requiredText of [
   "Show Agents",
@@ -214,6 +216,9 @@ for (const requiredText of [
   "codex_app__open_in_codex",
   'placement: "right"',
   "127.0.0.1",
+  "CODEX_THREAD_ID",
+  "&exclude=<thread-id>",
+  "Never\n   reopen by `tabId` alone",
   "tokenized localhost URL",
   "site permission is denied",
 ]) {

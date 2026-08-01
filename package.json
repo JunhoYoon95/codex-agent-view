@@ -1,6 +1,6 @@
 {
   "name": "codex-agent-view",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Read-only Codex app task view with a trusted-hook auto-prepared local live backend.",
   "type": "module",
   "main": "./src/core/index.mjs",
