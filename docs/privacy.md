@@ -65,10 +65,8 @@ Setting `CODEX_AGENT_VIEW_CAPTURE_FULL=1` for that diagnostic script disables re
 
 ## Removal
 
-Stop the monitor with `Ctrl+C` before removing it when practical.
-
-- `codex-agent-view uninstall` removes the Codex plugin registration, local marketplace registration, and copied marketplace bundle. It preserves the remaining runtime directory by default.
-- `codex-agent-view uninstall --purge` additionally removes the configured runtime directory. Review the resolved directory reported by `codex-agent-view doctor` before using purge.
+- `codex-agent-view uninstall` uses the bearer token from the validated runtime file to authenticate the loopback endpoint, verifies the endpoint is a healthy owned Codex Agent View monitor, and requests its internal shutdown. This safely stops both auto-started detached and maintainer foreground monitors without a separate manual stop. Only after shutdown is confirmed does it remove the Codex plugin registration, local marketplace registration, and copied marketplace bundle. It preserves remaining runtime-directory data by default.
+- `codex-agent-view uninstall --purge` performs the same authenticated shutdown, then additionally removes only an owned stale runtime file and the runtime directory when it is empty. It preserves an unrecognized runtime file, a non-empty directory, and unrelated local data. If the authenticated endpoint is another loopback service or an owned monitor cannot be stopped safely, removal aborts and plugin/runtime files are preserved.
 - Diagnostic captures stored through `PLUGIN_DATA`, `CODEX_AGENT_VIEW_CAPTURE_DIR`, or a project working directory may be outside the runtime directory. Inspect and remove those exact files separately if they are no longer needed.
 - Closing the relevant browser session clears its `sessionStorage` token under normal browser behavior.
 

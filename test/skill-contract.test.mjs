@@ -127,6 +127,12 @@ test("skill uses app task tools before the CLI and keeps sensitive content out o
   assert.match(skill, /Do not claim that installation alone\nopens a screen/);
   assert.match(skill, /Codex in-app Browser capability/);
   assert.match(skill, /Do not use Chrome,\n\s+Safari/);
+  assert.match(skill, /Do not ask the user to\nstop an auto-started or foreground monitor first/);
+  assert.match(skill, /validated runtime bearer token to authenticate and internally shut down a\nhealthy owned monitor/);
+  assert.match(skill, /default command\npreserves remaining runtime-directory data/);
+  assert.match(skill, /`--purge` additionally removes\nonly an owned stale runtime file and an empty runtime directory/);
+  assert.match(skill, /preserves\nunrecognized files, unrelated loopback services, and non-empty directories/);
+  assert.doesNotMatch(skill, /Ctrl\+C/);
 
   assert.equal(manifest.version, packageMetadata.version);
   assert.equal(manifest.interface.shortDescription, "View active Codex tasks.");

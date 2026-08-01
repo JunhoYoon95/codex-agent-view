@@ -226,8 +226,9 @@ Runtime server는 `127.0.0.1` 외 bind를 거부하고, user-only runtime file�
 
 1. plugin browser에서 plugin을 disable/uninstall한다.
 2. hook browser에서 해당 hook source가 더 이상 활성 상태가 아닌지 확인한다.
-3. `codex-agent-view uninstall`로 copied marketplace bundle을 제거하고, 사용자가 runtime directory까지 제거하길 명시적으로 원할 때만 exact target을 검토한 뒤 `--purge`를 사용한다.
-4. 별도 opt-in diagnostic capture가 있다면 `PLUGIN_DATA`, configured capture directory, standalone fallback을 각각 확인해 정리한다.
+3. `codex-agent-view uninstall`이 validated runtime token으로 owned healthy auto/foreground monitor를 인증해 internal shutdown한 뒤 copied marketplace bundle을 제거하는지 확인한다. 기본 제거는 runtime directory의 나머지 data를 보존한다.
+4. 사용자가 owned runtime data 제거까지 명시적으로 원할 때만 `--purge`를 사용한다. Owned stale runtime file과 빈 runtime directory만 제거하고, unrecognized runtime file·unrelated loopback service·non-empty directory는 보존하는지 확인한다.
+5. 별도 opt-in diagnostic capture가 있다면 `PLUGIN_DATA`, configured capture directory, standalone fallback을 각각 확인해 정리한다.
 
 hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash를 다시 검토해야 한다.
 

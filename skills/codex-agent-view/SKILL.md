@@ -159,7 +159,15 @@ user explicitly requests that lifecycle action. Explain that install changes
 local Codex plugin registration and requires hook review/trust. Before
 uninstalling, distinguish the default command, which preserves runtime data,
 from `codex-agent-view uninstall --purge`, which removes the configured runtime
-directory.
+directory only within its owned-file safety boundary. Do not ask the user to
+stop an auto-started or foreground monitor first. The uninstall command uses
+the validated runtime bearer token to authenticate and internally shut down a
+healthy owned monitor before removing plugin files. The default command
+preserves remaining runtime-directory data. `--purge` additionally removes
+only an owned stale runtime file and an empty runtime directory; it preserves
+unrecognized files, unrelated loopback services, and non-empty directories.
+If an owned monitor cannot be stopped safely or the endpoint is unrelated,
+report that removal stopped with plugin and runtime files preserved.
 
 Keep every workflow read-only with respect to Codex tasks. Never stop or
 restart a task or subagent, send a message to an agent, approve or deny a

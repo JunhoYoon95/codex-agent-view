@@ -229,17 +229,21 @@ npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` c
 
 ### 제거와 복구
 
-제거는 최초 설치와 마찬가지로 terminal을 사용하는 명시적 lifecycle 작업이다. Maintainer 진단용 foreground monitor를 따로 실행 중인 경우에만 먼저 `Ctrl+C`로 종료하고 다음을 실행한다.
+제거는 최초 설치와 마찬가지로 terminal을 사용하는 명시적 lifecycle 작업이다. Auto-start된 detached monitor와 maintainer가 실행한 foreground monitor 모두 별도로 먼저 종료할 필요 없이 다음 명령을 실행한다.
 
 ```bash
 codex-agent-view uninstall
 ```
 
-기본 `uninstall`은 plugin 등록, marketplace 등록, copied marketplace bundle을 제거하지만 runtime directory의 나머지 data는 보존한다. 사용자가 `doctor`가 보여준 exact runtime directory까지 제거하길 명시적으로 원할 때만 다음을 사용한다.
+`uninstall`은 runtime file의 bearer token으로 loopback endpoint를 인증하고 Codex Agent View 소유의 healthy monitor인지 확인한 뒤 internal shutdown을 요청한다. 종료가 확인돼야 plugin 등록, marketplace 등록과 copied marketplace bundle을 제거하며 runtime directory에 남은 data는 기본적으로 보존한다. 인증된 소유 monitor를 안전하게 종료할 수 없거나 endpoint가 다른 service로 판별되면 plugin과 runtime files를 보존한 채 실패한다.
+
+사용자가 configured runtime directory의 소유 data까지 제거하길 명시적으로 원할 때만 다음을 사용한다.
 
 ```bash
 codex-agent-view uninstall --purge
 ```
+
+`--purge`도 owned monitor를 같은 방식으로 먼저 종료하고, owned stale runtime file과 비어 있는 runtime directory만 추가 제거한다. 형식을 알 수 없는 runtime file과 관련 없는 loopback service는 삭제하거나 종료하지 않는다. Unrecognized file은 그대로 보존하며, unrelated endpoint가 확인되면 plugin과 runtime files를 모두 보존한 채 중단한다. Opt-in capture나 다른 file 때문에 directory가 비어 있지 않으면 directory 자체도 보존한다.
 
 Source checkout을 직접 실행한 경우에만 같은 명령의 `node bin/codex-agent-view.mjs uninstall` 또는 `node bin/codex-agent-view.mjs uninstall --purge` 형식을 사용한다.
 
@@ -477,17 +481,21 @@ Read [Privacy](docs/privacy.md), [Security](SECURITY.md), and [Support](SUPPORT.
 
 ### Uninstall
 
-Uninstall is an explicit terminal lifecycle action, like initial installation. Only when a maintainer foreground monitor is already running, stop that diagnostic process with `Ctrl+C`, then run:
+Uninstall is an explicit terminal lifecycle action, like initial installation. Run the command directly whether the monitor was auto-started as a detached process or started in the foreground by a maintainer; no separate manual stop is required.
 
 ```bash
 codex-agent-view uninstall
 ```
 
-The default command removes plugin/marketplace registration and the copied bundle while preserving remaining runtime data. Use the following only after reviewing the exact runtime directory and explicitly deciding to remove it:
+`uninstall` authenticates to the loopback endpoint with the runtime file's bearer token, verifies that it is a healthy owned Codex Agent View monitor, and requests internal shutdown. Only after shutdown is confirmed does it remove plugin/marketplace registration and the copied bundle; remaining runtime-directory data is preserved by default. If the owned monitor cannot be stopped safely or the endpoint is identified as another service, plugin and runtime files are preserved and the command fails.
+
+Use the following only after explicitly deciding to remove owned data from the configured runtime directory:
 
 ```bash
 codex-agent-view uninstall --purge
 ```
+
+`--purge` performs the same authenticated shutdown first, then additionally removes only an owned stale runtime file and an empty runtime directory. It does not delete or stop an unrecognized runtime file or an unrelated loopback service. An unrecognized file is preserved; an unrelated endpoint aborts removal while preserving plugin and runtime files. A non-empty directory containing opt-in captures or other files is also preserved.
 
 For a source checkout only, use the equivalent `node bin/codex-agent-view.mjs uninstall` or `node bin/codex-agent-view.mjs uninstall --purge` form. Opt-in captures outside that directory require separate, exact cleanup.
 
