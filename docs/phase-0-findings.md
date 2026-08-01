@@ -8,9 +8,9 @@
 
 다만 이것은 공식 앱 bundle에 포함된 CLI runtime 검증이지, Codex GUI의 현재 task가 plugin hook을 실행했다는 증거는 아니다. 후속 `0.2.0` 실사용에서는 plugin 설치·enable과 monitor 실행이 정상이었는데도 동일 공식 앱 process에서 실제 subagent 2개를 실행하는 동안 event가 0건이었다. 앱 log에도 `send-hook.mjs` 실행 흔적이 없어서 문제를 UI/reducer가 아니라 app → plugin hook command 경계로 좁혔다.
 
-해당 app process에는 plugin 설치 전 `hooks/list` 응답이 있었고 설치 뒤에도 process가 유지됐다. 이는 stale config/hook snapshot 가설과 일치하지만 인과관계를 확정하지는 않는다. 또한 `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않아 config snapshot과 untrusted hook skip을 자동 진단으로 분리할 수 없었다. 따라서 “GUI는 hook을 지원하지 않는다” 또는 “재시작만 하면 해결된다” 중 어느 쪽도 아직 확정하지 않는다. `PermissionRequest`의 실제 GUI payload도 미관찰이다.
+해당 app process에는 plugin 설치 전 `hooks/list` 응답이 있었고 설치 뒤에도 process가 유지됐다. 이는 stale config/hook snapshot 가설과 일치하지만 인과관계를 확정하지는 않는다. 또한 `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않아 config snapshot과 untrusted hook skip을 자동 진단으로 분리할 수 없었다. 따라서 당시 실패 원인을 “재시작 부족”으로 단정하지 않는다.
 
-Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. `0.2.1`은 실사용 실패를 진단 가능하게 만들고 parent task lifecycle도 관찰하기 위한 patch다. 공식 앱을 완전히 재시작하고 현재 hook hash를 검토·trust한 뒤 새 GUI task에서 parent/subagent lifecycle, tool use, approval 요청을 발생시키는 E2E 전에는 공식 앱 호환 성공을 주장하지 않는다.
+Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. `0.2.1`은 실사용 실패를 진단 가능하게 만들고 parent task lifecycle도 관찰하기 위한 patch다. 후속으로 공식 앱 `26.727.40816`(`build 6067`)을 재시작한 현재 조합에서 installed/enabled plugin `0.2.1`을 사용해 task ID 등록 없이 parent 3개와 subagent 3개가 자동 표시되는 것을 확인했다. 실제 `SessionStart`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest`가 sender → loopback monitor → UI에 도착했다. `SessionEnd`는 wiring에 포함되지만 실제 event는 아직 미관찰이다.
 
 ## 검증 환경
 
@@ -80,7 +80,7 @@ Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. `0.2.1`은
 
 관찰한 start와 stop은 같은 root `session_id`와 같은 `agent_id`를 사용했다. 이 조합은 in-memory lifecycle correlation의 실용적인 후보지만, unique constraint나 영구 schema로 확정하지 않는다. 누락, 중복, out-of-order event에 안전한 reducer가 필요하다.
 
-`PermissionRequest`는 공식 문서상 지원되며 tool approval 직전에 실행되지만 이번 probe에서는 발생하지 않았다. 실제 payload field는 미확인이다.
+초기 Phase 0 probe에서는 `PermissionRequest`가 발생하지 않았다. 후속 공식 앱 `0.2.1` E2E에서는 실제 `PermissionRequest` dispatch와 read-only waiting 표시를 확인했다. 다만 raw diagnostic capture를 사용해 전체 payload field set을 확정한 것은 아니며 runtime은 실제 전달된 최소 field만 좁게 수용했다.
 
 ## 공식 앱과 CLI의 차이
 
@@ -92,7 +92,8 @@ Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. `0.2.1`은
 | `0.2.0` 실사용 재현 | 설치·enable·monitor가 정상인 상태에서 subagent 2개 실행, monitor `updated_at_ms: 0`, `sessions: []`, app log sender 실행 흔적 없음 |
 | GUI 미캡처 해석 | 설치 전 `hooks/list` snapshot 유지 정황이 있으나 config snapshot 또는 untrusted hook skip 가능성을 분리하지 못함. hot-load 불가나 restart 해결을 단정하지 않음 |
 | Trust 관찰 한계 | `codex plugin list --json`으로 installed/enabled는 확인 가능하지만 persisted exact-hook trust는 확인 불가. interactive `/hooks` 검토가 필요 |
-| GUI 최종 결론 | 새 task에서 plugin과 hook trust를 확인한 E2E 전까지 미확인 |
+| `0.2.1` 공식 앱 E2E | 재시작한 앱 `26.727.40816`(`build 6067`)에서 parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 permission waiting 확인 |
+| GUI 최종 결론 | 확인된 8종 event 경로는 호환 확인. `SessionEnd`는 실제 미관찰이므로 독립 미확인 |
 
 앱 embedded executable을 직접 실행한 결과는 해당 executable과 plugin runtime의 호환성 증거다. GUI가 그 executable을 어떤 config/trust lifecycle로 실행하는지까지 증명하지는 않는다.
 
@@ -120,9 +121,9 @@ Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. `0.2.1`은
 
 ### 아직 미확인인 것
 
-- 공식 앱을 완전히 재시작하고 exact hook을 trust한 새 GUI task에서 plugin hook이 실제 실행되는지
+- 공식 앱에서 실제 `SessionEnd` event가 실행되고 completed session으로 반영되는지
 - GUI task의 plugin/hook hot-load 지원 여부
-- GUI에서 발생한 `PermissionRequest`의 실제 payload
+- GUI `PermissionRequest` raw payload의 전체 field set
 - 별도 App Server로 현재 GUI process의 in-memory 상태를 공유하거나 attach하는 방법
 - hook event가 누락되거나 순서가 바뀌는 모든 조건
 
@@ -143,6 +144,8 @@ Phase 0 당시 local marketplace가 repository root를 가리키면 source tree 
 `codex-agent-view install`은 package에 포함된 allowlisted entry만 runtime directory 아래 copied local marketplace로 옮긴 뒤 Codex plugin을 등록한다. npm package를 받았다고 hook trust를 자동 승인하지 않으며, 사용자 설정을 몰래 바꾸는 `postinstall`도 없다.
 
 Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 `codex-agent-view@0.2.0` public registry publish를 완료했다. Registry의 version/license/bin, dist shasum/exact SRI와 signature를 확인했으며, public exact artifact는 isolated global install과 exact-version `npx` 양쪽에서 CLI lifecycle smoke를 통과했다. npm `gitHead`와 annotated `v0.2.0` tag는 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고 tag source와 registry artifact의 21개 package file은 byte-identical이며 GitHub Release도 공개됐다. Universal Plugins Directory 제출은 npm과 별도 외부 절차다.
+
+후속 `codex-agent-view@0.2.1`도 public npm registry의 `latest`로 publish됐다. Version/license/bin, npm `gitHead` `8d6a67c9aafa23f801235d747ff018d254378970`, 21 files, unpacked size `144644`, shasum `ad17b8d1f179d99ea07ff128021d9708f73b1961`, exact SRI와 registry signature를 확인했다. Annotated `v0.2.1` tag는 같은 commit에 생성·origin push됐고 public GitHub Release가 공개됐다. Clean temporary cache의 exact-version `npx --version`이 성공했으며 registry tarball 21개 file은 tagged source와 byte-identical하다. 이 기기에 public exact artifact를 global로 다시 설치해 copied marketplace까지 registry tarball과 21개 file byte-identical임을 확인했고, CLI `0.2.1`, plugin installed/enabled, hook wiring 9종, 실제 session 자동 수신과 probe subagent running → stopped/UI 완료 반영을 검증했다.
 
 ## Phase 0 권장과 `0.2.0`에서 확정한 아키텍처
 
@@ -185,7 +188,7 @@ Phase 0 capture는 원본 payload를 영구 model로 복사하기 위한 것이 
 | `PreToolUse` / `PostToolUse` | `tool_name`, `tool_use_id` | running, completed, completed-without-start, out-of-order flag |
 | `PermissionRequest` | `tool_name` | waiting-for-user permission state |
 
-`PermissionRequest` row는 공식 event schema를 바탕으로 구현한 provisional input contract다. 실제 GUI payload 관찰이 없으므로 호환성이 확인됐다는 뜻이 아니다. Missing/invalid field는 상태를 발명하지 않고 bounded diagnostic으로 남긴다.
+`PermissionRequest` row는 공식 event schema를 바탕으로 구현한 narrow input contract다. 실제 GUI dispatch와 waiting 반영은 확인했지만 raw payload 전체 field set을 확정한 것은 아니다. Missing/invalid field는 상태를 발명하지 않고 bounded diagnostic으로 남긴다.
 
 `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`은 `0.2.1`에서 parent task가 subagent를 만들기 전에도 관찰 window에 나타나도록 추가했다. 이 wiring과 reducer fixture 통과는 공식 GUI가 해당 command hook을 실제 dispatch했다는 증거가 아니다.
 
@@ -219,7 +222,7 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 
 ## 외부 compatibility acceptance
 
-`0.2.1` source 구현 뒤에도 다음 공식 앱 검증을 완료해야 현재 앱 조합의 compatibility evidence가 성립한다.
+`0.2.1` source 구현 뒤 다음 공식 앱 핵심 검증을 완료해 현재 앱 조합의 compatibility evidence를 확보했다.
 
 - 실행 중 monitor를 확인하고 `doctor --json`에서 plugin installed/enabled, hook bundle wiring, `events_received`를 기록
 - 설치 전에 열려 있던 공식 앱을 완전히 종료·재실행
@@ -229,7 +232,7 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 - 일반 tool 한 개를 실행
 - sandbox escalation 등 실제 approval prompt가 필요한 동작을 실행해 `PermissionRequest` 발생
 
-이 과정에서 `events_received`가 계속 false이면 hook browser의 loaded source/trust 상태와 앱 진단 log를 함께 기록한다. Fixture 성공이나 monitor 연결만으로 공식 앱 호환 성공을 선언하지 않는다.
+이 과정에서 실제 hook 8종, parent 3개와 subagent 3개의 자동 표시, permission waiting을 확인했다. Fixture 성공이나 monitor 연결만으로 선언한 결과가 아니다. 다만 실제 `SessionEnd`는 발생하지 않았으므로 해당 event의 compatibility는 별도 미확인으로 남긴다.
 
 ## 외부 distribution과 listing 작업
 
@@ -242,6 +245,11 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 - [x] public exact artifact isolated global install/`npx` `--version`, `doctor`, `install`, ephemeral-port `start`, `status`, `uninstall` smoke
 - [x] 다섯 hook fixture event의 status/UI 반영, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 상태 확인
 - [x] npm `gitHead`와 annotated `v0.2.0` tag의 exact commit 일치, origin push, public GitHub Release, 21개 package file byte 일치 확인
+- [x] `0.2.1` public registry publish와 latest/version/license/bin, npm `gitHead`, 21 files/unpacked size, shasum/exact SRI/signature 확인
+- [x] 이 기기에 public exact `0.2.1` global reinstall, CLI/plugin/wiring 확인, 실제 sessions 자동 수신과 probe subagent running → stopped/UI 완료 반영
+- [x] Public exact `0.2.1` clean-cache exact-version `npx --version`
+- [x] `v0.2.1` annotated tag·origin push·GitHub Release·registry/tagged source 21개 file byte comparison
+- [x] Registry tarball과 this-device global install/copied marketplace 21개 file byte comparison
 - Universal Plugins Directory portal 제출, review, publish, search visibility 확인
 
 README는 exact-version global install과 `npx`를 public npm 사용법으로 안내하고 검증 완료 범위를 요약한다. Directory publish 전에는 Universal Directory에서 검색 가능하다고 주장하지 않는다.
@@ -256,9 +264,12 @@ README는 exact-version global install과 `npx`를 public npm 사용법으로 �
 - source CLI `--version`: `0.2.1`
 - installed `0.2.1` sender → monitor → UI fixture E2E: task ID를 사전 등록하지 않아도 parent와 agent가 hook에서 자동 생성됐고 running, waiting, completed 상태 반영 확인
 - reset 뒤 source CLI `doctor --json`: plugin `installed: true`, `enabled: true`, hook `wiring_ok: true`, declared event 9개, monitor `events_received: false`, trust `unknown` 확인
-- public registry metadata: `0.2.0`, `Apache-2.0`, `codex-agent-view` → `bin/codex-agent-view.mjs`, shasum/exact SRI/signature 확인
-- public exact artifact: isolated global install과 exact-version `npx`의 CLI lifecycle smoke 통과
-- public exact artifact E2E: 다섯 hook fixture event → status/UI, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 확인
-- release source match: npm `gitHead`와 annotated `v0.2.0` tag가 `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치, origin tag와 public GitHub Release 확인, 21개 package file byte-identical
+- historical public `0.2.0` registry metadata: `Apache-2.0`, bin mapping, shasum/exact SRI/signature 확인
+- historical public exact `0.2.0`: isolated global install과 exact-version `npx` lifecycle, 다섯 hook fixture → status/UI, search/filter, browser console 무오류, purge 검증
+- historical release source match: npm `gitHead`와 annotated `v0.2.0` tag가 `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치, origin tag와 public GitHub Release 확인, 21개 package file byte-identical
+- current public `0.2.1`: latest/version `0.2.1`, `Apache-2.0`, bin mapping, npm `gitHead` `8d6a67c9aafa23f801235d747ff018d254378970`, 21 files, unpacked size `144644`, shasum/exact SRI/signature 확인
+- current `0.2.1` release source: annotated tag/origin push/public GitHub Release, clean-cache exact-version `npx --version`, registry tarball ↔ tagged source 21 files byte-identical 확인
+- this-device public exact `0.2.1`: global reinstall/copied marketplace ↔ registry tarball 21 files byte-identical, CLI `0.2.1`, plugin installed/enabled, hook wiring 9종, 실제 session 자동 수신과 probe subagent running → stopped/UI 완료 반영
+- official app `0.2.1`: parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 `PermissionRequest` waiting 확인; 실제 `SessionEnd` 미관찰
 
-Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.1` source/tarball과 installed fixture E2E는 통과했으며 `0.2.0`의 npm artifact smoke와 tag/release source 일치도 보존한다. 그러나 실제 공식 앱에서 event 0건을 재현했으므로 사용 가능한 GUI integration까지 완료됐다고 표현하지 않는다. 공식 앱 full restart + interactive `/hooks` trust + 새 GUI task E2E와 실제 `PermissionRequest`는 아직 acceptance 대상이며 `0.2.1` npm publish 성공도 주장하지 않는다. Universal Directory listing은 별도 external operation이다. 선택적인 npm provenance attestation은 `0.2.0`에 없으며 완료를 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.
+Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.0`의 npm artifact/tag/release evidence는 historical record로 보존한다. `0.2.1`은 source/tarball QA, public registry publish, tag/release/source match, clean-cache exact `npx --version`, this-device exact artifact reinstall/copy comparison, 실제 공식 앱 핵심 E2E와 `PermissionRequest` waiting까지 확인했다. 과거 event 0건의 원인은 단정하지 않으며, 실제 `SessionEnd`는 아직 완료로 주장하지 않는다. Universal Directory listing은 별도 external operation이다. 선택적인 npm provenance attestation 완료도 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.

@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-현재 source version은 `0.2.1`이다. Bounded in-memory live state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0` 실사용에서 공식 앱 hook 전달 0건을 재현했으므로, `0.2.1` patch와 공식 앱 restart/trust/new-task E2E가 현재 최우선 release acceptance다.
+현재 source 및 public npm `latest` version은 `0.2.1`이다. Bounded in-memory live state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0` 실사용의 공식 앱 hook 전달 0건 기록은 historical evidence로 보존하며, 재시작한 공식 앱의 `0.2.1` 핵심 E2E, public exact artifact, tag/release/source 비교는 통과했다. 실제 `SessionEnd`만 compatibility acceptance로 남긴다.
 
 ## 제품 원칙
 
@@ -22,8 +22,9 @@
 
 - [x] 실행 중이던 공식 앱 process에 `0.2.0`을 설치·enable한 뒤 실제 subagent 2개를 실행했으나 event 0건임을 재현하고, app → plugin sender 경계의 실패로 좁혔다.
 - [x] CLI JSON으로 persisted exact-hook trust를 확인할 수 없으며, 공식 절차상 interactive `/hooks` 검토와 새 task가 필요함을 기록했다.
-- [ ] `0.2.1`을 설치한 뒤 공식 앱을 완전히 재시작하고 exact hook을 trust한 **새 GUI task**로 `SessionStart`, `UserPromptSubmit`, `SubagentStart`, `PreToolUse`, `PostToolUse`, `SubagentStop`, `Stop`, `SessionEnd` → loopback monitor → UI E2E를 팀장이 직접 완료한다.
-- [ ] 실제 approval prompt를 발생시켜 공식 앱 `PermissionRequest` payload와 read-only waiting 표시를 확인한다. 발생하지 않으면 event 미발생과 schema 문제를 분리해 기록한다.
+- [x] `0.2.1`을 설치한 뒤 공식 앱을 완전히 재시작한 현재 조합에서 `SessionStart`, `UserPromptSubmit`, `SubagentStart`, `PreToolUse`, `PostToolUse`, `SubagentStop`, `Stop` → loopback monitor → UI E2E와 task ID 등록 없는 parent/subagent 자동 표시를 팀장이 직접 확인했다.
+- [x] 실제 approval prompt에서 공식 앱 `PermissionRequest` hook과 read-only waiting 표시를 확인했다.
+- [ ] 실제 공식 앱 `SessionEnd` event를 관찰하고 completed session 반영을 확인한다. Wiring/fixture 성공만으로 이 항목을 닫지 않는다.
 
 ## `0.2.1` 실사용 복구 patch
 
@@ -34,8 +35,9 @@
 - [x] 빈 UI가 실행 중 task 없음으로 오인되지 않도록 0-event 의미와 restart/trust/new-task 순서를 표시한다.
 - [x] Codex `0.146` App Server `thread/list` fallback을 검증하고 root/subagent `notLoaded` 때문에 live status source로 채택하지 않는다.
 - [x] Source test, plugin validation, package check를 팀장이 직접 실행한다.
-- [ ] 실제 공식 앱 restart/trust/new-task E2E를 팀장이 직접 실행하고 event가 보이지 않으면 수정→재검증 loop를 반복한다.
-- [ ] 위 E2E 통과 뒤에만 `0.2.1` 공식 GUI compatibility 성공과 npm patch release를 선언한다.
+- [x] 실제 공식 앱 restart/new-task 핵심 E2E를 팀장이 직접 실행하고 parent 3개·subagent 3개 자동 표시와 실제 hook 8종을 확인했다.
+- [x] 확인된 event set의 공식 GUI compatibility와 `0.2.1` npm patch publish를 검증 증거와 함께 선언한다.
+- [ ] 아직 실제 미관찰인 `SessionEnd` compatibility는 독립 항목으로 유지한다.
 
 ## 외부 npm distribution operation
 
@@ -48,6 +50,13 @@
 - [x] Public exact artifact E2E에서 다섯 hook event의 status/UI 반영, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 상태를 확인했다.
 - [x] npm `gitHead`와 annotated `v0.2.0` tag가 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고 tag가 origin에 push됐으며 GitHub Release가 공개됐음을 확인했다.
 - [x] Tagged source와 public registry artifact의 21개 package file이 byte-identical임을 확인했다.
+- [x] `codex-agent-view@0.2.1` public registry publish와 `latest: 0.2.1`을 확인했다.
+- [x] Public `0.2.1`의 version/license/bin, npm `gitHead`, 21 files/unpacked size, shasum, exact SRI와 registry signature를 확인했다.
+- [x] 이 기기에 public exact `0.2.1`을 global로 다시 설치하고 CLI version, plugin installed/enabled, hook wiring 9종을 확인했다.
+- [x] Public exact `0.2.1` 상태에서 monitor 재시작 뒤 실제 session 자동 수신과 probe subagent running → stopped/UI 완료 반영을 확인했다.
+- [x] Clean temporary cache에서 public exact `0.2.1`의 exact-version `npx --version`을 검증했다.
+- [x] `v0.2.1` annotated tag를 npm `gitHead` commit에 생성·origin push하고 public GitHub Release와 registry/tagged source 21개 file byte 일치를 확인했다.
+- [x] 이 기기의 global install과 copied marketplace가 registry tarball 21개 file과 byte-identical임을 확인했다.
 
 ## 외부 Universal Directory listing
 
@@ -104,7 +113,7 @@
 
 ## Phase 3 — 설치·제거와 공개 배포 준비
 
-상태: repository 구현, public npm release, annotated Git tag와 GitHub Release 완료. Directory listing은 제품 구현과 분리된 외부 작업이다.
+상태: repository 구현과 public npm `0.2.0`/`0.2.1` release, annotated Git tag, GitHub Release와 source/artifact byte comparison 완료. Directory listing은 제품 구현과 분리된 외부 작업이다.
 
 - [x] `codex-agent-view` bin과 `start/status/doctor/install/uninstall` CLI surface를 구현한다.
 - [x] npm `files` allowlist에 manifests, catalog, logo assets, hooks, CLI, sender/capture scripts, skill, runtime/UI, README, LICENSE, NOTICE를 포함한다.
@@ -128,12 +137,16 @@
 - Source CLI `--version`: `0.2.1`
 - Installed `0.2.1` fixture E2E: task ID 사전 등록 없이 sender → monitor → UI에서 parent/agent 자동 생성과 running/waiting/completed 반영 확인
 - Reset 뒤 source CLI `doctor --json`: plugin installed/enabled, `wiring_ok: true`, declared events 9개, `events_received: false`, trust `unknown` 확인
-- Public registry metadata: `0.2.0`, `Apache-2.0`, `codex-agent-view` → `bin/codex-agent-view.mjs`, shasum/exact SRI/signature 확인
-- Public exact artifact: isolated global install과 exact-version `npx`의 CLI lifecycle smoke 통과
-- Public exact artifact E2E: 다섯 hook event → status/UI, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 확인
+- Historical public `0.2.0` registry metadata: `Apache-2.0`, `codex-agent-view` → `bin/codex-agent-view.mjs`, shasum/exact SRI/signature 확인
+- Historical public exact `0.2.0`: isolated global install과 exact-version `npx`의 CLI lifecycle smoke 통과
+- Historical public exact `0.2.0` E2E: 다섯 hook event → status/UI, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 확인
 - Release source match: npm `gitHead`와 annotated `v0.2.0` tag가 `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치, origin tag와 public GitHub Release 확인, 21개 package file byte-identical
+- Current public `0.2.1`: `latest`, npm `gitHead` `8d6a67c9aafa23f801235d747ff018d254378970`, `Apache-2.0`, bin mapping, 21 files, unpacked size `144644`, shasum/exact SRI/signature 확인
+- Current `0.2.1` release source: annotated tag와 public GitHub Release, clean-cache exact-version `npx --version`, registry tarball ↔ tagged source 21 files byte-identical 확인
+- This-device public exact `0.2.1`: global reinstall/copy ↔ registry tarball 21 files byte-identical, CLI `0.2.1`, plugin installed/enabled, hook wiring 9종, monitor 재시작 뒤 실제 sessions 자동 수신과 probe subagent running → stopped/UI 완료 반영 확인
+- Official app `0.2.1` E2E: parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 `PermissionRequest` waiting 확인; 실제 `SessionEnd` 미관찰
 
-이 snapshot은 `0.2.1` local/source/tarball fixture와 `0.2.0` public npm exact artifact, annotated Git tag, public GitHub Release 검증 결과를 분리해 기록한다. Official app full restart + interactive `/hooks` trust + 새 GUI task E2E, 실제 `PermissionRequest`, `0.2.1` npm publish, Universal Directory listing은 증명하지 않는다. 별도 npm provenance attestation은 선택 사항이며 `0.2.0`에는 없다.
+이 snapshot은 `0.2.0` historical evidence와 `0.2.1` source, registry, tag/release/source match, this-device reinstall, official-app evidence를 분리해 기록한다. 실제 `SessionEnd`와 Universal Directory listing은 아직 증명하지 않는다. 별도 npm provenance attestation은 선택 사항이며 확인되지 않았다.
 
 ## Phase 4 — 선택적 보강
 

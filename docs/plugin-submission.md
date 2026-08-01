@@ -2,7 +2,7 @@
 
 조사일: 2026-08-01
 
-이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View `0.2.1` source의 준비 상태를 정리한다. `0.2.0` npm/GitHub release evidence는 보존하지만, 실제 OpenAI Platform 제출, identity verification, review 요청, publish는 수행하지 않는다.
+이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View `0.2.1`의 준비 상태를 정리한다. `0.2.0` npm/GitHub release evidence와 `0.2.1` public npm evidence를 분리해 보존하지만, 실제 OpenAI Platform 제출, identity verification, review 요청, publish는 수행하지 않는다.
 
 ## 핵심 결론
 
@@ -13,9 +13,9 @@
 - 이 skill은 current task/subagent status 조회, monitor 진단, explicit lifecycle action에 실제 사용자 가치를 제공한다. Directory 통과용 빈 형식 skill이 아니다.
 - 공식 공개 문서는 **skills-only submission에 local command hooks를 함께 bundle한 경우의 eligibility/review 규칙을 명시하지 않는다.** 따라서 “skills-only + hooks” 제출 가능 여부는 여전히 **미확인**이며 portal 또는 OpenAI 확인이 필요하다.
 - MCP 경로는 production HTTPS endpoint를 요구하므로 external server를 두지 않는 현재 제품 방향과 맞지 않는다.
-- Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 `codex-agent-view@0.2.0` public registry publish를 완료했다. Registry metadata/digest/signature, exact-version global install/`npx` artifact smoke, annotated `v0.2.0` tag와 public GitHub Release, tagged source 대비 21개 package file byte 일치도 확인했다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
+- Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 current `codex-agent-view@0.2.1` public registry publish와 this-device exact global reinstall을 완료했다. `0.2.0`은 registry metadata/digest/signature, global/`npx` smoke, annotated tag와 public GitHub Release, tagged source 대비 21개 package file byte 일치를 확인한 historical evidence다. `0.2.1`도 registry metadata/digest/signature, clean-cache exact `npx --version`, annotated tag·origin push·GitHub Release, tagged source와 registry tarball 21개 file byte 일치, this-device global/copied marketplace 일치를 확인했다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
 
-Bounded in-memory local architecture와 package surface는 구현됐지만 `0.2.1` 공식 앱 restart/trust/new-task E2E는 아직 acceptance 중이다. 아래 eligibility, identity, scan, portal, publish 항목은 별도의 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 blocker가 아니다.
+Bounded in-memory local architecture와 package surface를 구현했고 `0.2.1` 공식 앱 restart/new-task 핵심 E2E와 실제 `PermissionRequest`를 확인했다. 실제 `SessionEnd`는 미관찰이다. 아래 eligibility, identity, scan, portal, publish 항목은 별도의 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 blocker가 아니다.
 
 현재 local browser monitor를 Directory의 in-app custom UI로 그대로 옮기는 것은 listing만으로 해결되지 않는다. Public in-app custom UI 경로는 public HTTPS MCP server와 domain verification을 요구하는데, 이는 local-only/no-external-server 제품 원칙과 충돌한다. npm은 local executable/runtime 배포 경로, browser는 `127.0.0.1` companion UI, Directory는 별도 listing/skills 제출 경로로 유지한다. Directory가 npm이나 local browser runtime을 대체한다고 주장하지 않는다.
 
@@ -155,6 +155,8 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [x] `codex-agent-view@0.2.0` 코드·tarball과 maintainer npm login을 준비했다.
 - [x] npm 2FA `auth-and-writes`, `pending:null`과 `0.2.0` public registry publish를 확인했다.
 - [x] npm registry의 version/license/bin과 dist shasum/integrity를 확인했다.
+- [x] `0.2.1` public registry publish, registry metadata/digest/signature와 this-device exact global reinstall을 확인했다.
+- [x] `0.2.1` clean-cache exact-version `npx --version`, annotated tag, GitHub Release와 source/artifact/global/copied marketplace byte comparison을 확인했다.
 - [x] Public exact artifact의 isolated global/`npx` CLI lifecycle과 다섯 hook fixture event → status/UI, search/filter, browser console 무오류, purge 뒤 빈 plugin/runtime 상태를 검증했다.
 - [x] npm `gitHead`와 annotated `v0.2.0` tag가 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고 origin tag와 public GitHub Release가 존재함을 확인했다.
 - [x] Registry signature와 tagged source 대비 21개 package file byte 일치를 확인했다.
@@ -170,8 +172,8 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [ ] Bundled skill safety/security scan이 통과하지 않음
 - [ ] 위 status → doctor → explicit lifecycle test set을 isolated review fixture에서 실행하지 않음
 - [ ] Skills-only manifest에 screenshots가 없음을 final artifact에서 확인하지 않음
-- [ ] 새 공식 앱 GUI task에서 trusted hook → monitor → UI lifecycle E2E가 완료되지 않음
-- [ ] 실제 `PermissionRequest` payload/read-only waiting 표시가 미확인
+- [x] 새 공식 앱 GUI task에서 hook → monitor → UI 핵심 lifecycle E2E를 완료함. 실제 `SessionEnd`만 별도 미관찰
+- [x] 실제 `PermissionRequest` hook과 read-only waiting 표시를 확인함. Raw payload 전체 field set은 별도 미확정
 - [ ] Website/support/privacy/terms URL과 publisher identity가 maintainer 승인을 받지 않음
 - [ ] Verified individual/business identity가 완료되지 않음
 - [ ] `Apps Management: Write` access가 확인되지 않음
