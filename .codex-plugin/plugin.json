@@ -1,6 +1,6 @@
 {
   "name": "codex-agent-view",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Read-only Codex app task snapshots with an optional local live monitor.",
   "author": {
     "name": "Junho Yoon",

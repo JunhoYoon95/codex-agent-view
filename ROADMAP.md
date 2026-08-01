@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-현재 source/package는 `0.3.1` release candidate이고 public npm `latest`는 `0.3.0`이다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0`/`0.2.1` release evidence와 `0.3.0` public release acceptance는 historical/public evidence로 보존한다.
+현재 source/package는 `0.3.2` release candidate이고 public npm `latest`는 `0.3.1`이다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1` release evidence는 historical/public evidence로 보존한다.
 
 ## 제품 원칙
 
@@ -56,16 +56,26 @@
 - [x] `0.3.0`을 npm publish하고 `latest`/version, `gitHead`, shasum, exact SRI, signature, 21 files와 unpacked size를 검증한다.
 - [x] Annotated `v0.3.0` tag를 origin에 push하고 public GitHub Release와 registry/global artifact 일치를 확인한다.
 
-## `0.3.1` app-only usage patch release candidate
+## `0.3.1` app-only usage patch release
 
 - [x] 정상 사용자 흐름을 `최초 npm 설치 → Codex 앱 Plugins 확인 → 새 task의 @codex-agent-view → 앱 내 snapshot/live view`로 문서화한다.
 - [x] CLI `start`/`status`/`doctor`와 localhost URL은 maintainer·명시적 진단 영역으로 격리한다.
 - [x] Bundled skill이 live view를 Codex 내장 Browser에 열고 외부 browser나 private URL을 사용자에게 넘기지 않도록 계약을 강화한다.
 - [x] Source package, plugin manifest와 package contract version을 `0.3.1`로 일치시킨다.
 - [x] `0.3.1` release candidate의 full test/plugin/package validation과 candidate tarball QA를 완료한다.
-- [ ] `0.3.1`을 npm publish하고 registry metadata/signature와 exact artifact를 검증한다.
-- [ ] Public exact `0.3.1`을 이 기기에 설치한 뒤 공식 Codex 앱 Plugins 활성화와 새 task app-only E2E를 확인한다.
-- [ ] Annotated `v0.3.1` tag와 public GitHub Release를 생성하고 registry/source artifact 일치를 확인한다.
+- [x] `0.3.1`을 npm publish하고 registry version/`latest`, `gitHead`, shasum, integrity와 21 files를 검증한다.
+- [x] Public exact `0.3.1`을 이 기기에 재설치하고 plugin `installed: true`, `enabled: true`를 확인한다.
+- [ ] Public exact `0.3.1`의 공식 Codex 앱 새 task app-only E2E를 확인한다.
+- [x] Annotated `v0.3.1` tag와 public GitHub Release를 생성한다.
+
+## `0.3.2` immutable README correction release candidate
+
+- [x] Package, plugin manifest와 test fixture version contract를 `0.3.2`로 일치시킨다.
+- [x] Packaged README가 자신을 미배포 candidate로 안내하지 않고 exact-version install `@0.3.2`를 안내하도록 고친다.
+- [x] `0.3.2` release candidate의 full test/plugin/package validation과 tarball QA를 완료한다.
+- [ ] `0.3.2`를 npm publish하고 registry metadata/digest와 exact artifact를 검증한다.
+- [ ] Public exact `0.3.2`을 이 기기에 설치하고 plugin installed/enabled와 공식 Codex 앱 app-only E2E를 확인한다.
+- [ ] Annotated `v0.3.2` tag와 public GitHub Release를 생성하고 registry/source artifact 일치를 확인한다.
 
 ## 외부 npm distribution operation
 
@@ -141,7 +151,7 @@
 
 ## Phase 3 — 설치·제거와 공개 배포 준비
 
-상태: repository 구현과 public npm `0.2.0`/`0.2.1`/`0.3.0` release, annotated Git tag, GitHub Release와 artifact comparison 완료. Source는 `0.3.1` release candidate이며 publish·public-install acceptance는 아직 미완료다. Directory listing은 제품 구현과 분리된 외부 작업이다.
+상태: repository 구현과 public npm `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1` publish, annotated tag와 GitHub Release 완료. Source는 `0.3.2` release candidate이며 publish·tag·exact install·app-only E2E는 아직 미완료다. Directory listing은 제품 구현과 분리된 외부 작업이다.
 
 - [x] `codex-agent-view` bin과 `start/status/doctor/install/uninstall` CLI surface를 구현한다.
 - [x] npm `files` allowlist에 manifests, catalog, logo assets, hooks, CLI, sender/capture scripts, skill, runtime/UI, README, LICENSE, NOTICE를 포함한다.
@@ -149,6 +159,7 @@
 - [x] `0.2.1` source에서 package와 plugin manifest version 및 final tarball metadata를 일치시킨다.
 - [x] `0.3.0` source에서 package와 plugin manifest version을 일치시킨다.
 - [x] `0.3.1` release candidate에서 package, plugin manifest와 package contract version을 일치시킨다.
+- [x] `0.3.2` release candidate에서 package, plugin manifest와 package/test fixture version을 일치시킨다.
 - [x] explicit install이 copied local marketplace와 plugin을 등록하고 hook trust는 사용자에게 남기도록 구현한다.
 - [x] default uninstall과 explicit `--purge`를 분리하고 unsafe target/symlink 경계를 검토한다.
 - [x] npm lifecycle에 `postinstall`을 두지 않고 사용자 설정을 자동 변경하지 않음을 확인한다.
@@ -180,10 +191,13 @@
 - Public `0.3.0`: npm `latest`/version, `gitHead` `988132d0b525ee5e63f13a0d924810dd3f1bd93a`, shasum `08e2e5fa8c1133a1dcc3faae8f354535f9fc07b0`, exact SRI/signature, 21 files, unpacked `158.8 kB` 확인
 - Public `0.3.0` release/install: annotated tag·public GitHub Release, this-device global reinstall, plugin installed/enabled, hook wiring 9종, registry ↔ global diff 0, marketplace ownership marker 외 artifact 일치 확인
 - Public `0.3.0` live hook: `workspace_label: codex-agent-view`, 실제 `PermissionRequest`, tool lifecycle과 probe subagent running → stopped(`has_out_of_order_events: false`) 확인
-- Source `0.3.1` release candidate: 앱 전용 README/skill과 package/plugin version alignment 완료; public publish·tag·this-device exact install evidence는 아직 없음
-- Source `0.3.1` candidate validation: Node tests `67/67`, plugin validation, skill quick validation, package contract와 `npm pack --dry-run` 통과; 21 files, unpacked `167.1 kB`
+- Current public `0.3.1`: version/`latest`, npm `gitHead` `c515ea28be201dc24d31e13bf465a38145050b69`, shasum `4405b183012c04e7b0bc265d4eb14bf85291dcd9`, integrity `sha512-8oF5uHqZobgPt75I2ymoq3/tx4Ab1YX/cvMPjaJHjV7zxVC5Dh318isoCdsKNi6emXEbiTIdxOgX7GcclyuP8A==`, 21 files 확인
+- Public `0.3.1` release/install: annotated tag·public GitHub Release, this-device reinstall, plugin `installed: true`, `enabled: true`; app-only E2E evidence는 아직 없음
+- Historical source `0.3.1` candidate validation: Node tests `67/67`, plugin validation, skill quick validation, package contract와 `npm pack --dry-run` 통과; 21 files, unpacked `167.1 kB`
+- Source `0.3.2` release candidate: immutable packaged README correction과 package/plugin/test version alignment 완료; publish·tag·exact install·E2E evidence는 아직 없음
+- Source `0.3.2` candidate validation: Node tests `67/67`, plugin/skill validation, package contract와 `npm pack --dry-run` 통과; 21 files, unpacked `167.1 kB`
 
-이 snapshot은 historical public `0.2.0`/`0.2.1` evidence, current public `0.3.0` evidence와 source-only `0.3.1` release candidate를 분리해 기록한다. Universal Directory listing은 아직 완료되지 않았다. 별도 npm provenance attestation은 선택 사항이며 확인되지 않았다.
+이 snapshot은 historical public `0.2.0`/`0.2.1`/`0.3.0`, current public `0.3.1` evidence와 source-only `0.3.2` release candidate를 분리해 기록한다. Universal Directory listing은 아직 완료되지 않았다. 별도 npm provenance attestation은 선택 사항이며 확인되지 않았다.
 
 ## Phase 4 — 선택적 보강
 

@@ -2,22 +2,22 @@
 
 조사일: 2026-08-01
 
-이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View의 준비 상태를 정리한다. 현재 source/package는 `0.3.1` release candidate이고 public npm `latest`는 `0.3.0`이다. `0.2.0`/`0.2.1` release evidence와 `0.3.0` public npm/tag/GitHub Release/this-device exact artifact QA는 보존하지만, `0.3.1` publish 또는 실제 Directory 제출·검색 노출은 주장하지 않는다.
+이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View의 준비 상태를 정리한다. 현재 source/package는 `0.3.2` release candidate이고 public npm `latest`는 `0.3.1`이다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1` public release evidence는 보존하지만, `0.3.2` publish 또는 실제 Directory 제출·검색 노출은 주장하지 않는다.
 
 ## 핵심 결론
 
 - OpenAI review 승인 뒤 developer가 publish해야 ChatGPT와 Codex가 공유하는 Universal Plugins Directory에 표시된다.
 - GitHub marketplace 등록이나 npm publish만으로 Universal Directory에 노출되지 않는다.
 - 공식 portal은 `Skills only`와 MCP-backed 제출을 지원한다.
-- `0.3.1` source candidate에는 genuine `skills/codex-agent-view/SKILL.md`가 있고 manifest가 `skills: "./skills/"`로 bundle한다.
+- `0.3.2` source candidate에는 genuine `skills/codex-agent-view/SKILL.md`가 있고 manifest가 `skills: "./skills/"`로 bundle한다.
 - 이 skill은 Codex 앱 안의 current task/subagent snapshot, 명시적인 built-in Browser live view와 explicit install/remove lifecycle에 실제 사용자 가치를 제공한다. Directory 통과용 빈 형식 skill이 아니다.
 - 공식 공개 문서는 **skills-only submission에 local command hooks를 함께 bundle한 경우의 eligibility/review 규칙을 명시하지 않는다.** 따라서 “skills-only + hooks” 제출 가능 여부는 여전히 **미확인**이며 portal 또는 OpenAI 확인이 필요하다.
 - MCP 경로는 production HTTPS endpoint를 요구하므로 external server를 두지 않는 현재 제품 방향과 맞지 않는다.
-- Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했다. Current `codex-agent-view@0.3.0`은 public registry `latest`이며 registry metadata/digest/signature, annotated tag·public GitHub Release, this-device exact global reinstall과 artifact comparison을 완료했다. `0.2.0`/`0.2.1`은 historical evidence로 보존한다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
+- Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했다. Current `codex-agent-view@0.3.1`은 public registry `latest`이며 registry metadata/digest, annotated tag·public GitHub Release와 this-device exact reinstall의 plugin installed/enabled를 확인했다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
 
 Bounded in-memory local architecture와 package surface를 구현했다. Historical `0.2.1` 공식 앱 E2E에서 핵심 hook lifecycle과 실제 `PermissionRequest`를 확인했고, 후속 `0.3.0` source E2E에서는 앱 내장 thread tools로 `kyurasi-next-supabase` active task의 workspace/title/description/explicit `inProgress`/latest commentary/`subAgentActivity`를 확인했으며 optional browser monitor에서 실제 `SessionEnd`도 관찰했다. 아래 항목은 별도의 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 blocker가 아니다.
 
-`0.3.1` candidate의 primary flow는 최초 npm 설치 뒤 공식 Codex 앱의 새 task에서 `@codex-agent-view`를 선택하고 `Show active tasks`라고 요청하는 것이다. 앱 내장 thread tools가 running/active task와 `idle + hasUnreadTurn` task를 구분해 workspace basename, title, explicit status, 최신 explicit commentary와 `subAgentActivity` snapshot을 제공한다. 후자는 별도 `완료/확인 대기` 표시 그룹이지만 완료·성공을 뜻한다고 추론하지 않는다. Live detail도 앱 안에서 요청하며 plugin이 local monitor를 내부적으로 재사용/시작하고 Codex 내장 Browser에 연다. npm/terminal은 최초 설치, 명시적 제거와 maintainer 진단 경계이며 외부 browser는 정상 사용자 흐름이 아니다. 별도로 실행한 App Server는 앱 내장 tools와 다른 process이며 live source로 취급하지 않는다.
+`0.3.2` candidate의 primary flow는 최초 npm 설치 뒤 공식 Codex 앱의 새 task에서 `@codex-agent-view`를 선택하고 `Show active tasks`라고 요청하는 것이다. 앱 내장 thread tools가 running/active task와 `idle + hasUnreadTurn` task를 구분해 workspace basename, title, explicit status, 최신 explicit commentary와 `subAgentActivity` snapshot을 제공한다. 후자는 별도 `완료/확인 대기` 표시 그룹이지만 완료·성공을 뜻한다고 추론하지 않는다. Live detail도 앱 안에서 요청하며 plugin이 local monitor를 내부적으로 재사용/시작하고 Codex 내장 Browser에 연다. npm/terminal은 최초 설치, 명시적 제거와 maintainer 진단 경계이며 외부 browser는 정상 사용자 흐름이 아니다. 별도로 실행한 App Server는 앱 내장 tools와 다른 process이며 live source로 취급하지 않는다.
 
 Local browser monitor를 Directory의 public custom UI로 그대로 옮기는 것은 listing만으로 해결되지 않는다. Public custom UI 경로는 HTTPS MCP server와 domain verification을 요구해 local-only/no-external-server 원칙과 충돌한다.
 
@@ -47,7 +47,7 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 
 ## 제출 유형과 현재 적합성
 
-| 공식 또는 후보 유형 | 문서상 상태 | Codex Agent View `0.3.1` release candidate |
+| 공식 또는 후보 유형 | 문서상 상태 | Codex Agent View `0.3.2` release candidate |
 | --- | --- | --- |
 | Skills only | 공식 지원 | genuine skill 존재. Local hooks 동시 bundle eligibility는 미확인 |
 | With MCP / MCP-only | 공식 지원 | production HTTPS MCP endpoint가 없어 현재 부적합 |
@@ -62,7 +62,7 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 2. Review environment에서 local `codex-agent-view` executable과 hook trust flow를 어떻게 fixture로 검증하는가?
 3. Local-only monitor처럼 MCP custom UI가 아닌 UI가 listing review에서 어떻게 취급되는가?
 
-## `0.3.1` release candidate에 준비된 제출 자료
+## `0.3.2` release candidate에 준비된 제출 자료
 
 ### Genuine skill
 
@@ -82,7 +82,7 @@ Skill `quick_validate.py`와 plugin/package wiring validation은 통과했다. P
 
 `.codex-plugin/plugin.json`에는 다음이 준비되어 있다.
 
-- `0.3.1` candidate semantic version과 display/short/long description
+- `0.3.2` candidate semantic version과 display/short/long description
 - developer name, Productivity category, `Read` capability, starter prompts 2개
 - brand color `#123F35`
 - `assets/logo.svg` composer/logo asset과 `assets/logo-dark.svg` dark logo asset
@@ -164,8 +164,9 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [x] npm `gitHead`와 annotated `v0.2.0` tag가 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고 origin tag와 public GitHub Release가 존재함을 확인했다.
 - [x] Registry signature와 tagged source 대비 21개 package file byte 일치를 확인했다.
 - [x] Public `0.3.0` registry metadata/signature, annotated tag/GitHub Release, exact install과 app/live E2E evidence를 보존했다.
-- [x] Source `0.3.1` candidate의 manifest/package version, app-only skill/docs, Node tests `67/67`, plugin/skill validation과 pack 21 files를 확인했다.
-- [ ] `0.3.1` public publish, tag/GitHub Release와 exact artifact install evidence는 아직 없다.
+- [x] Public `0.3.1` registry metadata/digest, annotated tag/GitHub Release와 this-device plugin installed/enabled를 확인했다.
+- [x] Source `0.3.2` candidate의 manifest/package/test fixture version, immutable README correction, Node tests `67/67`, plugin/skill validation과 pack 21 files를 확인했다.
+- [ ] `0.3.2` public publish, tag/GitHub Release와 exact artifact install evidence는 아직 없다.
 
 별도 npm provenance attestation은 선택 사항이며 `0.2.0`에는 없다. Registry signature와 source/artifact 일치 검증을 attestation 완료로 표현하지 않는다.
 
