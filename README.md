@@ -8,12 +8,12 @@ Codex Agent View is a read-only companion plugin that shows privacy-minimized ac
 
 ## Quick start: install once, then stay inside the Codex app
 
-This README documents the `codex-agent-view@0.4.2` release candidate. Use the exact-version command below for the one-time terminal installation after `0.4.2` appears in the registry. Until then, public npm `latest` remains the verified `0.4.1` release described in the evidence below.
+This README documents the unpublished `codex-agent-view@0.4.3` release candidate. Use the exact-version command below for the one-time terminal installation only after `0.4.3` appears in the registry. Public npm `latest` is currently `0.4.2`.
 
 Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
 ```bash
-npm install --global codex-agent-view@0.4.2
+npm install --global codex-agent-view@0.4.3
 codex-agent-view install
 ```
 
@@ -32,13 +32,13 @@ The plugin card's **Quick start** action and the manual `@codex-agent-view $show
 
 When the first trusted hook arrives, the plugin sender internally prepares the local backend and retries delivery of that same event. Users do not register task IDs or run `start`, `status`, or `doctor`. **Show Agents** reuses the healthy backend and attempts to open the live view in the Codex app without exposing a tokenized localhost URL or using an external browser. If the app does not provide the required Browser capability or permission, the skill reports that it could not open the view instead of exposing a private URL.
 
-The public Codex plugin API does not provide no-prompt app-start creation of a sidebar, panel, or Browser tab. Opening the live view therefore requires the plugin card's explicit **Quick start** action or `@codex-agent-view $show-agents` in a Codex app task. Once the right-side live tab is open, it refreshes every two seconds and reconnects after temporary disconnects while the same monitor observation window and token remain valid.
+The public Codex plugin API does not provide no-prompt app-start creation of a sidebar, panel, or Browser tab. Opening the live view therefore requires the plugin card's explicit **Quick start** action or `@codex-agent-view $show-agents` in a Codex app task. Once the right-side live tab is open, it refreshes every two seconds and automatically reconnects after a temporary disconnect, monitor restart, or package upgrade when the backend returns on the same loopback origin. The live observation window still resets when the monitor process restarts; only the read-only viewer credential survives.
 
 In short: install once in a terminal; perform snapshot queries, status checks, live-view opening, and all routine use inside the Codex app.
 
 ## Status
 
-This repository and package are the `0.4.2` release candidate; public npm `latest` remains `0.4.1` until publication is independently verified. The candidate includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, privacy-minimized hooks, a bounded in-memory reducer, a trusted-hook auto-prepared token-authenticated `127.0.0.1` live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
+This repository and package are the unpublished `0.4.3` release candidate; registry verification on 2026-08-02 reports public npm `latest` as `0.4.2`. The candidate includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, privacy-minimized hooks, a bounded in-memory reducer, a trusted-hook auto-prepared token-authenticated `127.0.0.1` live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -64,14 +64,17 @@ Known `0.4.0` issue: manifest `defaultPrompt: ["Show Agents"]` created a plain p
 
 Public `0.4.1`: npm `latest`/version, Apache-2.0 license, executable mapping, registry signature, 25 files, package size `53650 B`, unpacked size `193424 B`, shasum `ee2ae0b8b36016f5c57bade067027202b1508d1d`, and integrity `sha512-WC4f5MPmvpkXeKM+1BVAYqW4+hoaUrB4yQFoUYgc0pnjyY7hP1CdSR5NJ3QWmvJ6Ikmmb1d+58UL4hkKoyhm1Q==` were verified. The release tarball and registry tarball are byte-identical. npm metadata has no `gitHead` because the exact tarball was published, so source identity is not claimed through that field. The annotated `v0.4.1` tag points to commit `a1de67be5413fa38b8dd1b62f74353463f6e641e`; [GitHub Release v0.4.1](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.1), main CI run `30710490358`, and tag CI run `30710848474` are public and successful. This machine has matching CLI/plugin `0.4.1`, the plugin is installed/enabled, and all nine hooks are wired. The runtime was cleanly stopped while installation replaced it, so it currently reports `monitor_not_running`; persisted hook trust remains `unknown`. Because the Codex app process predates installation, direct **Show Agents** visual E2E remains unverified until a full app restart and a new task.
 
-The `0.4.2` candidate changes the plugin starter to `$show-agents`, which explicitly invokes the bundled **Show Agents** skill from the plugin card; `@codex-agent-view $show-agents` is the manual in-app reopen path. It is not yet claimed as a public npm release, tagged release, installed artifact, or completed visual E2E. Its default view is designed to put running parents and subagents first, lead with human-readable workspace/task/agent labels and status text, keep raw session/agent IDs as secondary diagnostic metadata, and avoid leading with raw hook event names. Prompt text and tool input/output remain excluded from the normal monitor view.
+Public `0.4.2` changes the plugin starter to `$show-agents`, which explicitly invokes the bundled **Show Agents** skill from the plugin card; `@codex-agent-view $show-agents` is the manual in-app reopen path. Release commits `b4d923a` and `3d8f46d` were pushed, main CI run `30712375726` passed on Node.js 18/20/22, and npm publication was verified with `latest: 0.4.2`, Apache-2.0 licensing, the expected executable mapping, 25 files, registry signature, shasum `fac95689395baa26f4ad9ff0cbefd0017d2ebd8d`, and integrity `sha512-FRTPoYxjBuPC6Usb+ylSfZsZVJKlKcHnQPaAPljekg0maTPn9POsBkS+auOcHz5jspg0AXcP8R63PM0WfCn2LQ==`. The release and registry tarballs are byte-identical; annotated tag `v0.4.2` and [GitHub Release v0.4.2](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.2) are public. This machine's exact global install, plugin installed/enabled state, all nine hook declarations, installed artifact match, and official Codex in-app Browser visual E2E were also verified.
+
+The unpublished `0.4.3` candidate preserves that app-only workflow and adds restart-safe live-view authentication. A user-only private viewer credential is separate from the runtime/control token and persists for the installed plugin's lifetime. The viewer credential can read `/api/state` but cannot ingest hook events or request shutdown; the runtime/control token rotates with the monitor process. Installing `0.4.3` over `0.4.2` seeds a missing viewer credential from the valid legacy runtime token without printing it, so an already-open Codex live tab can reconnect after the backend restarts on the same loopback origin. This credential continuity does not persist task state: restart still begins an empty bounded in-memory observation window.
 
 ## Boundaries
 
 Codex Agent View is a live companion, not a historical audit or session-replay product. Bounded in-memory state and reset-on-restart semantics are intentional: they keep privacy and failure boundaries small. SQLite or persistent history is not a missing requirement. Consider it only as a separate explicit opt-in feature if demonstrated user demand justifies retention, migration, deletion, and privacy costs.
 
 - The app-native current-task snapshot prioritizes explicit status and `subAgentActivity` from the official Codex app's built-in thread tools.
-- Hooks remain the source of truth for detailed lifecycle state in the trusted-hook auto-prepared local live backend. Its operational state exists only in bounded process memory; restart begins a new observation window.
+- Hooks remain the source of truth for detailed lifecycle state in the trusted-hook auto-prepared local live backend. Its operational state exists only in bounded process memory; restart begins a new observation window. The separate private viewer credential is authentication metadata, not stored task history.
+- The viewer credential is read-only and remains stable across monitor restarts and package upgrades during one installation. The runtime/control token remains separate and process-scoped.
 - After installation, hook trust, and an app restart, the first trusted hook automatically prepares the backend. This prepares a local process; it does not create app UI without a user action.
 - There is no external telemetry, remote server, account, required SQLite/persistent event store, or remote control.
 - Prompt text, transcript paths, full tool input/output, and assistant messages are not retained or displayed by the monitor.
@@ -86,7 +89,7 @@ A separately launched Codex `0.146` App Server `thread/list` fallback was also t
 - The plugin card's **Quick start** action is the primary UX; `@codex-agent-view $show-agents` manually invokes the same bundled skill again after a panel is closed. Neither path requires starting a monitor or registering task IDs.
 - npm is the initial installation path that distributes the plugin bundle, its internal hook sender/runtime, and static UI to the user's machine.
 - The live view opens in the Codex app only after an explicit `$show-agents` skill invocation; it is not an external website or telemetry dashboard.
-- The public plugin API cannot create a sidebar, panel, or Browser tab without a prompt at app startup. The first live view needs one in-app skill selection; an already-open tab refreshes and reconnects within the same observation window.
+- The public plugin API cannot create a sidebar, panel, or Browser tab without a prompt at app startup. The first live view needs one in-app skill selection; an already-open tab refreshes and reconnects across temporary disconnects, monitor restarts, and upgrades while the same installation-owned viewer credential and loopback origin remain available.
 - The Universal Plugins Directory does not replace npm. A public in-app custom UI path requires a public HTTPS MCP server and domain verification, which conflicts with this project's local-only, no-external-server boundary. Only a separate listing/skills submission remains under consideration; do not expect Directory search installation until review and publication actually finish.
 
 ## Use in the official Codex app — recommended
@@ -98,7 +101,7 @@ Use this flow in a **new task** after completing installation and enablement in 
 3. The panel puts running parents and subagents first and uses human-readable workspace/task/agent labels and status text. Raw session/agent IDs are secondary diagnostic metadata, raw hook event names do not lead the default display, and prompts, previews, tool input/output, and full workspace paths remain hidden.
 4. If the app's Browser capability or permission is unavailable, the skill reports the failure without exposing a private localhost URL or opening an external browser.
 
-If you close the right-side live view, enter `@codex-agent-view $show-agents` in a Codex app task to invoke the same bundled skill again. An open tab refreshes and reconnects automatically within the same observation window.
+If you close the right-side live view, enter `@codex-agent-view $show-agents` in a Codex app task to invoke the same bundled skill again. An open tab refreshes and reconnects automatically after temporary disconnects, monitor restarts, and upgrades. A restarted monitor presents a new in-memory observation window rather than replaying earlier activity.
 
 ## Requirements and tested versions
 
@@ -155,18 +158,18 @@ After plugin enablement/trust and an app restart, the first trusted hook interna
 
 ## Install from npm
 
-The commands below target the `0.4.2` release candidate's exact package version. Run them only after registry publication is confirmed; an unavailable version means the candidate has not been published yet.
+The commands below target the unpublished `0.4.3` release candidate's exact package version. Run them only after registry publication is confirmed; an unavailable version means the candidate has not been published yet.
 
 ```bash
-npm install --global codex-agent-view@0.4.2
+npm install --global codex-agent-view@0.4.3
 codex-agent-view install
 ```
 
 After these two commands, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. Use the plugin card's **Quick start** action to invoke **Show Agents**; after closing the panel, enter `@codex-agent-view $show-agents` in a Codex app task to reopen it.
 
-The planned `0.4.2` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward.
+The planned `0.4.3` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. When upgrading a valid `0.4.2` installation, `install` migrates its legacy runtime token into the new read-only viewer credential only when that credential does not already exist; neither token nor the private URL is printed.
 
-The `0.2.0` through public `0.4.1` release evidence is preserved. The `0.4.2` candidate must not be treated as published or visually accepted until those checks are separately recorded in [Distribution](docs/distribution.md).
+The `0.2.0` through public `0.4.2` release evidence is preserved. The `0.4.3` candidate must not be treated as published or visually accepted until those checks are separately recorded in [Distribution](docs/distribution.md).
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 
@@ -182,7 +185,7 @@ If events are still absent, report the Codex app/CLI version, plugin version, ap
 
 ## Privacy
 
-The normal hook path uses `scripts/send-hook.mjs`. It derives only a sanitized, 120-character-bounded workspace basename as `workspace_label`; the full `cwd` is not sent or stored as content. The reducer keeps this label and narrower lifecycle state only in bounded memory. The normal monitor does not write an event JSONL history.
+The normal hook path uses `scripts/send-hook.mjs`. It derives only a sanitized, 120-character-bounded workspace basename as `workspace_label`; the full `cwd` is not sent or stored as content. The reducer keeps this label and narrower lifecycle state only in bounded memory. The normal monitor does not write an event JSONL history. The private viewer credential stored for reconnect continuity contains no task or hook-event state.
 
 `scripts/capture-hook.mjs` is a separate, explicitly invoked Phase 0 diagnostic tool. Setting `CODEX_AGENT_VIEW_CAPTURE_FULL=1` for that script can write raw prompts, tool data, credentials, and other secrets. Normal install/start and the bundled skill never enable it automatically. Do not commit or publicly attach captures or runtime tokens.
 
@@ -196,7 +199,7 @@ Uninstall is an explicit terminal lifecycle action, like initial installation. R
 codex-agent-view uninstall
 ```
 
-`uninstall` authenticates to the loopback endpoint with the runtime file's bearer token, verifies that it is a healthy owned Codex Agent View monitor, and requests internal shutdown. Only after shutdown is confirmed does it remove plugin/marketplace registration and the copied bundle; remaining runtime-directory data is preserved by default. If the owned monitor cannot be stopped safely or the endpoint is identified as another service, plugin and runtime files are preserved and the command fails.
+`uninstall` authenticates to the loopback endpoint with the runtime/control token, verifies that it is a healthy owned Codex Agent View monitor, and requests internal shutdown. Only after shutdown is confirmed does it remove plugin/marketplace registration and the copied bundle. A valid owned viewer credential is revoked during both normal uninstall and `--purge`; reinstalling later creates a different credential. Remaining unrelated runtime-directory data is preserved by default. If the viewer credential is malformed, changed, symbolic, or otherwise unrecognized, it is preserved for manual review and the command prints a warning rather than deleting uncertain data. If the owned monitor cannot be stopped safely or the endpoint is identified as another service, plugin and runtime files are preserved and the command fails.
 
 Use the following only after explicitly deciding to remove owned data from the configured runtime directory:
 
@@ -204,7 +207,7 @@ Use the following only after explicitly deciding to remove owned data from the c
 codex-agent-view uninstall --purge
 ```
 
-`--purge` performs the same authenticated shutdown first, then additionally removes only an owned stale runtime file and an empty runtime directory. It does not delete or stop an unrecognized runtime file or an unrelated loopback service. An unrecognized file is preserved; an unrelated endpoint aborts removal while preserving plugin and runtime files. A non-empty directory containing opt-in captures or other files is also preserved.
+`--purge` performs the same authenticated shutdown and valid viewer-credential revocation first, then additionally removes only an owned stale runtime file and an empty runtime directory. It does not delete or stop an unrecognized runtime file, an unrecognized viewer credential, or an unrelated loopback service. Unrecognized files are preserved with a warning; an unrelated endpoint aborts removal while preserving plugin and runtime files. A non-empty directory containing opt-in captures or other files is also preserved.
 
 For a source checkout only, use the equivalent `node bin/codex-agent-view.mjs uninstall` or `node bin/codex-agent-view.mjs uninstall --purge` form. Opt-in captures outside that directory require separate, exact cleanup.
 
