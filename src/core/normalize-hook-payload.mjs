@@ -2,9 +2,15 @@ const NORMALIZED_EVENT_TYPES = Object.freeze({
   PermissionRequest: "permission_requested",
   PostToolUse: "tool_completed",
   PreToolUse: "tool_started",
+  SessionEnd: "session_ended",
+  SessionStart: "session_started",
+  Stop: "turn_stopped",
   SubagentStart: "subagent_started",
   SubagentStop: "subagent_stopped",
+  UserPromptSubmit: "turn_started",
 });
+
+const SESSION_EVENT_TYPES = new Set(["session_started", "session_ended"]);
 
 const MAX_IDENTIFIER_LENGTH = 512;
 const MAX_LABEL_LENGTH = 256;
@@ -58,8 +64,8 @@ function commonEvent(payload, type, receivedAtMs) {
     source: "hook",
     type,
     session_id: payload.session_id,
-    turn_id: payload.turn_id,
     received_at_ms: receivedAtMs,
+    ...(typeof payload.turn_id === "string" ? { turn_id: payload.turn_id } : {}),
   };
 }
 
@@ -88,7 +94,10 @@ export function normalizeHookPayload(payload, options = {}) {
     return ignored("unsupported_hook_event", receivedAtMs, "hook_event_name");
   }
 
-  for (const field of ["session_id", "turn_id"]) {
+  const commonFields = SESSION_EVENT_TYPES.has(type)
+    ? ["session_id"]
+    : ["session_id", "turn_id"];
+  for (const field of commonFields) {
     const error = requiredString(payload, field, receivedAtMs);
     if (error) {
       return error;
@@ -143,4 +152,3 @@ export function normalizeHookPayload(payload, options = {}) {
 
   return { status: "accepted", event };
 }
-

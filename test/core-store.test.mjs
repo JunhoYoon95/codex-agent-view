@@ -102,6 +102,47 @@ test("derives session status without inventing parent completion", () => {
   assert.equal(store.getSnapshot().sessions[0].status, "observed");
 });
 
+test("tracks parent session and turn lifecycle from hooks", () => {
+  const store = createMonitorStore();
+  store.ingest(
+    { session_id: "session-1", hook_event_name: "SessionStart", source: "startup" },
+    { receivedAtMs: 5 },
+  );
+  assert.equal(store.getSnapshot().sessions[0].status, "observed");
+
+  store.ingest(
+    { ...subagentPayload("UserPromptSubmit") },
+    { receivedAtMs: 10 },
+  );
+  let session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "running");
+  assert.equal(session.root_turn.status, "running");
+
+  store.ingest(
+    { ...subagentPayload("Stop") },
+    { receivedAtMs: 20 },
+  );
+  session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "observed");
+  assert.equal(session.root_turn.status, "completed");
+
+  store.ingest(
+    { session_id: "session-1", hook_event_name: "SessionEnd", reason: "other" },
+    { receivedAtMs: 30 },
+  );
+  session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "completed");
+  assert.equal(session.recent_activities[0].type, "session_ended");
+
+  store.ingest(
+    { session_id: "session-1", hook_event_name: "SessionStart", source: "resume" },
+    { receivedAtMs: 40 },
+  );
+  session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "observed");
+  assert.equal(session.recent_activities[0].type, "session_started");
+});
+
 test("treats repeated lifecycle and tool hooks as duplicates", () => {
   const store = createMonitorStore();
   const start = subagentPayload("SubagentStart");

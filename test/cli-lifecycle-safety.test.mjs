@@ -45,6 +45,14 @@ const args = process.argv.slice(2);
 appendFileSync(process.env.FAKE_CODEX_LOG, JSON.stringify(args) + "\\n");
 if (args.join(" ") === "plugin marketplace list --json") {
   process.stdout.write('{"marketplaces":[]}\\n');
+} else if (args.join(" ") === "plugin list --json") {
+  const sourcePath = require("node:path").join(process.env.CODEX_AGENT_VIEW_RUNTIME_DIR, "marketplace");
+  process.stdout.write(JSON.stringify({ installed: [{
+    pluginId: "codex-agent-view@codex-agent-view",
+    enabled: process.env.FAKE_PLUGIN_DISABLED !== "1",
+    version: "0.2.1",
+    source: { source: "local", path: sourcePath }
+  }] }) + "\\n");
 } else {
   process.stdout.write('{}\\n');
 }
@@ -305,4 +313,71 @@ test("start rejects a live runtime without orphaning it and replaces a valid sta
   });
   assert.equal(stopped.code, 0);
   await assertMissing(runtimeFile({ CODEX_AGENT_VIEW_RUNTIME_DIR: staleRoot }));
+});
+
+test("doctor distinguishes valid registration from unobservable hook trust and no events", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  assert.match(install.stdout, /Registration verified: installed and enabled/);
+  assert.match(install.stdout, /Hook trust cannot be granted or inspected non-interactively/);
+
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const monitor = await startMonitorServer({ env, port: 0 });
+  t.after(async () => monitor.close());
+
+  const result = await runCli(setup, runtimeRoot, ["doctor", "--json"]);
+  assert.equal(result.code, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.deepEqual(report.plugin, {
+    enabled: true,
+    installed: true,
+    source_path: join(runtimeRoot, "marketplace"),
+    version: "0.2.1",
+  });
+  assert.equal(report.hook.wiring_ok, true);
+  assert.equal(report.hook.trust, "unknown");
+  assert.equal(report.monitor.ok, true);
+  assert.equal(report.monitor.events_received, false);
+  assert.equal(
+    report.diagnostics.some(({ code }) => code === "no_hook_events_observed"),
+    true,
+  );
+});
+
+test("status explains that an empty snapshot is a hook-delivery diagnostic", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const monitor = await startMonitorServer({ env, port: 0 });
+  t.after(async () => monitor.close());
+
+  const result = await runCli(setup, runtimeRoot, ["status"]);
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /0 task\(s\), 0 subagent\(s\) observed/);
+  assert.match(result.stdout, /No hook event has reached this monitor yet/);
+  assert.match(result.stdout, /review `\/hooks`/);
+});
+
+test("install fails clearly when Codex registers the plugin as disabled", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const result = await runCli(setup, runtimeRoot, ["install"], {
+    env: { FAKE_PLUGIN_DISABLED: "1" },
+  });
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /registered but is disabled/);
 });

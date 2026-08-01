@@ -172,9 +172,66 @@ async function status(args) {
     0,
   );
   process.stdout.write(`${sessions.length} task(s), ${agents} subagent(s) observed.\n`);
+  if (!Number.isFinite(snapshot.updated_at_ms) || snapshot.updated_at_ms <= 0) {
+    process.stdout.write(
+      "No hook event has reached this monitor yet. The monitor can be healthy while Codex skips an untrusted or not-yet-loaded hook. Run `codex-agent-view doctor`, review `/hooks` in Codex CLI, then use a new task.\n",
+    );
+  }
   for (const session of sessions) {
     process.stdout.write(`- ${session.session_id}: ${session.status} (${session.agents.length} agents)\n`);
   }
+}
+
+function parsePluginList(result) {
+  if (result.code !== 0) return null;
+  try {
+    const parsed = JSON.parse(result.stdout);
+    return Array.isArray(parsed.installed) ? parsed.installed : [];
+  } catch {
+    return null;
+  }
+}
+
+async function inspectInstalledHookBundle(pluginEntry) {
+  const sourcePath = pluginEntry?.source?.path;
+  if (typeof sourcePath !== "string" || sourcePath.length === 0) {
+    return {
+      hooks_file: false,
+      sender_file: false,
+      source_path: null,
+      wiring_ok: false,
+    };
+  }
+  const hooksPath = join(sourcePath, "hooks", "hooks.json");
+  const senderPath = join(sourcePath, "scripts", "send-hook.mjs");
+  const hooks = await readJsonRegularFile(hooksPath);
+  const sender = await pathExists(senderPath);
+  const hookGroups = hooks?.hooks;
+  const expectedEvents = [
+    "SessionStart",
+    "SessionEnd",
+    "UserPromptSubmit",
+    "Stop",
+    "SubagentStart",
+    "SubagentStop",
+    "PreToolUse",
+    "PostToolUse",
+    "PermissionRequest",
+  ];
+  const hooksFile = hookGroups && typeof hookGroups === "object";
+  const declaredEvents = hooksFile
+    ? expectedEvents.filter((event) => Array.isArray(hookGroups[event]))
+    : [];
+  return {
+    declared_events: declaredEvents,
+    hooks_file: Boolean(hooksFile),
+    sender_file: Boolean(sender?.isFile() && !sender.isSymbolicLink()),
+    source_path: sourcePath,
+    wiring_ok:
+      Boolean(hooksFile) &&
+      declaredEvents.length === expectedEvents.length &&
+      Boolean(sender?.isFile() && !sender.isSymbolicLink()),
+  };
 }
 
 async function doctor(args) {
@@ -182,22 +239,105 @@ async function doctor(args) {
   let monitor = { ok: false, message: "not running" };
   try {
     const snapshot = await fetchState();
-    monitor = { ok: true, sessions: snapshot.sessions?.length || 0 };
+    monitor = {
+      events_received:
+        Number.isFinite(snapshot.updated_at_ms) && snapshot.updated_at_ms > 0,
+      ok: true,
+      sessions: snapshot.sessions?.length || 0,
+      updated_at_ms:
+        Number.isFinite(snapshot.updated_at_ms) && snapshot.updated_at_ms > 0
+          ? snapshot.updated_at_ms
+          : null,
+    };
   } catch (error) {
     monitor = { ok: false, message: error.message };
   }
   const plugins = await run("codex", ["plugin", "list", "--json"], {
     allowFailure: true,
   });
-  let installed = false;
-  try {
-    const parsed = JSON.parse(plugins.stdout);
-    installed = parsed.installed?.some((entry) => entry.pluginId === PLUGIN_ID) || false;
-  } catch {}
+  const pluginList = parsePluginList(plugins);
+  const pluginEntry = pluginList?.find((entry) => entry.pluginId === PLUGIN_ID) || null;
+  const hookBundle = await inspectInstalledHookBundle(pluginEntry);
+  const diagnostics = [];
+  if (codex.code !== 0) {
+    diagnostics.push({
+      action: "Install or repair Codex CLI so `codex --version` succeeds.",
+      code: "codex_cli_unavailable",
+      severity: "error",
+    });
+  }
+  if (pluginList === null) {
+    diagnostics.push({
+      action: "Check `codex plugin list --json` and the installed Codex CLI version.",
+      code: "plugin_list_unavailable",
+      severity: "error",
+    });
+  } else if (!pluginEntry) {
+    diagnostics.push({
+      action: "Run `codex-agent-view install`.",
+      code: "plugin_not_installed",
+      severity: "error",
+    });
+  } else if (pluginEntry.enabled !== true) {
+    diagnostics.push({
+      action: "Enable Codex Agent View in the Codex plugin browser, then start a new task.",
+      code: "plugin_disabled",
+      severity: "error",
+    });
+  }
+  if (pluginEntry && !hookBundle.wiring_ok) {
+    diagnostics.push({
+      action: "Run `codex-agent-view install` again to restore the owned plugin bundle.",
+      code: "hook_bundle_invalid",
+      severity: "error",
+    });
+  }
+  if (pluginEntry && pluginEntry.version !== (await packageVersion())) {
+    diagnostics.push({
+      action: "Run `codex-agent-view install` to align the installed plugin with this CLI package.",
+      code: "plugin_version_mismatch",
+      severity: "warning",
+    });
+  }
+  if (!monitor.ok) {
+    diagnostics.push({
+      action: "Run `codex-agent-view start` before expecting live task events.",
+      code: "monitor_not_running",
+      severity: "warning",
+    });
+  }
+  if (pluginEntry) {
+    diagnostics.push({
+      action: "Review the current plugin hook definition in interactive Codex CLI `/hooks`.",
+      code: "hook_trust_unverified",
+      severity: "info",
+    });
+  }
+  if (monitor.ok && monitor.events_received === false) {
+    diagnostics.push({
+      action:
+        "Open Codex CLI, review and trust the current definition in `/hooks`, then start a new task. Restart a Codex app process that was already open during installation.",
+      code: "no_hook_events_observed",
+      severity: "warning",
+    });
+  }
   const report = {
     codex: { ok: codex.code === 0, version: codex.stdout.trim() || null },
+    diagnostics,
+    hook: {
+      ...hookBundle,
+      trust: pluginEntry ? "unknown" : "not_applicable",
+      trust_note: pluginEntry
+        ? "Codex CLI does not expose persisted hook trust through `plugin list --json`; review `/hooks` interactively."
+        : null,
+    },
     monitor,
-    plugin: { installed },
+    plugin: {
+      enabled: pluginEntry?.enabled === true,
+      installed: Boolean(pluginEntry),
+      source_path: pluginEntry?.source?.path || null,
+      version: pluginEntry?.version || null,
+    },
     runtime_directory: runtimeDirectory(),
   };
   if (args.includes("--json")) {
@@ -205,8 +345,20 @@ async function doctor(args) {
     return;
   }
   process.stdout.write(`Codex CLI: ${report.codex.ok ? report.codex.version : "not available"}\n`);
-  process.stdout.write(`Plugin: ${installed ? "installed" : "not installed"}\n`);
+  process.stdout.write(
+    `Plugin: ${report.plugin.installed ? `installed (${report.plugin.enabled ? "enabled" : "disabled"})` : "not installed"}\n`,
+  );
+  if (report.plugin.installed) {
+    process.stdout.write(`Hook bundle: ${report.hook.wiring_ok ? "valid" : "invalid"}\n`);
+    process.stdout.write("Hook trust: unknown (Codex exposes review through interactive `/hooks`)\n");
+  }
   process.stdout.write(`Monitor: ${monitor.ok ? "running" : monitor.message}\n`);
+  if (monitor.ok) {
+    process.stdout.write(`Hook events: ${monitor.events_received ? "observed" : "none observed"}\n`);
+  }
+  for (const diagnostic of diagnostics) {
+    process.stdout.write(`[${diagnostic.severity}] ${diagnostic.code}: ${diagnostic.action}\n`);
+  }
 }
 
 async function pathExists(path) {
@@ -362,8 +514,30 @@ async function install() {
     await run("codex", ["plugin", "marketplace", "add", destination, "--json"]);
   }
   await run("codex", ["plugin", "add", PLUGIN_ID, "--json"]);
+  const verification = await run("codex", ["plugin", "list", "--json"], {
+    allowFailure: true,
+  });
+  const installed = parsePluginList(verification)?.find(
+    (entry) => entry.pluginId === PLUGIN_ID,
+  );
+  if (!installed) {
+    throw new Error(
+      "Codex did not report the plugin as installed after registration; run `codex-agent-view doctor` for details",
+    );
+  }
+  if (installed.enabled !== true) {
+    throw new Error(
+      "the plugin was registered but is disabled; enable it in the Codex plugin browser, then run `codex-agent-view doctor`",
+    );
+  }
   process.stdout.write(`Installed ${PLUGIN_ID} from ${destination}.\n`);
-  process.stdout.write("Review and trust the hook in the CLI /hooks screen, restart Codex, then start a new task.\n");
+  process.stdout.write("Registration verified: installed and enabled.\n");
+  process.stdout.write(
+    "Hook trust cannot be granted or inspected non-interactively. Review and trust this plugin's current hook definition in Codex CLI `/hooks`.\n",
+  );
+  process.stdout.write(
+    "If Codex was already open during installation, restart it completely, then create a new task.\n",
+  );
 }
 
 function isBroadRuntimeRoot(root) {

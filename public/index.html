@@ -95,20 +95,25 @@
             </p>
           </div>
 
-          <form class="toolbar" role="search" aria-label="task와 subagent 검색 및 필터">
+          <form
+            class="toolbar"
+            role="search"
+            aria-label="자동 수신된 task와 subagent 목록 필터"
+            hidden
+          >
             <div class="field field-search">
-              <label for="session-search">검색</label>
+              <label for="session-search">목록 필터 (선택)</label>
               <input
                 id="session-search"
                 name="query"
                 type="search"
-                placeholder="Session ID, agent ID, 유형 또는 event"
+                placeholder="자동 수신된 task·agent 목록에서 찾기"
                 autocomplete="off"
                 spellcheck="false"
               >
             </div>
             <div class="field">
-              <label for="status-filter">상태</label>
+              <label for="status-filter">상태 필터 (선택)</label>
               <select id="status-filter" name="status">
                 <option value="all">모든 상태</option>
                 <option value="running">실행 중</option>

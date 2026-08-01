@@ -1,6 +1,6 @@
 {
   "name": "codex-agent-view",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Read-only local monitor for Codex parent-task and subagent lifecycle events.",
   "author": {
     "name": "Junho Yoon",

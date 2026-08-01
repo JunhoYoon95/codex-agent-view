@@ -362,6 +362,10 @@ h1 {
   gap: var(--space-3);
 }
 
+.toolbar[hidden] {
+  display: none;
+}
+
 .field {
   display: grid;
   gap: var(--space-2);
@@ -423,6 +427,74 @@ h1 {
 .state-message span {
   max-width: 34rem;
   color: var(--text-secondary);
+}
+
+.state-empty-observation {
+  justify-items: stretch;
+  text-align: left;
+}
+
+.state-empty-observation > strong,
+.state-empty-observation > span {
+  justify-self: center;
+  text-align: center;
+}
+
+.empty-guidance {
+  width: min(42rem, 100%);
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+}
+
+.empty-guidance h3 {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.automatic-tracking {
+  margin-bottom: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.empty-guidance ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.empty-guidance li + li {
+  margin-top: var(--space-2);
+}
+
+.observation-boundary {
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-3);
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-default);
+  font-size: var(--text-xs);
+}
+
+.diagnostic-details {
+  margin-top: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.diagnostic-details summary {
+  min-height: 2.75rem;
+  padding: var(--space-2) 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.diagnostic-details ul {
+  margin: 0;
+  padding-left: 1.25rem;
 }
 
 .state-message.state-error {

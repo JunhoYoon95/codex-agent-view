@@ -12,6 +12,24 @@ test("normalizes the supported hook events into a narrow safe contract", () => {
   const fixtures = [
     [
       {
+        session_id: "session-1",
+        hook_event_name: "SessionStart",
+        source: "startup",
+      },
+      "session_started",
+    ],
+    [
+      {
+        session_id: "session-1",
+        hook_event_name: "SessionEnd",
+        reason: "other",
+      },
+      "session_ended",
+    ],
+    [{ ...common, hook_event_name: "UserPromptSubmit" }, "turn_started"],
+    [{ ...common, hook_event_name: "Stop" }, "turn_stopped"],
+    [
+      {
         ...common,
         hook_event_name: "SubagentStart",
         agent_id: "agent-1",
@@ -160,4 +178,3 @@ test("rejects an invalid normalization timestamp", () => {
     /receivedAtMs must be a non-negative safe integer/,
   );
 });
-

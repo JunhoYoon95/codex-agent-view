@@ -21,6 +21,20 @@ function createSession(event) {
     last_seen_at_ms: event.received_at_ms,
     agents: new Map(),
     tools: new Map(),
+    lifecycle: {
+      start_observed: false,
+      end_observed: false,
+      started_at_ms: null,
+      ended_at_ms: null,
+      has_out_of_order_events: false,
+    },
+    root_turn: {
+      status: "idle",
+      turn_id: null,
+      started_at_ms: null,
+      stopped_at_ms: null,
+      has_out_of_order_events: false,
+    },
     permission: { status: "idle" },
     recent_activities: [],
   };
@@ -31,10 +45,14 @@ function deriveSessionStatus(session) {
     return "waiting_for_user";
   }
   if (
+    session.root_turn.status === "running" ||
     [...session.agents.values()].some(({ status }) => status === "running") ||
     [...session.tools.values()].some(({ status }) => status === "running")
   ) {
     return "running";
+  }
+  if (session.lifecycle.end_observed) {
+    return "completed";
   }
   return "observed";
 }
@@ -54,11 +72,10 @@ function addActivity(session, event, status, limit) {
   const activity = {
     type: event.type,
     status,
-    turn_id: event.turn_id,
     received_at_ms: event.received_at_ms,
   };
 
-  for (const field of ["agent_id", "agent_type", "tool_name", "tool_use_id"]) {
+  for (const field of ["turn_id", "agent_id", "agent_type", "tool_name", "tool_use_id"]) {
     if (field in event) {
       activity[field] = event[field];
     }
@@ -68,6 +85,71 @@ function addActivity(session, event, status, limit) {
   if (session.recent_activities.length > limit) {
     session.recent_activities.length = limit;
   }
+}
+
+function applySessionEvent(session, event, limits) {
+  const lifecycle = session.lifecycle;
+  if (event.type === "session_started") {
+    const resumedAfterEnd = lifecycle.end_observed;
+    lifecycle.start_observed = true;
+    lifecycle.started_at_ms ??= event.received_at_ms;
+    lifecycle.end_observed = false;
+    lifecycle.ended_at_ms = null;
+    lifecycle.has_out_of_order_events ||= resumedAfterEnd;
+    addActivity(session, event, "observed", limits.maxActivitiesPerSession);
+    return "applied";
+  }
+
+  if (lifecycle.end_observed) {
+    return "duplicate";
+  }
+  lifecycle.end_observed = true;
+  lifecycle.ended_at_ms = event.received_at_ms;
+  lifecycle.has_out_of_order_events = !lifecycle.start_observed;
+  session.root_turn.status = "completed";
+  session.root_turn.stopped_at_ms ??= event.received_at_ms;
+  session.permission = { status: "idle" };
+  addActivity(session, event, "completed", limits.maxActivitiesPerSession);
+  return "applied";
+}
+
+function applyTurnEvent(session, event, limits) {
+  const turn = session.root_turn;
+  if (event.type === "turn_started") {
+    if (turn.turn_id === event.turn_id && turn.status === "running") {
+      return "duplicate";
+    }
+    session.root_turn = {
+      status: "running",
+      turn_id: event.turn_id,
+      started_at_ms: event.received_at_ms,
+      stopped_at_ms: null,
+      has_out_of_order_events: false,
+    };
+    session.permission = { status: "idle" };
+    addActivity(session, event, "running", limits.maxActivitiesPerSession);
+    return "applied";
+  }
+
+  if (turn.turn_id === event.turn_id && turn.status === "completed") {
+    return "duplicate";
+  }
+  const startObserved = turn.turn_id === event.turn_id && turn.started_at_ms !== null;
+  session.root_turn = {
+    status: "completed",
+    turn_id: event.turn_id,
+    started_at_ms: startObserved ? turn.started_at_ms : null,
+    stopped_at_ms: event.received_at_ms,
+    has_out_of_order_events: !startObserved,
+  };
+  session.permission = { status: "idle" };
+  addActivity(
+    session,
+    event,
+    startObserved ? "completed" : "completed_without_start",
+    limits.maxActivitiesPerSession,
+  );
+  return "applied";
 }
 
 function applySubagentEvent(session, event, limits) {
@@ -212,6 +294,12 @@ function applyPermissionEvent(session, event, limits) {
 }
 
 function applyEvent(session, event, limits) {
+  if (event.type === "session_started" || event.type === "session_ended") {
+    return applySessionEvent(session, event, limits);
+  }
+  if (event.type === "turn_started" || event.type === "turn_stopped") {
+    return applyTurnEvent(session, event, limits);
+  }
   if (event.type === "subagent_started" || event.type === "subagent_stopped") {
     return applySubagentEvent(session, event, limits);
   }
@@ -230,6 +318,7 @@ function snapshotSession(session) {
     agents: [...session.agents.values()]
       .map(({ start_observed, stop_observed, ...agent }) => ({ ...agent }))
       .sort((left, right) => right.last_seen_at_ms - left.last_seen_at_ms),
+    root_turn: { ...session.root_turn },
     recent_activities: session.recent_activities.map((activity) => ({
       ...activity,
     })),

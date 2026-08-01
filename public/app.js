@@ -65,6 +65,7 @@ const elements = Object.freeze({
 const viewState = {
   updatedAtMs: null,
   sessions: [],
+  diagnostics: [],
   hasLoaded: false,
   errorMessage: "",
   canRetry: true,
@@ -130,9 +131,21 @@ function normalizeActivity(value) {
   };
 }
 
+function normalizeDiagnostic(value) {
+  const diagnostic = isRecord(value) ? value : {};
+  return {
+    code: safeString(diagnostic.code, "unknown_diagnostic"),
+    diagnosedAtMs: safeTimestamp(diagnostic.diagnosed_at_ms),
+  };
+}
+
 function deriveSessionStatus(session, agents, recentActivities) {
   if (session.permission?.status === "waiting_for_user") {
     return "waiting";
+  }
+  const reportedStatus = normalizeCoreStatus(session.status);
+  if (reportedStatus === "running" || reportedStatus === "completed") {
+    return reportedStatus;
   }
   if (
     agents.some((agent) => agent.status === "running") ||
@@ -166,7 +179,8 @@ function normalizeState(value) {
     !isRecord(value) ||
     value.schema_version !== 1 ||
     value.source_of_truth !== "hook" ||
-    !Array.isArray(value.sessions)
+    !Array.isArray(value.sessions) ||
+    !Array.isArray(value.diagnostics)
   ) {
     throw new TypeError("상태 응답 형식이 올바르지 않습니다.");
   }
@@ -174,6 +188,7 @@ function normalizeState(value) {
   return {
     updatedAtMs: safeTimestamp(value.updated_at_ms),
     sessions: value.sessions.map(normalizeSession),
+    diagnostics: value.diagnostics.map(normalizeDiagnostic),
   };
 }
 
@@ -462,7 +477,7 @@ function renderMetrics() {
   elements.metricWaiting.textContent = String(waitingCount);
   elements.metricCompleted.textContent = String(countStatus("completed"));
   elements.lastUpdated.textContent = !viewState.updatedAtMs
-    ? "시간 정보 없음"
+    ? "수신된 hook 없음"
     : formatDateTime(viewState.updatedAtMs);
 }
 
@@ -486,10 +501,77 @@ function setStateMessage(kind, title, description, includeRetry = false) {
   }
 }
 
+function setEmptyObservationMessage() {
+  elements.stateMessage.className = "state-message state-empty state-empty-observation";
+  elements.stateMessage.replaceChildren();
+
+  const heading = document.createElement("strong");
+  const copy = document.createElement("span");
+
+  if (viewState.diagnostics.length) {
+    heading.textContent = "표시 가능한 task가 없습니다.";
+    copy.textContent = `Monitor가 hook 입력 ${viewState.diagnostics.length}건을 받았지만 유효한 session으로 적용하지 않았습니다.`;
+  } else {
+    heading.textContent = "이 관찰 창에서 수신된 hook event가 0건입니다.";
+    copy.textContent = "로컬 monitor 연결은 정상입니다. 이 결과만으로 Codex에 실행 중인 task나 agent가 없다고 판단할 수 없습니다.";
+  }
+
+  const guidance = document.createElement("div");
+  guidance.className = "empty-guidance";
+
+  const guidanceTitle = document.createElement("h3");
+  guidanceTitle.textContent = "표시되지 않을 때 확인 순서";
+
+  const automaticTracking = document.createElement("p");
+  automaticTracking.className = "automatic-tracking";
+  automaticTracking.textContent = "task ID를 입력하거나 task별로 등록할 필요가 없습니다. Trusted hook event가 자동으로 이 목록에 추가됩니다.";
+
+  const steps = document.createElement("ol");
+  for (const step of [
+    "Codex Agent View를 실행한 뒤 새 Codex task를 시작합니다.",
+    "설치된 plugin의 현재 hook command를 검토하고 직접 trust했는지 확인합니다.",
+    "plugin 설치 또는 hook trust 변경 후 공식 Codex 앱을 완전히 재시작하고 새 task에서 subagent를 실행합니다.",
+  ]) {
+    const item = document.createElement("li");
+    item.textContent = step;
+    steps.append(item);
+  }
+
+  const boundary = document.createElement("p");
+  boundary.className = "observation-boundary";
+  boundary.textContent = "Plugin 설치·trust 전에 이미 지나간 event와 monitor가 꺼져 있던 동안의 event는 재생되지 않습니다.";
+
+  guidance.append(guidanceTitle, automaticTracking, steps, boundary);
+
+  if (viewState.diagnostics.length) {
+    const diagnostics = document.createElement("details");
+    diagnostics.className = "diagnostic-details";
+    const summary = document.createElement("summary");
+    summary.textContent = `검증 diagnostic ${viewState.diagnostics.length}건`;
+    const codes = document.createElement("ul");
+    const diagnosticCounts = new Map();
+    for (const { code } of viewState.diagnostics) {
+      diagnosticCounts.set(code, (diagnosticCounts.get(code) ?? 0) + 1);
+    }
+    for (const [diagnosticCode, count] of diagnosticCounts) {
+      const item = document.createElement("li");
+      const code = document.createElement("code");
+      code.textContent = diagnosticCode;
+      item.append(code, ` · ${count}건`);
+      codes.append(item);
+    }
+    diagnostics.append(summary, codes);
+    guidance.append(diagnostics);
+  }
+
+  elements.stateMessage.append(heading, copy, guidance);
+}
+
 function renderSessions() {
   const visibleSessions = filteredSessions();
   const hasFilters = elements.search.value.trim() || elements.statusFilter.value !== "all";
 
+  elements.toolbar.hidden = viewState.sessions.length === 0;
   elements.stateMessage.hidden = false;
 
   elements.sessionList.replaceChildren();
@@ -523,11 +605,7 @@ function renderSessions() {
 
   if (!viewState.sessions.length) {
     elements.sessionList.hidden = true;
-    setStateMessage(
-      "empty",
-      "아직 관찰된 task가 없습니다.",
-      "Codex에서 task나 subagent가 시작되면 이곳에 나타납니다.",
-    );
+    setEmptyObservationMessage();
     return;
   }
 
@@ -597,6 +675,7 @@ async function refreshState() {
     const nextState = normalizeState(await response.json());
     viewState.updatedAtMs = nextState.updatedAtMs;
     viewState.sessions = nextState.sessions;
+    viewState.diagnostics = nextState.diagnostics;
     viewState.hasLoaded = true;
     viewState.errorMessage = "";
     viewState.canRetry = true;
