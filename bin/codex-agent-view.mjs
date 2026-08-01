@@ -168,12 +168,6 @@ async function start(args) {
   }
 
   const monitor = await startMonitorServer({ port: options.port });
-  process.stdout.write(`Codex Agent View is running at ${monitor.url}\n`);
-  process.stdout.write("Press Ctrl+C to stop the in-memory monitor.\n");
-  if (options.open) {
-    openBrowser(monitor.url);
-  }
-
   let stopping = false;
   const stop = async () => {
     if (stopping) return;
@@ -183,6 +177,12 @@ async function start(args) {
   };
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
+
+  process.stdout.write(`Codex Agent View is running at ${monitor.url}\n`);
+  process.stdout.write("Press Ctrl+C to stop the in-memory monitor.\n");
+  if (options.open) {
+    openBrowser(monitor.url);
+  }
 }
 
 async function fetchState() {

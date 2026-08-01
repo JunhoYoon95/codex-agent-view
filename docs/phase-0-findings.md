@@ -10,7 +10,7 @@
 
 해당 app process에는 plugin 설치 전 `hooks/list` 응답이 있었고 설치 뒤에도 process가 유지됐다. 이는 stale config/hook snapshot 가설과 일치하지만 인과관계를 확정하지는 않는다. 또한 `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않아 config snapshot과 untrusted hook skip을 자동 진단으로 분리할 수 없었다. 따라서 당시 실패 원인을 “재시작 부족”으로 단정하지 않는다.
 
-Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. Public npm `latest`와 현재 source는 `0.3.0`이다. Historical `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했다. `0.3.0` E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 explicit `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환을 확인했으며, 후자는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Browser monitor에서는 실제 `SessionEnd` lifecycle 반영을 관찰했다. Public exact `0.3.0` 재설치 뒤 실제 hook, workspace label, permission/tool lifecycle과 subagent running → stopped를 추가 확인했다.
+Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. 현재 source/package는 `0.3.1` release candidate이고 public npm `latest`는 `0.3.0`이다. Historical `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했다. `0.3.0` E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 explicit `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환을 확인했으며, 후자는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Browser monitor에서는 실제 `SessionEnd` lifecycle 반영을 관찰했다. Public exact `0.3.0` 재설치 뒤 실제 hook, workspace label, permission/tool lifecycle과 subagent running → stopped를 추가 확인했다. `0.3.1` candidate는 앱 전용 정상 사용 계약과 문서를 강화한 source 상태이며 npm publish, tag 또는 exact public artifact E2E를 아직 주장하지 않는다.
 
 ## 검증 환경
 
@@ -259,7 +259,7 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 - [x] Registry tarball과 this-device global install/copied marketplace 21개 file byte comparison
 - Universal Plugins Directory portal 제출, review, publish, search visibility 확인
 
-README는 exact-version global install과 `npx`를 public npm 사용법으로 안내하고 검증 완료 범위를 요약한다. Directory publish 전에는 Universal Directory에서 검색 가능하다고 주장하지 않는다.
+`0.3.1` candidate README는 publish 이후 사용할 exact-version install 명령과 앱 안의 정상 사용 흐름을 안내하고, 현재 public `latest`가 `0.3.0`임을 분리해 표시한다. Directory publish 전에는 Universal Directory에서 검색 가능하다고 주장하지 않는다.
 
 ## QA 결과
 
@@ -274,9 +274,9 @@ README는 exact-version global install과 `npx`를 public npm 사용법으로 �
 - historical public `0.2.0` registry metadata: `Apache-2.0`, bin mapping, shasum/exact SRI/signature 확인
 - historical public exact `0.2.0`: isolated global install과 exact-version `npx` lifecycle, 다섯 hook fixture → status/UI, search/filter, browser console 무오류, purge 검증
 - historical release source match: npm `gitHead`와 annotated `v0.2.0` tag가 `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치, origin tag와 public GitHub Release 확인, 21개 package file byte-identical
-- current public `0.2.1`: latest/version `0.2.1`, `Apache-2.0`, bin mapping, npm `gitHead` `8d6a67c9aafa23f801235d747ff018d254378970`, 21 files, unpacked size `144644`, shasum/exact SRI/signature 확인
+- historical public `0.2.1`: 당시 latest/version `0.2.1`, `Apache-2.0`, bin mapping, npm `gitHead` `8d6a67c9aafa23f801235d747ff018d254378970`, 21 files, unpacked size `144644`, shasum/exact SRI/signature 확인
 - current `0.2.1` release source: annotated tag/origin push/public GitHub Release, clean-cache exact-version `npx --version`, registry tarball ↔ tagged source 21 files byte-identical 확인
 - this-device public exact `0.2.1`: global reinstall/copied marketplace ↔ registry tarball 21 files byte-identical, CLI `0.2.1`, plugin installed/enabled, hook wiring 9종, 실제 session 자동 수신과 probe subagent running → stopped/UI 완료 반영
 - official app `0.2.1`: parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 `PermissionRequest` waiting 확인; 실제 `SessionEnd` 미관찰
 
-Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.0`/`0.2.1` evidence는 historical record로 보존하고 `0.3.0`은 npm publish, tag/GitHub Release, exact artifact의 this-device reinstall과 live hook QA까지 확인했다. Universal Directory listing은 별도 external operation이며 아직 제출하지 않았다. 선택적인 npm provenance attestation 완료도 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.
+Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.0`/`0.2.1` evidence는 historical record로 보존하고 `0.3.0`은 npm publish, tag/GitHub Release, exact artifact의 this-device reinstall과 live hook QA까지 확인했다. Source `0.3.1`은 앱 전용 사용 문서/skill patch release candidate이며 public evidence는 아직 없다. Universal Directory listing은 별도 external operation이며 아직 제출하지 않았다. 선택적인 npm provenance attestation 완료도 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.

@@ -8,10 +8,10 @@ Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task�
 
 ### 빠른 시작: 설치 후에는 Codex 앱 안에서만 사용
 
-현재 공개 버전은 `codex-agent-view@0.3.0`이다. Universal Plugins Directory 검색 등록은 아직 완료되지 않았으므로 **최초 설치만** 일반 터미널에서 다음 두 명령으로 진행한다.
+현재 source/package는 `0.3.1` release candidate이며 아직 npm에 publish되지 않았다. 현재 public npm `latest`는 `0.3.0`이다. 아래 명령은 이 candidate가 `0.3.1`로 publish된 뒤 사용하는 exact-version 설치 경로다. Universal Plugins Directory 검색 등록은 아직 완료되지 않았으므로 **최초 설치만** 일반 터미널에서 진행한다.
 
 ```bash
-npm install --global codex-agent-view@0.3.0
+npm install --global codex-agent-view@0.3.1
 codex-agent-view install
 ```
 
@@ -37,7 +37,7 @@ Plugin은 live 화면 요청 시 healthy local monitor를 내부적으로 재사
 
 ### 현재 상태
 
-현재 source와 public npm `latest`는 `0.3.0`이다. 다음 구성이 공개 package에 포함되어 있다.
+현재 source는 `0.3.1` release candidate이고 public npm `latest`는 `0.3.0`이다. 다음 구성은 candidate package에 포함되어 있으며 publish 전 검증 대상이다.
 
 - 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
@@ -187,10 +187,10 @@ Monitor가 실행 중이고 plugin enable/trust가 끝난 뒤 생성되거나 �
 
 ### npm 설치 명령 참고
 
-아래 명령은 현재 public `latest`인 exact `0.3.0`을 설치한다.
+아래 명령은 `0.3.1` publish와 registry 검증이 완료된 뒤 사용하는 exact-version 설치 명령이다. Publish 전에는 `0.3.1`이 public registry에 있다고 가정하지 않는다.
 
 ```bash
-npm install --global codex-agent-view@0.3.0
+npm install --global codex-agent-view@0.3.1
 codex-agent-view install
 ```
 
@@ -199,7 +199,7 @@ codex-agent-view install
 Global install 없이 exact version을 일회성으로 실행할 수도 있다.
 
 ```bash
-npx --yes codex-agent-view@0.3.0 install
+npx --yes codex-agent-view@0.3.1 install
 ```
 
 `npx` 경로도 explicit `install`을 실행하는 최초 설치 방법일 뿐이다. 이후 사용은 동일하게 Codex 앱 안에서 진행한다.
@@ -285,10 +285,10 @@ Codex Agent View is a read-only companion plugin that shows privacy-minimized ac
 
 ### Quick start: install once, then stay inside the Codex app
 
-The current public version is `codex-agent-view@0.3.0`. Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
+The current source/package is a `0.3.1` release candidate and has not been published to npm yet. The current public npm `latest` remains `0.3.0`. The commands below are the exact-version installation path to use after this candidate is published as `0.3.1`. Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
 ```bash
-npm install --global codex-agent-view@0.3.0
+npm install --global codex-agent-view@0.3.1
 codex-agent-view install
 ```
 
@@ -314,7 +314,7 @@ In short: install once in a terminal; perform snapshot queries, status checks, l
 
 ### Status
 
-The current source and public npm `latest` are `0.3.0`. The published package includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, plus privacy-minimized hooks, a bounded in-memory reducer, an optional token-authenticated `127.0.0.1` dashboard, and lifecycle CLI commands.
+The current source is a `0.3.1` release candidate, while public npm `latest` remains `0.3.0`. The candidate package includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, plus privacy-minimized hooks, a bounded in-memory reducer, an optional token-authenticated `127.0.0.1` dashboard, and lifecycle CLI commands.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -417,10 +417,10 @@ Once the monitor is running and plugin enablement/trust is complete, hooks from 
 
 ### Install from npm
 
-The commands below install the current public exact `0.3.0` release.
+The commands below are the exact-version installation path to use after `0.3.1` is published and verified in the registry. Before publication, do not assume that `0.3.1` exists in the public registry.
 
 ```bash
-npm install --global codex-agent-view@0.3.0
+npm install --global codex-agent-view@0.3.1
 codex-agent-view install
 ```
 
@@ -429,7 +429,7 @@ After these two commands, fully reopen the Codex app, verify installation and en
 Or run the exact version without a global install:
 
 ```bash
-npx --yes codex-agent-view@0.3.0 install
+npx --yes codex-agent-view@0.3.1 install
 ```
 
 The `npx` form is also an initial explicit-install path only. Routine use remains inside the Codex app afterward.
