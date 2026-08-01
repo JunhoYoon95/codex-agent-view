@@ -141,7 +141,15 @@ test("skill uses app task tools before the CLI and keeps sensitive content out o
 
   assert.equal(manifest.version, packageMetadata.version);
   assert.equal(manifest.interface.shortDescription, "View active Codex tasks.");
-  assert.deepEqual(manifest.interface.defaultPrompt, ["Show Agents"]);
+  assert.deepEqual(manifest.interface.defaultPrompt, [
+    "Open @ and select the bundled Show Agents skill.",
+  ]);
+  assert.notEqual(
+    manifest.interface.defaultPrompt[0],
+    "Show Agents",
+    "plugin starter prompt is an instruction to select the skill, not a skill invocation",
+  );
+  assert.doesNotMatch(manifest.interface.defaultPrompt[0], /\$show-agents/);
 });
 
 test("explicit show-agents skill opens the private live view inside Codex", async () => {
@@ -189,12 +197,16 @@ test("explicit show-agents skill opens the private live view inside Codex", asyn
 
   assert.match(metadata, /display_name: "Show Agents"/);
   assert.match(metadata, /short_description: "Open the live agent monitor inside Codex"/);
+  assert.match(metadata, /default_prompt: "Open the live agent monitor\."/);
   assert.match(metadata, /allow_implicit_invocation: false/);
-  assert.doesNotMatch(metadata, /default_prompt:/);
   const appContract = `${skill}\n${metadata}\n${manifestText}`;
   assert.doesNotMatch(appContract, /\$/);
   assert.equal(appContract.includes(`@${manifest.name}`), false);
-  assert.deepEqual(manifest.interface.defaultPrompt, ["Show Agents"]);
+  assert.deepEqual(
+    manifest.interface.defaultPrompt,
+    ["Open @ and select the bundled Show Agents skill."],
+    "plugin starter prompt only explains explicit selection; skill-level default_prompt performs the selected skill request",
+  );
 });
 
 test("newest-first read_thread fixture selects latest commentary and deduplicates agents", () => {

@@ -1,5 +1,6 @@
 interface:
   display_name: "Show Agents"
   short_description: "Open the live agent monitor inside Codex"
+  default_prompt: "Open the live agent monitor."
 policy:
   allow_implicit_invocation: false

@@ -200,8 +200,14 @@ assert(
 assert(
   Array.isArray(manifest.interface?.defaultPrompt) &&
     manifest.interface.defaultPrompt.length === 1 &&
-    manifest.interface.defaultPrompt[0] === "Show Agents",
-  "manifest default prompt must name the app-menu Show Agents action",
+    manifest.interface.defaultPrompt[0] ===
+      "Open @ and select the bundled Show Agents skill.",
+  "plugin starter prompt must only instruct the user to explicitly select the bundled skill; it must not claim to invoke or execute it",
+);
+assert(
+  manifest.interface.defaultPrompt[0] !== "Show Agents" &&
+    !manifest.interface.defaultPrompt[0].includes("$show-agents"),
+  "plugin starter prompt must not use plain Show Agents or $show-agents as an invocation shortcut",
 );
 for (const requiredText of [
   "Show Agents",
@@ -223,14 +229,13 @@ assert(
     showAgentsMetadataText.includes(
       'short_description: "Open the live agent monitor inside Codex"',
     ) &&
+    showAgentsMetadataText.includes(
+      'default_prompt: "Open the live agent monitor."',
+    ) &&
     showAgentsMetadataText.includes("allow_implicit_invocation: false"),
-  "Show Agents metadata must expose the app action and disable implicit invocation",
+  "Show Agents metadata must expose the explicit app action, safe skill prompt, and disabled implicit invocation",
 );
-assert(
-  !showAgentsMetadataText.includes("default_prompt:"),
-  "Show Agents metadata must let the app @ menu provide explicit selection",
-);
-const showAgentsAppContract = `${showAgentsSkillText}\n${showAgentsMetadataText}\n${JSON.stringify(manifest.interface.defaultPrompt)}`;
+const showAgentsAppContract = `${showAgentsSkillText}\n${showAgentsMetadataText}`;
 assert(
   !showAgentsAppContract.includes("$") &&
     !showAgentsAppContract.includes(`@${manifest.name}`),

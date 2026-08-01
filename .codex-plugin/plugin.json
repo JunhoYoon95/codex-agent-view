@@ -1,6 +1,6 @@
 {
   "name": "codex-agent-view",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Read-only Codex app task snapshots with a trusted-hook auto-prepared local live backend.",
   "author": {
     "name": "Junho Yoon",
@@ -27,7 +27,7 @@
     "privacyPolicyURL": "https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/privacy.md",
     "termsOfServiceURL": "https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/terms.md",
     "defaultPrompt": [
-      "Show Agents"
+      "Open @ and select the bundled Show Agents skill."
     ]
   }
 }
