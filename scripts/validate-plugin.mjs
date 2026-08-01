@@ -10,6 +10,11 @@ const hooksUrl = new URL("../hooks/hooks.json", import.meta.url);
 const captureScriptUrl = new URL("./capture-hook.mjs", import.meta.url);
 const senderScriptUrl = new URL("./send-hook.mjs", import.meta.url);
 const skillUrl = new URL("../skills/codex-agent-view/SKILL.md", import.meta.url);
+const showAgentsSkillUrl = new URL("../skills/show-agents/SKILL.md", import.meta.url);
+const showAgentsMetadataUrl = new URL(
+  "../skills/show-agents/agents/openai.yaml",
+  import.meta.url,
+);
 const licenseUrl = new URL("../LICENSE", import.meta.url);
 const noticeUrl = new URL("../NOTICE", import.meta.url);
 
@@ -152,7 +157,11 @@ for (const event of expectedEvents) {
 await access(captureScriptUrl, constants.R_OK);
 await access(senderScriptUrl, constants.R_OK);
 await access(skillUrl, constants.R_OK);
+await access(showAgentsSkillUrl, constants.R_OK);
+await access(showAgentsMetadataUrl, constants.R_OK);
 const skillText = await readFile(skillUrl, "utf8");
+const showAgentsSkillText = await readFile(showAgentsSkillUrl, "utf8");
+const showAgentsMetadataText = await readFile(showAgentsMetadataUrl, "utf8");
 for (const requiredText of [
   "codex_app__list_threads",
   "codex_app__read_thread",
@@ -190,9 +199,42 @@ assert(
 );
 assert(
   Array.isArray(manifest.interface?.defaultPrompt) &&
-    manifest.interface.defaultPrompt.some((prompt) => prompt.includes("active Codex tasks")) &&
-    manifest.interface.defaultPrompt.some((prompt) => prompt.includes("built-in Browser")),
-  "manifest default prompts must advertise the app snapshot and in-app live view",
+    manifest.interface.defaultPrompt.length === 1 &&
+    manifest.interface.defaultPrompt[0] === "Show Agents",
+  "manifest default prompt must name the app-menu Show Agents action",
+);
+for (const requiredText of [
+  "Show Agents",
+  "codex-agent-view status --json",
+  "codex-agent-view start --no-open",
+  "codex_app__open_in_codex",
+  'placement: "right"',
+  "127.0.0.1",
+  "tokenized localhost URL",
+  "site permission is denied",
+]) {
+  assert(
+    showAgentsSkillText.includes(requiredText),
+    `Show Agents skill contract must include ${requiredText}`,
+  );
+}
+assert(
+  showAgentsMetadataText.includes('display_name: "Show Agents"') &&
+    showAgentsMetadataText.includes(
+      'short_description: "Open the live agent monitor inside Codex"',
+    ) &&
+    showAgentsMetadataText.includes("allow_implicit_invocation: false"),
+  "Show Agents metadata must expose the app action and disable implicit invocation",
+);
+assert(
+  !showAgentsMetadataText.includes("default_prompt:"),
+  "Show Agents metadata must let the app @ menu provide explicit selection",
+);
+const showAgentsAppContract = `${showAgentsSkillText}\n${showAgentsMetadataText}\n${JSON.stringify(manifest.interface.defaultPrompt)}`;
+assert(
+  !showAgentsAppContract.includes("$") &&
+    !showAgentsAppContract.includes(`@${manifest.name}`),
+  "Show Agents app contract must not advertise unsupported prompt syntax",
 );
 for (const field of ["composerIcon", "logo", "logoDark"]) {
   const value = manifest.interface?.[field];

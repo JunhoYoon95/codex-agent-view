@@ -27,8 +27,7 @@
     "privacyPolicyURL": "https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/privacy.md",
     "termsOfServiceURL": "https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/terms.md",
     "defaultPrompt": [
-      "Show the active Codex tasks and subagents in this app.",
-      "Open the live Codex Agent View in the built-in Browser."
+      "Show Agents"
     ]
   }
 }

@@ -3,6 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const skillUrl = new URL("../skills/codex-agent-view/SKILL.md", import.meta.url);
+const showAgentsSkillUrl = new URL("../skills/show-agents/SKILL.md", import.meta.url);
+const showAgentsMetadataUrl = new URL(
+  "../skills/show-agents/agents/openai.yaml",
+  import.meta.url,
+);
 const manifestUrl = new URL("../.codex-plugin/plugin.json", import.meta.url);
 const packageUrl = new URL("../package.json", import.meta.url);
 
@@ -136,10 +141,47 @@ test("skill uses app task tools before the CLI and keeps sensitive content out o
 
   assert.equal(manifest.version, packageMetadata.version);
   assert.equal(manifest.interface.shortDescription, "View active Codex tasks.");
-  assert.deepEqual(manifest.interface.defaultPrompt, [
-    "Show the active Codex tasks and subagents in this app.",
-    "Open the live Codex Agent View in the built-in Browser.",
+  assert.deepEqual(manifest.interface.defaultPrompt, ["Show Agents"]);
+});
+
+test("explicit show-agents skill opens the private live view inside Codex", async () => {
+  const [skill, metadata, manifestText] = await Promise.all([
+    readFile(showAgentsSkillUrl, "utf8"),
+    readFile(showAgentsMetadataUrl, "utf8"),
+    readFile(manifestUrl, "utf8"),
   ]);
+  const manifest = JSON.parse(manifestText);
+
+  const healthIndex = skill.indexOf("codex-agent-view status --json");
+  const startIndex = skill.indexOf("codex-agent-view start --no-open");
+  const openIndex = skill.indexOf("codex_app__open_in_codex");
+
+  assert(healthIndex >= 0);
+  assert(startIndex > healthIndex);
+  assert(openIndex > startIndex);
+  assert.match(
+    skill,
+    /selection of the bundled \*\*Show Agents\*\* skill from the Codex app's `@`\nmenu as an explicit request to open the live monitor/,
+  );
+  assert.match(skill, /browser target/);
+  assert.match(skill, /`placement: "right"`/);
+  assert.match(skill, /Omit `threadId`/);
+  assert.match(skill, /host `127\.0\.0\.1`/);
+  assert.match(skill, /Never use `--open` or launch an external browser/);
+  assert.match(skill, /Never place the tokenized localhost URL in Markdown/);
+  assert.match(skill, /Do not claim that the panel opened until\n`codex_app__open_in_codex` reports success/);
+  assert.match(skill, /site permission is denied, do not expose the private URL/);
+  assert.match(skill, /never replace it with terminal instructions/);
+  assert.match(skill, /existing app-native task snapshot/);
+
+  assert.match(metadata, /display_name: "Show Agents"/);
+  assert.match(metadata, /short_description: "Open the live agent monitor inside Codex"/);
+  assert.match(metadata, /allow_implicit_invocation: false/);
+  assert.doesNotMatch(metadata, /default_prompt:/);
+  const appContract = `${skill}\n${metadata}\n${manifestText}`;
+  assert.doesNotMatch(appContract, /\$/);
+  assert.equal(appContract.includes(`@${manifest.name}`), false);
+  assert.deepEqual(manifest.interface.defaultPrompt, ["Show Agents"]);
 });
 
 test("newest-first read_thread fixture selects latest commentary and deduplicates agents", () => {
