@@ -2,7 +2,7 @@
 
 조사일: 2026-08-01
 
-이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View의 준비 상태를 정리한다. 현재 source/package와 public npm `latest`는 `0.3.2`다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` public release evidence는 보존하지만, 실제 Directory 제출·검색 노출은 주장하지 않는다.
+이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View의 준비 상태를 정리한다. 현재 source candidate는 `0.4.0`이고 public npm `latest`는 `0.3.2`다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` public release evidence는 보존하지만, 실제 Directory 제출·검색 노출은 주장하지 않는다.
 
 ## 핵심 결론
 
@@ -10,14 +10,14 @@
 - GitHub marketplace 등록이나 npm publish만으로 Universal Directory에 노출되지 않는다.
 - 공식 portal은 `Skills only`와 MCP-backed 제출을 지원한다.
 - Public `0.3.2` package에는 genuine `skills/codex-agent-view/SKILL.md`가 있고 manifest가 `skills: "./skills/"`로 bundle한다.
-- 이 skill은 Codex 앱 안의 current task/subagent snapshot, 명시적인 built-in Browser live view와 explicit install/remove lifecycle에 실제 사용자 가치를 제공한다. Directory 통과용 빈 형식 skill이 아니다.
+- `0.4.0` source candidate는 기존 app-native task snapshot skill과 explicit live-panel **Show Agents** skill, 총 2개를 bundle한다. 둘 다 Directory 통과용 빈 형식 skill이 아니다.
 - 공식 공개 문서는 **skills-only submission에 local command hooks를 함께 bundle한 경우의 eligibility/review 규칙을 명시하지 않는다.** 따라서 “skills-only + hooks” 제출 가능 여부는 여전히 **미확인**이며 portal 또는 OpenAI 확인이 필요하다.
 - MCP 경로는 production HTTPS endpoint를 요구하므로 external server를 두지 않는 현재 제품 방향과 맞지 않는다.
 - Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했다. Current `codex-agent-view@0.3.2`는 public registry `latest`이며 registry metadata/digest/signature, annotated tag·public GitHub Release, main/tag CI와 this-device exact global install의 plugin installed/enabled 및 registry/install artifact match를 확인했다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
 
 Bounded in-memory local architecture와 package surface를 구현했다. Historical `0.2.1` 공식 앱 E2E에서 핵심 hook lifecycle과 실제 `PermissionRequest`를 확인했고, 후속 `0.3.0` source E2E에서는 앱 내장 thread tools로 `kyurasi-next-supabase` active task의 workspace/title/description/explicit `inProgress`/latest commentary/`subAgentActivity`를 확인했으며 optional browser monitor에서 실제 `SessionEnd`도 관찰했다. 아래 항목은 별도의 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 blocker가 아니다.
 
-`0.3.2`의 primary flow는 최초 npm 설치 뒤 공식 Codex 앱의 새 task에서 `@codex-agent-view`를 선택하고 `Show active tasks`라고 요청하는 것이다. 앱 내장 thread tools가 running/active task와 `idle + hasUnreadTurn` task를 구분해 workspace basename, title, explicit status, 최신 explicit commentary와 `subAgentActivity` snapshot을 제공한다. 후자는 별도 `완료/확인 대기` 표시 그룹이지만 완료·성공을 뜻한다고 추론하지 않는다. Live detail도 앱 안에서 요청하며 plugin이 local monitor를 내부적으로 재사용/시작하고 Codex 내장 Browser에 연다. npm/terminal은 최초 설치, 명시적 제거와 maintainer 진단 경계이며 외부 browser는 정상 사용자 흐름이 아니다. 별도로 실행한 App Server는 앱 내장 tools와 다른 process이며 live source로 취급하지 않는다.
+현재 candidate의 primary flow는 최초 npm 설치 뒤 공식 Codex 앱의 새 task에서 `@` 메뉴를 열고 **Codex Agent View → Show Agents** bundled skill을 선택하는 것이다. 이 skill은 app-native text snapshot query를 수행한다고 주장하지 않는다. Healthy local monitor를 재사용하거나 필요 시 내부적으로 준비한 뒤 Codex 앱의 live panel 열기를 시도한다. 화면을 닫았으면 같은 `@` 메뉴 skill을 다시 선택한다. 앱의 Browser capability 또는 permission을 사용할 수 없으면 private URL을 노출하거나 외부 browser를 여는 대신 실패를 안내한다. npm/terminal은 최초 설치, 명시적 제거와 maintainer 진단 경계이며 외부 browser는 정상 사용자 흐름이 아니다. 별도로 실행한 App Server는 앱 내장 tools와 다른 process이며 live source로 취급하지 않는다.
 
 Public exact `0.3.2`의 app-native thread snapshot에서는 worker activity 3개를 확인했다. Codex 내장 Browser의 live monitor 연결은 성공했지만 재설치 전에 열려 있던 앱 process의 follow-up subagent 3개가 hook event를 0건 전달했으므로 live hook E2E는 앱 full restart/new-task 뒤 다시 확인해야 한다.
 
@@ -64,19 +64,18 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 2. Review environment에서 local `codex-agent-view` executable과 hook trust flow를 어떻게 fixture로 검증하는가?
 3. Local-only monitor처럼 MCP custom UI가 아닌 UI가 listing review에서 어떻게 취급되는가?
 
-## Public `0.3.2`에 준비된 제출 자료
+## `0.4.0` source candidate에 준비된 제출 자료
 
-### Genuine skill
+### Bundled skills
 
-`skills/codex-agent-view/SKILL.md`의 실제 workflow는 다음과 같다.
+Candidate는 기존 app-native snapshot skill과 새 explicit live-panel **Show Agents** skill을 함께 bundle한다. 기존 skill은 공식 Codex 앱의 내장 thread tools로 privacy-minimized current-task snapshot을 제공한다. **Show Agents**는 별도 text snapshot을 수행하지 않으며 workflow는 다음과 같다.
 
-1. 공식 Codex 앱 안에서 `Show active tasks` 요청을 받으면 앱 내장 thread tools를 bounded query한다.
-2. Running/active와 explicit `idle + hasUnreadTurn`을 별도 그룹으로 표시하며 후자를 완료·성공으로 단정하지 않는다.
-3. Workspace basename, title, explicit status, 최신 explicit agent commentary와 작은 `subAgentActivity` tree만 표시한다.
-4. Preview, prompt, transcript, tool input/output, full workspace path와 internal thread ID를 기본 표시하지 않는다.
-5. Optional live view 요청이면 healthy monitor를 내부적으로 재사용하거나 필요 시 외부 browser 없이 시작한 뒤 Codex 내장 Browser에서 연다. Private localhost URL은 사용자에게 노출하지 않는다.
-6. `install` 또는 `uninstall`은 사용자가 그 lifecycle action을 명시적으로 요청한 경우에만 실행한다.
-7. Task/subagent control, message 전송, permission 자동 처리, Codex approval/sandbox/hook-trust 설정 변경, full capture 자동 enable을 하지 않는다.
+1. 공식 Codex 앱의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택하면 healthy monitor를 재사용하거나 필요 시 내부적으로 준비한다.
+2. Codex 앱의 live panel 열기를 시도하고 private localhost URL은 사용자에게 노출하지 않는다.
+3. 앱의 Browser capability 또는 permission을 사용할 수 없으면 화면을 열 수 없다고 안내하며 외부 browser로 우회하지 않는다.
+4. 닫힌 panel은 사용자가 같은 `@` 메뉴 skill을 다시 선택해 연다.
+5. 이 skill이 app-native thread snapshot query나 별도 text snapshot까지 수행한다고 주장하지 않는다.
+6. Task/subagent control, message 전송, permission 자동 처리, Codex approval/sandbox/hook-trust 설정 변경, full capture 자동 enable을 하지 않는다.
 
 Skill `quick_validate.py`와 plugin/package wiring validation은 통과했다. Portal safety/security skill scan과 reviewer execution은 별도 외부 단계다.
 
@@ -84,8 +83,9 @@ Skill `quick_validate.py`와 plugin/package wiring validation은 통과했다. P
 
 `.codex-plugin/plugin.json`에는 다음이 준비되어 있다.
 
-- `0.3.2` semantic version과 display/short/long description
-- developer name, Productivity category, `Read` capability, starter prompts 2개
+- `0.4.0` semantic version과 display/short/long description
+- developer name, Productivity category, `Read` capability, starter prompt 1개 `Show Agents`
+- bundled skills 2개: app-native snapshot skill과 explicit live-panel **Show Agents** skill
 - brand color `#123F35`
 - `assets/logo.svg` composer/logo asset과 `assets/logo-dark.svg` dark logo asset
 - HTTPS `websiteURL`, `privacyPolicyURL`, `termsOfServiceURL`
@@ -125,9 +125,9 @@ Repository에는 `SUPPORT.md`, `SECURITY.md`, `docs/privacy.md`, `docs/terms.md`
 
 | ID | 사용자 prompt / fixture | 기대 skill 동작 | 합격 조건 |
 | --- | --- | --- | --- |
-| P1 | “현재 parent task와 subagent 상태를 보여줘.” / app thread fixture | 앱 내장 thread tools를 bounded query | explicit status/commentary/subAgentActivity만 최소 요약하고 prompt, tool I/O와 full path를 노출하지 않음 |
-| P2 | “현재 진행 중인 작업이 없는지 확인해줘.” / bounded app query가 empty | 앱 snapshot 결과를 literal하게 해석 | 관찰된 active task가 없다고만 보고하고 CLI monitor 또는 전체 기기 상태로 확대 추론하지 않음 |
-| P3 | “Codex Agent View live 화면을 앱 안에서 열어줘.” / monitor stopped | health 확인 후 외부 browser 없이 내부 monitor 시작, Codex 내장 Browser open | private localhost URL/token을 대화에 노출하거나 외부 browser를 열지 않음 |
+| P1 | `@` 메뉴에서 **Codex Agent View → Show Agents** 선택 / healthy monitor | Codex app live panel open 시도 | private localhost URL/token을 대화에 노출하거나 외부 browser를 열지 않음 |
+| P2 | 같은 skill 선택 / monitor state empty | live panel을 열고 관찰 window의 빈 상태를 그대로 표시 | app-native snapshot을 실행했다고 주장하거나 전체 기기에 active task가 없다고 확대 추론하지 않음 |
+| P3 | 같은 skill 선택 / monitor stopped | 외부 browser 없이 내부 monitor 준비 후 Codex app panel open 시도 | private localhost URL/token을 대화에 노출하거나 외부 browser를 열지 않음 |
 | P4 | “Codex Agent View를 설치해줘.” / clean isolated Codex/runtime dirs | explicit `install` | local marketplace/plugin 등록과 hook review/trust 필요성을 설명하고 trust/config를 자동 변경하지 않음 |
 | P5 | “Codex Agent View를 제거하되 runtime data는 보존해줘.” / installed fixture | explicit default `uninstall` | `--purge`를 사용하지 않고 preserved runtime scope를 보고 |
 
@@ -135,7 +135,7 @@ Repository에는 `SUPPORT.md`, `SECURITY.md`, `docs/privacy.md`, `docs/terms.md`
 
 | ID | 사용자 prompt / fixture | 기대 skill 동작 | 합격 조건 |
 | --- | --- | --- | --- |
-| P6 | “아무 subagent도 없는지 확인해줘.” / empty 또는 pathless `subAgentActivity` fixture | 앱의 explicit 결과를 literal하게 해석 | missing/unknown을 보존하고 “실행 중 agent 없음”을 추측하지 않음 |
+| P6 | 같은 skill 선택 / Browser capability 또는 permission unavailable | 화면을 열 수 없다고 명확히 안내 | private URL 노출, 외부 browser open, 성공한 것처럼 응답 |
 
 ### Negative cases
 
@@ -182,7 +182,7 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [ ] Skills-only + local hooks eligibility가 portal/OpenAI에서 확인되지 않음
 - [ ] Final package/ZIP의 skill tree와 submitted artifact가 일치하지 않음
 - [ ] Bundled skill safety/security scan이 통과하지 않음
-- [ ] 위 app snapshot → explicit in-app live view → explicit lifecycle test set을 isolated review fixture에서 실행하지 않음
+- [ ] 위 **Show Agents** app-panel open → explicit lifecycle test set을 isolated review fixture에서 실행하지 않음
 - [ ] Skills-only manifest에 screenshots가 없음을 final artifact에서 확인하지 않음
 - [x] Historical `0.2.1` 공식 앱 GUI task에서 hook → monitor → UI 핵심 lifecycle E2E를 완료함
 - [x] `0.3.0` source browser monitor에서 실제 `SessionEnd`와 completed 반영을 확인함

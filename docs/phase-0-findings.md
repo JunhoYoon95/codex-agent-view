@@ -205,7 +205,7 @@ Reducer는 event identity가 완전히 보장된다고 가정하지 않는다. �
 
 Runtime server는 `127.0.0.1` 외 bind를 거부하고, user-only runtime file에 저장한 random bearer token을 `/api/events`와 `/api/state`에 요구한다. Hook sender는 기존 backend 전달이 실패하면 fixed loopback port의 detached backend를 무출력으로 내부 준비하고, 500ms 전송 timeout과 최대 1.6초의 bounded wait 안에서 같은 최소화 event를 재시도한다. 동시 hook은 하나의 listener로 수렴하며 준비 실패는 neutral `{}` response로 fail-open해 Codex task를 막지 않는다. Event를 disk queue에 적재하거나 이후 replay하지 않는다. Browser는 URL fragment token을 `sessionStorage`로 옮기고 fragment를 제거하며 external asset/CDN을 사용하지 않는다.
 
-설치·hook trust·앱 재시작 뒤 첫 trusted hook이 backend를 자동 준비하므로 일반 사용자는 task ID를 등록하거나 terminal에서 `start`, `status`, `doctor`를 실행하지 않는다. 다만 공식 public plugin API에는 앱 시작 시 prompt 없이 sidebar, panel 또는 Browser tab을 생성하는 기능이 없다. 최초 live 화면은 Codex 앱 task에서 한 번 명시적으로 열어야 한다. 이미 열린 오른쪽 live tab은 같은 monitor 관찰 window와 session token이 유효한 동안 2초 polling으로 자동 갱신하고 일시 단절 뒤 재연결한다. Monitor restart는 새 관찰 window이며 token을 잃은 tab은 앱 안에서 live view를 다시 요청해야 한다.
+설치·hook trust·앱 재시작 뒤 첫 trusted hook이 backend를 자동 준비하므로 일반 사용자는 task ID를 등록하거나 terminal에서 `start`, `status`, `doctor`를 실행하지 않는다. 다만 공식 public plugin API에는 앱 시작 시 prompt 없이 sidebar, panel 또는 Browser tab을 생성하는 기능이 없다. 최초 live 화면은 Codex 앱 task의 `@` 메뉴에서 **Codex Agent View → Show Agents** bundled skill을 한 번 선택해 연다. 이 skill이 app-native text snapshot까지 수행한다고 주장하지 않는다. 화면을 닫았으면 같은 `@` 메뉴 skill을 다시 선택한다. 앱의 Browser capability 또는 permission을 사용할 수 없으면 private URL 노출이나 외부 browser 우회 없이 실패를 안내한다. 이미 열린 오른쪽 live panel은 같은 monitor 관찰 window와 session token이 유효한 동안 2초 polling으로 자동 갱신하고 일시 단절 뒤 재연결한다. Monitor restart는 새 관찰 window이며 token을 잃은 panel도 같은 skill로 다시 연다.
 
 정상 hook wiring은 이제 JSONL capture script가 아니라 `scripts/send-hook.mjs`를 실행한다. `scripts/capture-hook.mjs`와 `CODEX_AGENT_VIEW_CAPTURE_FULL=1`은 명시적 Phase 0 diagnostic opt-in으로만 남아 있으며 production state source가 아니다.
 
@@ -220,7 +220,7 @@ Runtime server는 `127.0.0.1` 외 bind를 거부하고, user-only runtime file�
 3. 공식 앱을 완전히 재시작하고 새 task/session을 시작한다.
 4. hook browser에서 새 hook 정의와 command를 확인하고 현재 exact hash를 명시적으로 trust한다. CLI에서는 `/hooks`를 사용한다.
 5. 별도 monitor를 시작하지 않은 상태에서 trusted hook을 발생시켜 backend 자동 준비와 최초 event 전달을 확인한 뒤 subagent start/stop, 지원 tool pre/post, 실제 승인이 필요한 동작을 순서대로 발생시킨다.
-6. Codex 앱 task에서 live view를 한 번 열고 내장 Browser UI의 minimized state와 자동 갱신/재연결을 확인한다. CLI `status`/`doctor`는 maintainer diagnostic일 때만 사용하고, 필요할 때만 별도 redacted capture로 wire payload key/type을 검증한다.
+6. Codex 앱 task의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택해 live panel을 열고 minimized state와 자동 갱신/재연결을 확인한다. Panel을 닫은 뒤 같은 skill 선택으로 다시 열리는지, Browser capability/permission 부재 시 private URL이나 외부 browser 우회 없이 실패를 안내하는지도 확인한다. CLI `status`/`doctor`는 maintainer diagnostic일 때만 사용하고, 필요할 때만 별도 redacted capture로 wire payload key/type을 검증한다.
 
 제거 시에는 다음 세 범위를 각각 확인한다.
 

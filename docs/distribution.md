@@ -2,7 +2,7 @@
 
 조사일: 2026-08-01
 
-이 문서는 Codex Agent View의 npm package와 Codex plugin 배포 경계를 정리한다. 현재 source/package와 public npm `latest`는 `0.3.2`다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1` evidence는 historical record로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
+이 문서는 Codex Agent View의 npm package와 Codex plugin 배포 경계를 정리한다. 현재 source candidate는 `0.4.0`이고 public npm `latest`는 `0.3.2`다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` public evidence는 historical record로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
 
 ## 현재 상태
 
@@ -10,7 +10,7 @@
 - Public `0.3.2`는 immutable packaged README의 잘못된 release-state 안내를 수정한 patch다. Registry metadata/digest/signature, tag/GitHub Release, main/tag CI, this-device exact install과 registry/install artifact match를 확인했다. App-native snapshot은 worker activity 3개를 확인했지만 live hook E2E는 앱 restart/new-task 전이라 미완료다.
 - Node.js `>=18`을 요구하며 production dependency가 없다.
 - `package.json`은 `codex-agent-view` executable을 `bin/codex-agent-view.mjs`로 노출한다.
-- 배포 bundle에는 plugin manifest/catalog, logo assets, hooks, CLI, local runtime/server, static monitor UI, scripts, genuine Codex skill, README, LICENSE, NOTICE가 포함된다.
+- `0.4.0` source candidate의 배포 bundle에는 plugin manifest/catalog, logo assets, hooks, CLI, local runtime/server, static monitor UI, scripts, bundled Codex skill 2개, README, LICENSE, NOTICE가 포함된다.
 - `postinstall`과 다른 npm lifecycle installer는 없다. npm package를 받는 것만으로 Codex 설정을 바꾸지 않는다.
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
@@ -107,7 +107,7 @@ Registry npm `gitHead`, annotated tag와 public GitHub Release는 같은 commit�
 | Artifact comparison | registry tarball ↔ global diff 0; marketplace는 ownership marker 1개 외 artifact files 동일 |
 | Live public-install QA | 실제 hook 수신, `workspace_label: codex-agent-view`, `PermissionRequest`와 tool lifecycle 확인 |
 
-`0.3.0`은 공식 Codex 앱 안에서 `Show active tasks`를 요청하는 app-first UX를 source에 구현한다. 앱 내장 thread tools로 running/active task와 explicit `idle + hasUnreadTurn` task를 bounded query한다. 후자는 running과 분리한 `완료/확인 대기` 표시 그룹에 포함하지만 완료·성공으로 추론하지 않는다. Workspace basename, title, explicit status, 최신 explicit commentary와 `subAgentActivity`를 표시하며 hooks/local monitor는 lifecycle detail과 optional Codex in-app Browser live view를 담당한다.
+`0.3.0`은 공식 Codex 앱 안의 app-first snapshot UX를 source에 구현했다. 앱 내장 thread tools로 running/active task와 explicit `idle + hasUnreadTurn` task를 bounded query한다. 후자는 running과 분리한 `완료/확인 대기` 표시 그룹에 포함하지만 완료·성공으로 추론하지 않는다. Workspace basename, title, explicit status, 최신 explicit commentary와 `subAgentActivity`를 표시하며 hooks/local monitor는 lifecycle detail과 optional Codex in-app Browser live view를 담당한다.
 
 팀장 source E2E에서 `kyurasi-next-supabase`의 active task/title/description/explicit `inProgress`/latest commentary/subAgentActivity를 확인했고, 직후 list가 explicit `idle`, `hasUnreadTurn: true`로 전환되는 것도 확인했다. 이는 확인할 unread turn이 있다는 관찰이며 task 완료·성공의 증거가 아니다. Browser monitor에서는 실제 `SessionEnd`를 관찰했다. 별도로 실행한 App Server의 `thread/list`는 이 앱 내장 tool evidence가 아니며 여전히 live source로 취급하지 않는다.
 
@@ -188,8 +188,8 @@ Global install과 `npx` package download만으로는 Codex 설정을 바꾸지 �
 1. Codex 앱을 완전히 종료한 뒤 다시 연다.
 2. 앱의 **Plugins** 화면에서 `Codex Agent View`가 설치·활성화됐는지 확인한다.
 3. 앱의 hook review 화면에서 현재 hook definition을 검토하고 trust한다. 앱 version이 hook review UI를 제공하지 않을 때만 설치 절차의 일부로 interactive Codex CLI `/hooks`를 사용한다.
-4. 앱에서 새 task를 만들고 `@` 메뉴에서 `codex-agent-view`를 선택한다.
-5. Snapshot은 “현재 active task와 subagent를 보여줘”, live detail은 “Codex Agent View live 화면을 앱 안에서 열어줘”처럼 앱 task 안에서 요청한다.
+4. 앱에서 새 task를 만든다.
+5. `@` 메뉴에서 **Codex Agent View → Show Agents** bundled skill을 선택한다. Skill은 Codex 앱의 live panel 열기를 시도하며 app-native text snapshot도 수행한다고 주장하지 않는다. Panel을 닫았으면 같은 `@` 메뉴 skill을 다시 선택한다. Browser capability 또는 permission을 사용할 수 없으면 private URL이나 외부 browser로 우회하지 않고 실패를 안내한다.
 
 Runtime 진단 명령과 localhost 관리는 위 **Maintainer·고급 진단** 절의 source/tarball 검증 경계에만 속한다.
 

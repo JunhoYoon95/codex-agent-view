@@ -2,7 +2,7 @@
 
 > [Read in English](https://github.com/JunhoYoon95/codex-agent-view/blob/main/README.md)
 
-Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task와 subagent를 privacy-minimized snapshot으로 보여주는 read-only companion plugin이다. Trusted hook이 local live backend를 자동 준비하고, 사용자가 요청할 때 Codex 내장 Browser에서 live 화면을 연다. Codex를 대체하거나 task를 제어하지 않는다.
+Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task와 subagent를 privacy-minimized snapshot으로 보여주는 read-only companion plugin이다. Trusted hook이 local live backend를 자동 준비하고 bundled **Show Agents** skill로 사용자가 Codex 앱에서 live 화면을 열 수 있게 한다. Codex를 대체하거나 task를 제어하지 않는다.
 
 > 비공식 커뮤니티 프로젝트이며 OpenAI의 공식 제품, 제휴 제품, 공식 지원 프로젝트가 아니다.
 
@@ -25,17 +25,12 @@ codex-agent-view install
 2. Codex 앱의 **Plugins** 화면에서 `Codex Agent View`가 설치·활성화됐는지 확인한다.
 3. Hook 검토 화면이 표시되면 `hooks/hooks.json`과 `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command를 확인하고 현재 definition을 직접 trust한다. 앱 버전이 hook 검토 UI를 제공하지 않을 때만 설치 과정의 일부로 interactive Codex CLI의 `/hooks`를 사용한다.
 4. 활성화와 hook 검토를 마친 뒤 Codex 앱에서 **새 task**를 만든다. 설치 전에 시작된 task의 과거 event는 재생되지 않는다.
-5. 새 task의 `@` 메뉴에서 `codex-agent-view`를 선택하고 다음처럼 요청한다.
+5. 새 task의 `@` 메뉴에서 **Codex Agent View**를 고르고 bundled **Show Agents** skill을 선택해 실행한다.
+6. Live 화면을 닫았다면 같은 `@` 메뉴에서 **Show Agents**를 다시 선택해 재오픈한다.
 
-   > 현재 실행 중인 task와 subagent 상태를 보여줘.
+Trust된 첫 hook이 도착하면 plugin sender가 로컬 backend를 내부적으로 준비하고 같은 event 전달을 재시도한다. 사용자는 task ID를 등록하거나 `start`, `status`, `doctor`를 실행할 필요가 없다. **Show Agents**는 healthy backend를 재사용하고 Codex 앱 안에서 live 화면 열기를 시도한다. 앱이 필요한 Browser capability를 제공하지 않거나 permission이 허용되지 않으면 private URL을 노출하는 대신 화면을 열 수 없다고 안내한다. Tokenized localhost URL은 대화에 노출하지 않으며 외부 browser도 정상 사용 흐름에 포함되지 않는다.
 
-6. Hook 단위의 live 화면이 필요할 때는 같은 Codex 앱 task에서 다음처럼 요청한다.
-
-   > Codex Agent View live 화면을 앱 안에서 열어줘.
-
-Trust된 첫 hook이 도착하면 plugin sender가 로컬 backend를 내부적으로 준비하고 같은 event 전달을 재시도한다. 사용자는 task ID를 등록하거나 `start`, `status`, `doctor`를 실행할 필요가 없다. Live 화면 요청은 healthy backend를 재사용하고 결과를 **Codex 내장 Browser**에서 연다. Tokenized localhost URL은 대화에 노출하지 않으며 외부 browser도 정상 사용 흐름에 포함되지 않는다.
-
-공개 Codex plugin API에는 prompt 없이 앱 시작과 동시에 sidebar, panel 또는 Browser tab을 생성하는 기능이 없다. 따라서 live 화면을 **처음 여는 동작만** Codex 앱 task에서 한 번 요청해야 한다. 이미 오른쪽에 열린 live tab은 같은 monitor 관찰 window 동안 2초마다 자동 갱신하고 일시 연결 단절 뒤에도 기존 token으로 재연결한다.
+공개 Codex plugin API에는 prompt 없이 앱 시작과 동시에 sidebar, panel 또는 Browser tab을 생성하는 기능이 없다. 따라서 live 화면을 처음 열 때 Codex 앱 task에서 **Show Agents**를 한 번 명시적으로 선택해야 한다. 이미 오른쪽에 열린 live tab은 같은 monitor 관찰 window 동안 2초마다 자동 갱신하고 일시 연결 단절 뒤에도 기존 token으로 재연결한다.
 
 요약하면 설치는 터미널에서 한 번, 조회·상태 확인·live 화면 열기와 이후 사용은 Codex 앱 안에서 수행한다.
 
@@ -87,10 +82,10 @@ Codex Agent View는 historical audit이나 session replay 제품이 아니라 �
 
 ### npm, Codex 앱 live view, Plugins Directory의 역할
 
-- 공식 Codex 앱에서 plugin에게 `Show active tasks`라고 요청하는 것이 `0.3.0`의 primary UX다. 별도 monitor 실행이나 task ID 등록이 필요 없다.
+- 공식 Codex 앱의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택하는 것이 canonical UX다. 별도 monitor 실행이나 task ID 등록이 필요 없다.
 - npm은 plugin bundle, 내부 hook sender/runtime과 static UI를 사용자 machine에 배포하는 최초 설치 경로다.
-- Live view는 사용자가 앱 안에서 명시적으로 요청했을 때만 Codex 내장 Browser에 열린다. 외부 website나 telemetry dashboard가 아니다.
-- 공개 plugin API는 앱 시작 시 no-prompt sidebar/panel/Browser tab 생성을 제공하지 않는다. 최초 live view 열기에는 앱 안 사용자 요청이 한 번 필요하고, 열린 tab은 같은 관찰 window에서 자동 갱신·재연결한다.
+- Live view는 사용자가 앱 안에서 **Show Agents**를 선택했을 때만 열린다. 외부 website나 telemetry dashboard가 아니다.
+- 공개 plugin API는 앱 시작 시 no-prompt sidebar/panel/Browser tab 생성을 제공하지 않는다. 최초 live view 열기에는 앱 안 skill 선택이 한 번 필요하고, 열린 tab은 같은 관찰 window에서 자동 갱신·재연결한다.
 - Universal Plugins Directory는 npm의 대체재가 아니다. 공개 directory의 in-app custom UI 경로는 public HTTPS MCP server와 domain verification이 필요해 local-only/no-external-server 원칙과 충돌한다. 현재는 별도의 listing/skills 제출 가능성만 검토하며, 심사·publish 전에는 Codex plugin 검색으로 설치할 수 있다고 안내하지 않는다.
 
 Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`, `stopped_without_start`, 빈 상태는 그대로 해석해야 한다. 빈 session 목록은 “이 monitor가 event를 관찰하지 못함”이며 “실행 중인 task가 없음”의 증거가 아니다.
@@ -99,13 +94,12 @@ Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`,
 
 이 절차는 위의 빠른 시작에서 설치와 활성화를 마친 뒤 **새 task**에서 수행한다. 별도 terminal이나 외부 browser는 사용하지 않는다.
 
-1. 새 task의 `@` 메뉴에서 `codex-agent-view`를 선택한다.
-2. `Show active tasks` 또는 “현재 active task와 subagent를 보여줘”라고 요청한다.
-3. Plugin은 여러 workspace의 running/active task와 explicit `idle + hasUnreadTurn` task를 조회한다. 후자는 별도 `완료/확인 대기` 그룹에 표시하되 완료·성공으로 단정하지 않는다.
-4. Workspace basename, 표시용 title, explicit status, 최신 explicit agent commentary와 `subAgentActivity`만 간결하게 보여준다.
-5. Prompt, preview, tool input/output, full workspace path와 internal thread ID는 기본 표시하지 않는다.
+1. 새 task의 `@` 메뉴에서 **Codex Agent View**를 고르고 bundled **Show Agents** skill을 선택한다.
+2. Skill은 trusted hook이 자동 준비한 healthy backend를 재사용하고, 아직 준비되지 않았다면 내부적으로 준비한 뒤 Codex 앱에서 live 화면 열기를 시도한다.
+3. Panel은 관찰한 task와 subagent의 privacy-minimized hook 상태를 표시한다. Prompt, preview, tool input/output, full workspace path와 internal thread ID는 기본 표시하지 않는다.
+4. 앱의 Browser capability 또는 permission을 사용할 수 없으면 private localhost URL을 노출하거나 외부 browser를 여는 대신 실패를 안내한다.
 
-Live hook detail이 필요할 때만 앱 안에서 “Open the live Codex Agent View in the built-in Browser”라고 요청한다. 이것이 첫 화면을 여는 한 번의 앱 내 동작이다. Plugin은 trusted hook이 자동 준비한 healthy backend를 재사용하고, 아직 준비되지 않았다면 내부적으로 시작하며 tokenized localhost URL을 대화에 노출하지 않는다. 이미 열린 오른쪽 tab은 같은 관찰 window에서 자동 갱신하고 일시 단절 뒤 재연결한다.
+오른쪽 live 화면을 닫았다면 같은 `@` 메뉴에서 **Show Agents**를 다시 선택해 재오픈한다. 열린 tab은 같은 관찰 window에서 자동 갱신하고 일시 단절 뒤 재연결한다.
 
 ### 요구사항과 검증 범위
 
@@ -168,7 +162,7 @@ node bin/codex-agent-view.mjs install
 
 ### Maintainer·고급 진단 전용 CLI
 
-이 절은 package 개발자와 문제 보고를 위한 진단 참고 자료이며 일반 사용자 사용법이 아니다. 설치가 끝난 사용자는 Codex 앱에서 snapshot이나 live 화면을 요청해야 한다. 아래 명령과 localhost 주소를 정상 사용 순서에 넣거나 사용자에게 직접 관리하도록 요구하지 않는다.
+이 절은 package 개발자와 문제 보고를 위한 진단 참고 자료이며 일반 사용자 사용법이 아니다. 설치가 끝난 사용자는 Codex 앱의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택한다. 아래 명령과 localhost 주소를 정상 사용 순서에 넣거나 사용자에게 직접 관리하도록 요구하지 않는다.
 
 Source checkout에서 local runtime을 별도로 검증해야 할 때만 다음처럼 실행할 수 있다.
 
@@ -205,7 +199,7 @@ npm install --global codex-agent-view@0.4.0
 codex-agent-view install
 ```
 
-이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화와 hook trust를 확인한 다음 새 task를 만든다. 첫 trusted hook이 backend 준비와 event 전달을 내부 처리하므로 사용자가 monitor CLI를 실행하지 않는다. 화면을 처음 열 때만 새 task에서 `@codex-agent-view`를 선택해 live view를 앱 안에서 요청한다.
+이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화와 hook trust를 확인한 다음 새 task를 만든다. 첫 trusted hook이 backend 준비와 event 전달을 내부 처리하므로 사용자가 monitor CLI를 실행하지 않는다. 새 task의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택해 live 화면을 열며, 화면을 닫았으면 같은 skill을 다시 선택한다.
 
 Global install 없이 exact version을 일회성으로 실행할 수도 있다.
 
@@ -253,7 +247,7 @@ Source checkout을 직접 실행한 경우에만 같은 명령의 `node bin/code
 
 ### Maintainer troubleshooting
 
-이 절의 CLI 확인은 명시적인 문제 조사용이다. 정상 사용자는 Codex 앱 안에서 plugin에게 상태 확인을 요청한다.
+이 절의 CLI 확인은 명시적인 문제 조사용이다. 정상 사용자는 Codex 앱의 `@` 메뉴에서 **Codex Agent View → Show Agents**를 선택한다.
 
 #### `status`가 runtime file 또는 connection error를 출력함
 

@@ -2,7 +2,7 @@
 
 > [Read in Korean](https://github.com/JunhoYoon95/codex-agent-view/blob/main/README.ko.md)
 
-Codex Agent View is a read-only companion plugin that shows privacy-minimized active tasks and subagents across workspaces inside the official Codex app. Trusted hooks automatically prepare its local live backend, and the live view opens in the Codex built-in Browser only when the user requests it.
+Codex Agent View is a read-only companion plugin that shows privacy-minimized active tasks and subagents across workspaces inside the official Codex app. Trusted hooks automatically prepare its local live backend, and the bundled **Show Agents** skill lets users open the live view in the Codex app.
 
 > This is an unofficial community project. It is not an OpenAI product, affiliate, or officially supported project.
 
@@ -25,17 +25,12 @@ After installation:
 2. In the Codex app's **Plugins** screen, confirm that `Codex Agent View` is installed and enabled.
 3. If a hook-review screen is shown, inspect `hooks/hooks.json` and the `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command, then explicitly trust the current definition. Use interactive Codex CLI `/hooks` only as part of installation when the app version does not expose hook review.
 4. After enablement and hook review, create a **new task** in the Codex app. Events that occurred before installation are not replayed.
-5. In the new task, open the `@` menu, select `codex-agent-view`, and ask:
+5. In the new task, open the `@` menu, choose **Codex Agent View**, select its bundled **Show Agents** skill, and run it.
+6. If you close the live view, select the same **Show Agents** skill from the `@` menu again to reopen it.
 
-   > Show the currently active tasks and subagents.
+When the first trusted hook arrives, the plugin sender internally prepares the local backend and retries delivery of that same event. Users do not register task IDs or run `start`, `status`, or `doctor`. **Show Agents** reuses the healthy backend and attempts to open the live view in the Codex app without exposing a tokenized localhost URL or using an external browser. If the app does not provide the required Browser capability or permission, the skill reports that it could not open the view instead of exposing a private URL.
 
-6. For hook-level live detail, ask in that same Codex app task:
-
-   > Open the Codex Agent View live view inside the app.
-
-When the first trusted hook arrives, the plugin sender internally prepares the local backend and retries delivery of that same event. Users do not register task IDs or run `start`, `status`, or `doctor`. A live-view request reuses the healthy backend and opens it in the **Codex built-in Browser** without exposing a tokenized localhost URL or using an external browser.
-
-The public Codex plugin API does not provide no-prompt app-start creation of a sidebar, panel, or Browser tab. Opening the live view therefore requires one explicit action in a Codex app task. Once the right-side live tab is open, it refreshes every two seconds and reconnects after temporary disconnects while the same monitor observation window and token remain valid.
+The public Codex plugin API does not provide no-prompt app-start creation of a sidebar, panel, or Browser tab. Opening the live view therefore requires selecting **Show Agents** in a Codex app task. Once the right-side live tab is open, it refreshes every two seconds and reconnects after temporary disconnects while the same monitor observation window and token remain valid.
 
 In short: install once in a terminal; perform snapshot queries, status checks, live-view opening, and all routine use inside the Codex app.
 
@@ -77,23 +72,22 @@ A separately launched Codex `0.146` App Server `thread/list` fallback was also t
 
 ## The roles of npm, the Codex app live view, and the Plugins Directory
 
-- Asking the plugin `Show active tasks` inside the official Codex app is the primary `0.3.0` UX; it does not require starting a monitor or registering task IDs.
+- Selecting **Codex Agent View → Show Agents** from the official Codex app's `@` menu is the canonical UX; it does not require starting a monitor or registering task IDs.
 - npm is the initial installation path that distributes the plugin bundle, its internal hook sender/runtime, and static UI to the user's machine.
-- The live view opens in the Codex built-in Browser only after an explicit in-app request; it is not an external website or telemetry dashboard.
-- The public plugin API cannot create a sidebar, panel, or Browser tab without a prompt at app startup. The first live view needs one in-app request; an already-open tab refreshes and reconnects within the same observation window.
+- The live view opens in the Codex app only after the user selects **Show Agents**; it is not an external website or telemetry dashboard.
+- The public plugin API cannot create a sidebar, panel, or Browser tab without a prompt at app startup. The first live view needs one in-app skill selection; an already-open tab refreshes and reconnects within the same observation window.
 - The Universal Plugins Directory does not replace npm. A public in-app custom UI path requires a public HTTPS MCP server and domain verification, which conflicts with this project's local-only, no-external-server boundary. Only a separate listing/skills submission remains under consideration; do not expect Directory search installation until review and publication actually finish.
 
 ## Use in the official Codex app — recommended
 
 Use this flow in a **new task** after completing installation and enablement in the quick start. It requires neither another terminal nor an external browser.
 
-1. Open the `@` menu and select `codex-agent-view`.
-2. Ask `Show active tasks`.
-3. The plugin queries running/active tasks plus tasks with explicit `idle` and `hasUnreadTurn: true`. It places the latter in a separate `Finished / needs review` display group without claiming completion or success.
-4. It displays only workspace basename, display-only title, explicit status, latest explicit agent commentary, and a small `subAgentActivity` tree.
-5. Prompts, previews, tool input/output, full workspace paths, and internal thread IDs remain hidden by default.
+1. Open the task's `@` menu, choose **Codex Agent View**, and select the bundled **Show Agents** skill.
+2. The skill reuses the backend prepared by trusted hooks, or prepares it internally when still absent, then attempts to open the live view in the Codex app.
+3. The panel displays privacy-minimized hook state for observed tasks and subagents. Prompts, previews, tool input/output, full workspace paths, and internal thread IDs remain hidden by default.
+4. If the app's Browser capability or permission is unavailable, the skill reports the failure without exposing a private localhost URL or opening an external browser.
 
-Ask `Open the live Codex Agent View in the built-in Browser` inside the app only when you want hook-level live detail. This is the one explicit in-app action that opens the first view. The plugin reuses the backend prepared by trusted hooks, or starts it internally when still absent, and never exposes its tokenized localhost URL in chat. An already-open right-side tab refreshes and reconnects automatically within the same observation window.
+If you close the right-side live view, select **Show Agents** from the same `@` menu again. An open tab refreshes and reconnects automatically within the same observation window.
 
 ## Requirements and tested versions
 
@@ -127,7 +121,7 @@ Review the installed plugin and `hooks/hooks.json`, inspect the `node "${PLUGIN_
 
 ## Maintainer and advanced diagnostics CLI
 
-This section is reference material for package maintainers and explicit troubleshooting. It is not the normal user workflow. After installation, users should request snapshots and live views inside the Codex app; do not make them manage these commands or localhost URLs.
+This section is reference material for package maintainers and explicit troubleshooting. It is not the normal user workflow. After installation, users select **Codex Agent View → Show Agents** from the app's `@` menu; do not make them manage these commands or localhost URLs.
 
 Only when validating the local runtime from a source checkout, a maintainer can start it without opening an operating-system browser:
 
@@ -157,7 +151,7 @@ npm install --global codex-agent-view@0.4.0
 codex-agent-view install
 ```
 
-After these two commands, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. To open the first screen, select `@codex-agent-view` in that task and request the live view inside the app.
+After these two commands, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. In that task's `@` menu, choose **Codex Agent View → Show Agents** to open the live view; select the same skill whenever a closed view needs to be reopened.
 
 Or run the exact version without a global install:
 
