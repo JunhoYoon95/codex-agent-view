@@ -22,7 +22,9 @@ Unknown events and malformed payloads are ignored or reduced to bounded diagnost
 
 ## Storage and lifetime
 
-Operational event state exists only in the monitor process memory. It is bounded and is discarded when the monitor stops or restarts. Codex Agent View does not persist an operational event history to a database or JSONL file.
+Operational event state exists only in the monitor process memory. It is bounded and is discarded when the monitor stops or restarts, beginning a new live observation window. This is the intentional completed design for a live companion, not an incomplete persistence feature or accidental data-loss mode. Codex Agent View is not a historical audit or replay product and does not persist an operational event history to a database or JSONL file.
+
+SQLite or persistent history is not a required next step. It would be considered only as a separate, explicit opt-in feature after demonstrated user need and a new review of retention, deletion, migration, access control, and privacy costs.
 
 The runtime directory defaults to `~/.codex-agent-view` and can be overridden with `CODEX_AGENT_VIEW_RUNTIME_DIR`. It can contain:
 

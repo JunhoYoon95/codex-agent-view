@@ -8,7 +8,7 @@
 
 다만 이것은 공식 앱 bundle에 포함된 CLI runtime 검증이지, Codex GUI의 현재 task가 plugin hook을 실행했다는 증거는 아니다. 현재 열린 GUI task에 plugin을 추가한 뒤 worker를 시작·종료했지만 캡처는 없었다. task 시작 시점의 config snapshot과 미신뢰 hook skip을 분리하지 못했으므로 “GUI는 hook hot-load를 지원하지 않는다”고 단정할 수 없다. `PermissionRequest`도 아직 실제 payload를 관찰하지 못했다.
 
-Phase 0의 repository 조사와 구현 입력 정리는 완료했지만, 새 GUI task에서 plugin 활성화와 hook trust를 확인한 뒤 subagent lifecycle, tool use, approval 요청을 발생시키는 최종 공식 앱 E2E는 아직 외부 acceptance blocker로 남아 있다. 이 문서는 그 미확인 항목을 완료로 간주하지 않는다.
+Phase 0의 repository 조사와 구현 입력 정리, 이후 local product 구현은 완료했다. 새 GUI task에서 plugin 활성화와 hook trust를 확인한 뒤 subagent lifecycle, tool use, approval 요청을 발생시키는 최종 공식 앱 E2E는 현재 앱 조합에 대한 외부 compatibility acceptance로 남아 있다. 이는 제품 기능 미완성을 뜻하지 않으며, 이 문서는 미관찰 compatibility evidence를 관찰 완료로 과장하지 않는다.
 
 ## 검증 환경
 
@@ -112,7 +112,7 @@ Phase 0의 repository 조사와 구현 입력 정리는 완료했지만, 새 GUI
 - start/stop의 `session_id`와 `agent_id`로 subagent lifecycle을 상관시킬 수 있다.
 - collaboration tool과 Bash의 pre/post activity를 관찰할 수 있다.
 - payload를 값 없이 key/type 중심으로 redaction해 기술 검증할 수 있다.
-- monitor core를 외부 DB 없이 in-memory reducer로 구현할 수 있다.
+- monitor core를 외부 DB 없이 bounded in-memory reducer로 구현했고, live companion의 완성 architecture로 채택했다.
 
 ### 아직 미확인인 것
 
@@ -122,7 +122,9 @@ Phase 0의 repository 조사와 구현 입력 정리는 완료했지만, 새 GUI
 - 별도 App Server로 현재 GUI process의 in-memory 상태를 공유하거나 attach하는 방법
 - hook event가 누락되거나 순서가 바뀌는 모든 조건
 
-### Phase 0 범위에서 하지 않을 것
+### Phase 0 범위와 현재의 의도적 non-goal
+
+아래 항목은 구현이 덜 끝난 backlog가 아니다. Codex Agent View는 historical audit/replay가 아니라 live companion이며, reset-on-restart와 bounded in-memory state가 현재 제품의 의도된 lifecycle이다. SQLite/영구 history는 필수 다음 단계가 아니며 검증된 사용자 요구가 있을 때만 retention, deletion, migration, access-control, privacy 비용을 포함한 별도 explicit opt-in proposal로 검토한다.
 
 - JSONL을 production state store로 사용
 - SQLite 또는 다른 영구 DB 추가
@@ -136,9 +138,9 @@ Phase 0 당시 local marketplace가 repository root를 가리키면 source tree 
 
 `codex-agent-view install`은 package에 포함된 allowlisted entry만 runtime directory 아래 copied local marketplace로 옮긴 뒤 Codex plugin을 등록한다. npm package를 받았다고 hook trust를 자동 승인하지 않으며, 사용자 설정을 몰래 바꾸는 `postinstall`도 없다.
 
-Public npm registry publish는 아직 수행되지 않았으므로 registry 이름의 `npx` 경로는 미검증·미제공 상태다. Universal Plugins Directory 제출도 별도 외부 절차로 남아 있다.
+`codex-agent-view@0.2.0` public npm registry publish는 완료됐다. Exact published artifact의 global install/`npx` smoke evidence와 Universal Plugins Directory 제출은 각각 별도 외부 절차로 추적한다.
 
-## 권장 다음 아키텍처
+## Phase 0 권장과 `0.2.0`에서 확정한 아키텍처
 
 ```text
 Codex hooks
@@ -207,9 +209,9 @@ Runtime server는 `127.0.0.1` 외 bind를 거부하고, user-only runtime file�
 
 hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash를 다시 검토해야 한다.
 
-## 남은 blocker
+## 외부 compatibility acceptance
 
-사용자가 공식 Codex 앱에서 다음 작업을 수행해야 최종 GUI E2E를 완료할 수 있다.
+Local 제품 구현은 완료되었다. 사용자가 공식 Codex 앱에서 다음 작업을 수행해야 현재 앱 조합에 대한 compatibility evidence를 완료할 수 있다.
 
 - plugin이 활성화된 상태로 **새 GUI task** 시작
 - 새 task에서 plugin hook source와 command를 검토하고 trust
@@ -219,13 +221,15 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 
 이 과정에서 캡처가 생기지 않으면 hook browser의 loaded source/trust 상태와 앱 진단 로그가 다음 조사 증거다. 기존 GUI task의 미캡처만으로 지원 불가 결론을 내리지 않는다.
 
-공개 배포에는 다음 외부 단계도 남아 있다.
+## 외부 distribution과 listing 작업
 
-- maintainer의 npm login, 2FA/package ownership 확인, `0.2.0` publish 승인
-- published exact artifact에서 `npx` smoke test
+공개 배포에는 다음 제품 외부 운영 단계가 남아 있다.
+
+- [x] maintainer npm login(`kyurasi`)과 `0.2.0` public registry publish
+- [ ] published exact artifact에서 global install/`npx` smoke test
 - Universal Plugins Directory portal 제출, review, publish, search visibility 확인
 
-Publish 전에는 `npx codex-agent-view`을 사용할 수 있다고 안내하지 않고, directory publish 전에는 검색 가능하다고 주장하지 않는다.
+README는 exact-version global install과 `npx`를 public npm 사용법으로 안내한다. Directory publish 전에는 Universal Directory에서 검색 가능하다고 주장하지 않는다.
 
 ## QA 결과
 
@@ -236,4 +240,4 @@ Publish 전에는 `npx codex-agent-view`을 사용할 수 있다고 안내하지
 - source CLI `--version`: `0.2.0`
 - source CLI `doctor --json`: Codex CLI version, plugin/monitor 상태, runtime directory 진단 확인
 
-현재 local 합격 범위는 captured-evidence 기반 schema, in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring이다. 새 official GUI task E2E, 실제 `PermissionRequest`, public npm artifact, Universal Directory listing은 미완료다.
+Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring으로 local live companion 제품 구현은 완료됐다. 새 official GUI task E2E와 실제 `PermissionRequest`는 external compatibility evidence이고, published exact npm artifact smoke와 Universal Directory listing은 external distribution/listing operation이다. 어느 항목도 SQLite/영구 history 같은 미구현 제품 기능을 뜻하지 않는다.

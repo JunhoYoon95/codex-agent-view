@@ -18,15 +18,17 @@ Codex Agent View는 공식 Codex 앱을 그대로 사용하면서 부모 task와
 - `start`, `status`, `doctor`, `install`, `uninstall` CLI
 - 명시적 설치·hook trust·제거 경로
 
-Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex executable에서 plugin 설치와 실제 lifecycle payload를 검증했다. 그러나 공식 Codex 앱의 **현재 GUI task에서 trusted hook → local monitor → UI 전체 흐름을 확인하는 최종 E2E는 아직 완료되지 않았다.** `PermissionRequest`의 실제 payload도 아직 관찰하지 못했다. 이 미확인 범위를 지원 완료로 해석하지 않는다.
+Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex executable에서 plugin 설치와 실제 lifecycle payload를 검증했다. Local companion 제품 구현은 완료되었으며, 공식 Codex 앱의 **현재 GUI task에서 trusted hook → local monitor → UI 전체 흐름을 확인하는 최종 E2E**와 실제 `PermissionRequest` payload 관찰은 외부 compatibility acceptance로 남아 있다. 이는 구현되지 않은 제품 기능 목록이 아니라 현재 공식 앱 조합에 대한 미확인 검증 범위다.
 
-또한 package는 아직 public npm registry에 publish되지 않았다. 따라서 `npx codex-agent-view ...`는 현재 실행 가능한 공개 설치 명령이 아니다. Universal Plugins Directory 제출도 완료되지 않아 directory 검색에 나타나지 않는다.
+`codex-agent-view@0.2.0`은 public npm registry에서 설치할 수 있다. npm publish와 별개인 Universal Plugins Directory 제출은 아직 완료되지 않아 directory 검색에는 나타나지 않는다.
 
 ### 제품 경계
 
+Codex Agent View는 historical audit이나 session replay 제품이 아니라 현재 활동을 보여주는 live companion이다. Bounded in-memory state와 monitor 재시작 시 reset은 privacy와 단순한 failure boundary를 위한 의도된 `0.2.0` 완성 설계다. SQLite/영구 history는 누락된 요구사항이 아니다. 실제 사용자 요구가 입증될 때에만 retention, migration, deletion, privacy 비용을 별도 검토하는 명시적 opt-in 기능 후보로 취급한다.
+
 - live 상태의 source of truth는 hook event다.
-- 상태는 monitor process memory에만 있고 재시작하면 사라진다.
-- 외부 telemetry, 원격 server, account, SQLite가 없다.
+- Live 상태는 설계대로 monitor process의 bounded memory에만 있고 재시작하면 새 관찰 window가 시작된다.
+- 외부 telemetry, 원격 server, account, 필수 SQLite/영구 event store가 없다.
 - prompt, transcript path, 전체 tool input/output, assistant message를 monitor 상태나 UI에 저장·표시하지 않는다.
 - task/subagent 중지·재시작, message 전송, permission 자동 승인·거절 기능이 없다.
 - App Server는 향후 계층 metadata 보강 후보일 뿐이며 공식 앱 process와 memory를 공유한다고 가정하지 않는다.
@@ -43,7 +45,7 @@ Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`,
 
 | Runtime | 확인된 버전 | 확인 범위 |
 | --- | --- | --- |
-| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | bundle metadata, GUI current-task E2E 미완료 |
+| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | bundle metadata, GUI current-task compatibility acceptance 대기 |
 | 앱 embedded Codex | `0.146.0-alpha.9.2` | isolated plugin install/runtime 및 lifecycle probe |
 | Homebrew Codex CLI | `0.146.0` | isolated plugin install/runtime probe |
 
@@ -67,9 +69,9 @@ Production dependency는 없고 runtime은 Node.js built-in module만 사용한�
 
 내부 validation이나 fixture 통과만으로 공식 앱 GUI 호환성을 주장하지 않는다.
 
-### Source package로 설치
+### Source checkout으로 개발·검증
 
-Public npm publish 전에는 source checkout에서 다음 명령을 사용한다.
+Source를 직접 개발하거나 검증할 때는 다음 명령을 사용한다.
 
 ```bash
 node bin/codex-agent-view.mjs --version
@@ -120,11 +122,18 @@ node bin/codex-agent-view.mjs doctor --json
 
 Monitor가 꺼져 있어도 hook sender는 fail-open으로 끝나 Codex task를 막지 않는다. Monitor를 나중에 켜면 꺼져 있던 동안의 event가 복구되지는 않는다.
 
-### npm 공개 배포 상태
+### npm에서 설치
 
-`package.json`은 `codex-agent-view` bin과 public publish metadata를 준비했지만 public registry publish는 아직 외부 작업으로 남아 있다.
+권장 설치 방법은 검증된 exact version을 global로 설치하는 것이다.
 
-다음 명령은 `codex-agent-view@0.2.0`이 npm에 실제 publish되고 exact tarball E2E가 끝난 뒤에만 유효하다.
+```bash
+npm install --global codex-agent-view@0.2.0
+codex-agent-view doctor
+codex-agent-view install
+codex-agent-view start
+```
+
+Global install 없이 exact version을 일회성으로 실행할 수도 있다.
 
 ```bash
 npx --yes codex-agent-view@0.2.0 doctor
@@ -132,7 +141,7 @@ npx --yes codex-agent-view@0.2.0 install
 npx --yes codex-agent-view@0.2.0 start
 ```
 
-현재는 위 명령을 설치 경로로 사용하지 않는다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
+npm install은 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
 ### Privacy와 opt-in diagnostic capture
 
@@ -181,7 +190,7 @@ Monitor가 실행 중인지, stale runtime file인지, runtime directory가 예�
 
 #### `PermissionRequest`가 표시되지 않음
 
-Approval이 실제 필요한 동작에서만 발생할 수 있다. 현재 공식 앱 GUI의 실제 payload capture는 미완료이므로 표시되지 않는 원인을 schema 문제와 “event 자체가 발생하지 않음”으로 분리해 조사한다. Monitor는 approval을 자동 처리하지 않는다.
+Approval이 실제 필요한 동작에서만 발생할 수 있다. 현재 공식 앱 GUI의 실제 payload는 external compatibility evidence가 아직 없어, 표시되지 않는 원인을 schema 문제와 “event 자체가 발생하지 않음”으로 분리해 조사한다. Monitor는 approval을 자동 처리하지 않는다.
 
 ### 문서와 지원
 
@@ -204,17 +213,19 @@ Codex Agent View is a lightweight, read-only companion monitor for the official 
 
 ### Status
 
-The current source version is `0.2.0`. It includes the plugin and marketplace manifests, a genuine Codex skill, privacy-minimized hooks, a bounded in-memory reducer, a token-authenticated `127.0.0.1` runtime, a local dashboard, and `start`, `status`, `doctor`, `install`, and `uninstall` commands.
+The current source version is `0.2.0`. It includes the plugin and marketplace manifests, a genuine Codex skill, privacy-minimized hooks, a bounded in-memory reducer, a token-authenticated `127.0.0.1` runtime, a local dashboard, and `start`, `status`, `doctor`, `install`, and `uninstall` commands. The local companion product implementation is complete.
 
-Plugin installation and real lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. The final **trusted hook → local monitor → UI E2E in a current official Codex GUI task remains unverified**, and a real `PermissionRequest` payload has not been observed.
+Plugin installation and real lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. The final **trusted hook → local monitor → UI E2E in a current official Codex GUI task remains unverified**, and a real `PermissionRequest` payload has not been observed. These are external compatibility-acceptance checks for the current official app combination, not missing local product features.
 
-The package has not been published to the public npm registry, so `npx codex-agent-view ...` is not a working public install path yet. The plugin has also not been published through the Universal Plugins Directory and is not directory-searchable.
+`codex-agent-view@0.2.0` is available from the public npm registry. npm publication is separate from Universal Plugins Directory submission; the plugin has not been published through the Directory and is not directory-searchable.
 
 ### Boundaries
 
+Codex Agent View is a live companion, not a historical audit or session-replay product. Bounded in-memory state and reset-on-restart semantics are the intentional completed `0.2.0` design: they keep privacy and failure boundaries small. SQLite or persistent history is not a missing requirement. Consider it only as a separate explicit opt-in feature if demonstrated user demand justifies retention, migration, deletion, and privacy costs.
+
 - Hooks are the source of truth for live state.
-- Operational state exists only in bounded process memory and is lost on restart.
-- There is no external telemetry, remote server, account, SQLite store, or remote control.
+- Operational state exists by design only in bounded process memory; restart begins a new observation window.
+- There is no external telemetry, remote server, account, required SQLite/persistent event store, or remote control.
 - Prompt text, transcript paths, full tool input/output, and assistant messages are not retained or displayed by the monitor.
 - The product cannot stop or restart tasks/subagents, send messages, or approve/deny permissions.
 - Missing, duplicated, or out-of-order events remain visible as empty, unknown, or degraded state instead of being guessed away.
@@ -264,9 +275,18 @@ node bin/codex-agent-view.mjs doctor --json
 
 An empty session list means that this monitor observed no events. It does not prove that Codex has no running task. Stopping or restarting the monitor discards its in-memory state, and downtime events are not replayed.
 
-### npm publication status
+### Install from npm
 
-These exact-version commands are examples for **after** a verified public npm release; they do not work as the current public install path:
+Install the verified exact version globally:
+
+```bash
+npm install --global codex-agent-view@0.2.0
+codex-agent-view doctor
+codex-agent-view install
+codex-agent-view start
+```
+
+Or run the exact version without a global install:
 
 ```bash
 npx --yes codex-agent-view@0.2.0 doctor
@@ -274,7 +294,7 @@ npx --yes codex-agent-view@0.2.0 install
 npx --yes codex-agent-view@0.2.0 start
 ```
 
-npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
+npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 
 ### Privacy
 

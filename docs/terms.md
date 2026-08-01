@@ -16,7 +16,7 @@ Use of Codex or other third-party products remains subject to the terms and poli
 
 ## Read-only scope
 
-The project is designed to observe privacy-minimized local hook events and present an in-memory status view. It does not implement task or subagent control, message sending, or automatic approval or denial of permission requests. Missing, delayed, duplicated, out-of-order, or unsupported hook events can make the view incomplete or stale, so the monitor is informational rather than an authoritative completion record.
+The project is designed as a live companion that observes privacy-minimized local hook events and presents a bounded in-memory status view. Reset-on-restart and the absence of persistent history are intentional completed product semantics, not a missing audit feature. A separate opt-in history feature would require demonstrated user need and a new privacy/retention review. The project does not implement task or subagent control, message sending, or automatic approval or denial of permission requests. Missing, delayed, duplicated, out-of-order, or unsupported hook events can make the live view incomplete or stale, so the monitor is informational rather than an authoritative completion record.
 
 Review the hook command and trust prompt before enabling the plugin. Protect local runtime tokens and any opt-in diagnostic captures. See [Privacy](privacy.md) for the current data flow and removal paths.
 

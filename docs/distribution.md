@@ -2,7 +2,7 @@
 
 조사일: 2026-08-01
 
-이 문서는 Codex Agent View `0.2.0`의 npm package와 Codex plugin 배포 경계를 정리한다. 실제 npm publish, GitHub release, marketplace 변경은 이 문서 작업에서 수행하지 않는다.
+이 문서는 Codex Agent View `0.2.0`의 npm package와 Codex plugin 배포 경계를 정리한다. Public npm publish는 완료됐으며 GitHub release와 Universal Directory publish는 별도 절차다.
 
 ## 현재 상태
 
@@ -12,8 +12,8 @@
 - 배포 bundle에는 plugin manifest/catalog, logo assets, hooks, CLI, local runtime/server, static monitor UI, scripts, genuine Codex skill, README, LICENSE, NOTICE가 포함된다.
 - `postinstall`과 다른 npm lifecycle installer는 없다. npm package를 받는 것만으로 Codex 설정을 바꾸지 않는다.
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
-- runtime은 `127.0.0.1`에만 bind하고 상태를 프로세스 메모리에 둔다. 외부 telemetry, 원격 server, SQLite, task 제어 기능은 없다.
-- npm registry publish는 아직 수행되지 않았다. 따라서 registry 이름으로 실행하는 `npx codex-agent-view ...`는 현재 공개 설치 경로가 아니다.
+- runtime은 `127.0.0.1`에만 bind하고 live 상태를 의도적으로 bounded process memory에 둔다. Reset-on-restart는 완성된 companion 설계이며 SQLite/영구 history는 release 누락 항목이 아니다. 외부 telemetry, 원격 server, task 제어 기능도 없다.
+- `codex-agent-view@0.2.0`은 public npm registry에 publish됐다. Exact-version global install과 `npx`가 공개 설치 경로다.
 
 ## CLI 표면
 
@@ -42,7 +42,7 @@ npm에 package를 publish하는 것만으로 Universal Plugins Directory에 등�
 
 현재 `.agents/plugins/marketplace.json`은 repository 또는 copied package root를 가리키는 local source(`source.path: "./"`)다. `codex-agent-view install`은 npm으로 받은 package라도 이 local catalog를 `~/.codex-agent-view/marketplace` 아래에 복사한 뒤 Codex CLI로 등록한다. 이것은 catalog가 npm registry를 직접 resolve하는 “npm-backed marketplace source”와 구분해야 한다.
 
-## Publish 전 source 및 tarball 검증
+## Source 및 tarball 검증
 
 Source checkout에서는 registry publish 없이 실제 CLI를 실행할 수 있다.
 
@@ -63,9 +63,9 @@ npm pack --dry-run --cache ./node_modules/.cache/npm
 
 Release candidate 검증에서는 `npm pack`으로 만든 exact tarball을 임시 prefix에 설치하고, 설치된 executable에서 `--version`, `doctor`, `install`, `start --no-open`, `status --json`, `uninstall --purge` 순서의 smoke/E2E를 수행한다. Source checkout만 실행하고 tarball이 정상이라고 가정하지 않는다.
 
-## npm publish 후 사용자 경로
+## Public npm 사용자 경로
 
-다음 예시는 `codex-agent-view@0.2.0`이 public npm registry에 실제 publish되고 tarball 검증이 끝난 뒤에만 사용자 문서에 “실행 가능한 설치 명령”으로 승격한다.
+`codex-agent-view@0.2.0`의 공개 사용자 명령은 다음과 같다. Mutable `latest`보다 문서와 함께 검증한 exact version을 우선한다.
 
 일회성 실행:
 
@@ -84,7 +84,7 @@ codex-agent-view install
 codex-agent-view start
 ```
 
-현재는 package가 registry에 없으므로 위 `npx`/global-install 예시를 그대로 실행하도록 안내하면 안 된다. Publish 후에도 mutable한 `latest`보다 검증한 exact version을 우선 안내하고, 사용자에게 hook command와 trust boundary를 보여준다.
+Global install과 `npx` 모두 package download만으로 Codex 설정을 바꾸지 않는다. 사용자가 `install`을 명시적으로 실행할 때만 local plugin registration이 바뀌며, hook command와 trust boundary를 먼저 보여준다.
 
 `codex-agent-view install`의 현재 동작은 다음과 같다.
 
@@ -163,11 +163,14 @@ codex plugin remove codex-agent-view@codex-agent-view
 codex plugin marketplace remove codex-agent-view
 ```
 
-## npm release 전 검증
+## 외부 npm release 및 artifact 검증
 
-- [ ] npm package 이름 소유권, publish 권한, 2FA 확인
-- [ ] `npm pack --dry-run`에서 의도한 runtime files만 포함하고 test/dev capture는 제외
-- [ ] tarball 안에 executable, manifests/catalog, logo assets, hooks, sender/capture scripts, skill, UI/runtime, README, LICENSE, NOTICE 포함
+아래는 완성된 local product에 대한 distribution artifact와 운영 절차 검증이다. In-memory 설계를 보완하는 제품 기능 checklist가 아니다.
+
+- [x] maintainer npm `kyurasi` login 확인
+- [x] npm package 이름 소유권, publish 권한, 2FA와 `0.2.0` publish 성공 확인
+- [x] `npm pack --dry-run`에서 의도한 runtime files만 포함하고 test/dev capture는 제외
+- [x] tarball 안에 executable, manifests/catalog, logo assets, hooks, sender/capture scripts, skill, UI/runtime, README, LICENSE, NOTICE 포함
 - [ ] release repository에서 Privacy, Terms, Support, Security 문서의 public URL이 접근 가능
 - [ ] actual tarball을 clean temporary prefix에 설치하고 executable bit와 `--version` 검증
 - [ ] isolated Codex/runtime directories에서 `doctor` → `install` → `start --no-open` → hook event → `status --json` → `uninstall --purge` E2E
@@ -177,19 +180,17 @@ codex plugin marketplace remove codex-agent-view
 - [ ] public npm registry에서 exact-version `npx` smoke test
 - [ ] remove 후 hook source 비활성화와 opt-in capture 보존·정리 경로 확인
 
-## 사용자가 직접 해야 하는 외부 단계
+## 외부 배포 운영 상태
 
-1. npm account, 2FA, package 이름 소유권을 확인한다.
-2. package visibility, version, dist-tag를 결정하고 `npm publish`를 승인·실행한다.
-3. Git tag/release와 npm artifact가 같은 source에서 만들어졌는지 확인한다.
-4. public registry에서 package provenance와 exact-version `npx` 동작을 확인한다.
-5. npm-backed marketplace catalog를 제공한다면 package, version range, registry와 authentication policy를 확정한다.
-6. 공식 앱/CLI에서 설치, hook trust, 새 task lifecycle, 제거를 실제 사용자 환경에서 검증한다.
-7. Universal Plugins Directory 제출은 npm release와 별도로 진행한다.
+- [x] npm account, 2FA, package 이름 소유권, visibility, version을 확인하고 `0.2.0`을 publish했다.
+- [ ] Git tag/release와 npm artifact가 같은 source에서 만들어졌는지 확인한다.
+- [ ] Public registry에서 package provenance와 exact-version global install/`npx` 동작을 확인한다.
+- [ ] npm-backed marketplace catalog를 제공한다면 package, version range, registry와 authentication policy를 확정한다.
+- [ ] 공식 앱/CLI에서 설치, hook trust, 새 task lifecycle, 제거를 실제 사용자 환경에서 검증한다.
+- [ ] Universal Plugins Directory 제출은 npm release와 별도로 진행한다.
 
 ## 남은 미확인 사항
 
-- npm registry에서 `codex-agent-view` 이름을 실제로 소유하고 publish할 수 있는지
 - npm-backed marketplace가 현재 공식 앱 GUI에서 local/Git source와 동일하게 hook trust UI까지 연결되는지
 - no-account, local-only plugin에 가장 정확한 marketplace `policy.authentication` 값
 - package-owned installer와 npm-backed marketplace 중 공개 릴리스의 주 설치 경로

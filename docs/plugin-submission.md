@@ -13,7 +13,9 @@
 - 이 skill은 current task/subagent status 조회, monitor 진단, explicit lifecycle action에 실제 사용자 가치를 제공한다. Directory 통과용 빈 형식 skill이 아니다.
 - 공식 공개 문서는 **skills-only submission에 local command hooks를 함께 bundle한 경우의 eligibility/review 규칙을 명시하지 않는다.** 따라서 “skills-only + hooks” 제출 가능 여부는 여전히 **미확인**이며 portal 또는 OpenAI 확인이 필요하다.
 - MCP 경로는 production HTTPS endpoint를 요구하므로 external server를 두지 않는 현재 제품 방향과 맞지 않는다.
-- Package는 아직 public npm registry에 publish되지 않았고 Universal Directory에도 publish되지 않았다. 현재 registry `npx` 설치나 directory 검색이 가능하다고 안내하지 않는다.
+- `codex-agent-view@0.2.0` public npm registry publish는 완료됐고 exact-version global install/`npx` 경로를 제공한다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
+
+Local companion 제품 구현과 bounded in-memory architecture는 완료되어 있다. 아래 eligibility, identity, scan, portal, publish 항목은 외부 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 제품 구현 blocker가 아니다.
 
 ## 공식 공개 흐름
 
@@ -144,14 +146,15 @@ Repository에는 `SUPPORT.md`, `SECURITY.md`, `docs/privacy.md`, `docs/terms.md`
 
 Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사용해야 한다. Expected answer text만 비교하지 말고 command order, side effect, sensitive output, stop condition을 검증한다.
 
-### 해결된 local listing validation
+### 해결된 packaging/listing readiness
 
 - [x] `shortDescription`을 `Monitor Codex task activity.` 28 characters로 줄였다.
 - [x] Repository plugin validator가 `shortDescription <= 30`을 검사한다.
+- [x] `codex-agent-view@0.2.0` public npm registry publish를 완료했다.
 
-## 제출 전 stop 조건
+## 외부 Directory 제출 전 stop 조건
 
-다음 중 하나라도 남아 있으면 public submission을 시작하지 않는다.
+다음 중 하나라도 남아 있으면 public listing submission을 시작하지 않는다. 이는 local live companion의 제품 완성도를 뜻하지 않으며 persistent storage 추가로 해결할 항목도 아니다.
 
 - [ ] Skills-only + local hooks eligibility가 portal/OpenAI에서 확인되지 않음
 - [ ] Final package/ZIP의 skill tree와 submitted artifact가 일치하지 않음
@@ -163,7 +166,7 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [ ] Website/support/privacy/terms URL과 publisher identity가 maintainer 승인을 받지 않음
 - [ ] Verified individual/business identity가 완료되지 않음
 - [ ] `Apps Management: Write` access가 확인되지 않음
-- [ ] npm/release artifact가 publish되지 않았거나 submitted skill tree와 불일치
+- [ ] Published npm/release artifact와 submitted skill tree의 일치 증거가 없음
 - [ ] Portal attestations, region availability, release notes가 maintainer review를 받지 않음
 
 Stop condition을 닫을 때는 “file이 존재함”과 “portal/reviewer가 승인함”을 구분해 증거를 남긴다.

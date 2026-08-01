@@ -1,28 +1,41 @@
 # Codex Agent View Roadmap
 
-현재 source version은 `0.2.0`이다. Phase 0~3의 repository 내부 구현과 검증 항목은 완료되었고, 실제 사용자 계정·공식 앱·외부 portal이 필요한 release acceptance만 남아 있다. 미관찰 사실은 완료로 바꾸지 않고 아래 외부 blocker에 유지한다.
+현재 source version은 `0.2.0`이다. Phase 0~3의 repository 내부 제품 구현과 검증 항목은 완료되었다. Bounded in-memory live state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. 아래 남은 항목은 실제 사용자 계정·공식 앱·외부 portal이 필요한 compatibility, distribution, listing acceptance다.
 
 ## 제품 원칙
 
 - 공식 Codex 앱을 대체하지 않는 read-only companion monitor다.
 - live 상태의 source of truth는 hook event다.
 - App Server는 optional metadata 보강 후보이며 공식 앱 process와 memory를 공유한다고 가정하지 않는다.
-- local-only, in-memory, no external telemetry가 기본이다.
+- local-only, bounded in-memory, no external telemetry가 완성된 기본 architecture다.
 - 전체 prompt와 tool input/output을 기본 저장·표시하지 않는다.
 - 설치, hook trust, 제거는 사용자가 명시적으로 수행하고 복구 경로를 제공한다.
 - task/subagent control과 permission 자동 처리 기능을 제공하지 않는다.
 
-## 현재 release blocker
+## 제품 구현 상태
+
+- [x] Local read-only live companion의 Phase 0~3 구현과 source/package validation을 완료했다.
+- [x] Reset-on-restart를 의도된 observation-window lifecycle로 확정했다.
+- [x] Persistent history는 필수 기능이 아니며, 검증된 사용자 요구가 있을 때만 별도 explicit opt-in proposal로 평가한다.
+
+## 외부 compatibility acceptance
 
 - [ ] 공식 Codex 앱에서 plugin을 enable하고 hook을 trust한 **새/current GUI task**로 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse` → loopback monitor → UI E2E를 팀장이 직접 완료한다.
 - [ ] 실제 approval prompt를 발생시켜 공식 앱 `PermissionRequest` payload와 read-only waiting 표시를 확인한다. 발생하지 않으면 event 미발생과 schema 문제를 분리해 기록한다.
-- [ ] maintainer가 npm account/2FA/package 이름 소유권을 확인하고 login 후 `codex-agent-view@0.2.0` publish를 명시적으로 승인·실행한다.
-- [ ] public npm artifact에서 exact-version `npx` install/start/status/uninstall smoke test를 완료한다. Publish 전에는 registry `npx`를 사용 가능하다고 안내하지 않는다.
+
+## 외부 npm distribution operation
+
+- [x] Maintainer가 npm account와 `kyurasi` login을 확인했다.
+- [x] `codex-agent-view@0.2.0` public npm registry publish를 완료했다.
+- [ ] Published exact artifact에서 global install과 exact-version `npx` install/start/status/uninstall smoke test를 완료한다.
+
+## 외부 Universal Directory listing
+
 - [ ] maintainer가 Universal Plugins Directory portal에서 제출·심사·publish를 완료하고 실제 directory 검색 노출을 확인한다.
 
 ## Phase 0 — 기술 검증과 프로젝트 기반
 
-상태: repository 작업 완료, 공식 앱 GUI acceptance는 release blocker로 이관
+상태: repository 작업 완료, 공식 앱 GUI 검증은 external compatibility acceptance로 분리
 
 - [x] 기존 파일을 보존하며 Git/npm project 기반을 정리한다.
 - [x] `README.md`, `AGENTS.md`, `ROADMAP.md`, findings 문서를 만든다.
@@ -32,7 +45,7 @@
 - [x] Homebrew CLI와 app-embedded CLI에서 isolated plugin install/runtime을 검증한다.
 - [x] 실제 subagent probe에서 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse` payload를 캡처한다.
 - [x] `PermissionRequest`는 공식 지원 event이나 실제 payload 미관찰임을 추측 없이 기록한다.
-- [x] GUI current-task 미캡처를 hot-load 미지원으로 단정하지 않고 trust/config snapshot blocker로 분류한다.
+- [x] GUI current-task 미캡처를 hot-load 미지원으로 단정하지 않고 trust/config snapshot이 남은 external evidence로 분류한다.
 - [x] default redaction, secret/capture 제외, package validation을 검증한다.
 - [x] `docs/phase-0-findings.md`에 관찰 field, CLI/App 차이, 가능/불가능 범위, 다음 architecture를 기록한다.
 
@@ -48,11 +61,11 @@
 - [x] session, agent, activity, diagnostic 수를 bounded limit로 제한한다.
 - [x] core unit tests를 구현하고 통과한다.
 
-제외 유지: SQLite, 원격 server, task control.
+완료된 설계 결정: event core는 live 상태를 bounded memory에만 유지한다. SQLite/영구 history는 이 Phase의 미완료 항목이 아니며, 원격 server와 task control도 의도적 non-goal이다.
 
 ## Phase 2 — local read-only monitor MVP
 
-상태: repository 구현 완료, 공식 앱 GUI acceptance는 release blocker로 이관
+상태: repository 구현 완료, 공식 앱 GUI 검증은 external compatibility acceptance로 분리
 
 - [x] IPv4 loopback `127.0.0.1` transport와 local bearer-token threat boundary를 선택한다.
 - [x] Hook sender를 bounded timeout과 fail-open 동작으로 구현한다.
@@ -65,11 +78,11 @@
 - [x] 외부 bind, CORS/CDN/telemetry가 없는 local-only 구조를 tests와 source review로 확인한다.
 - [x] hook sender → runtime → reducer → status/UI local integration tests를 통과한다.
 
-제외 유지: task control, approval 처리, message 전송, persistent event store.
+완료된 설계 결정: live monitor는 task control, approval 처리, message 전송, persistent event store를 요구하지 않는다. Persistent history는 별도 explicit opt-in 요구가 입증될 때만 새 proposal로 다룬다.
 
 ## Phase 3 — 설치·제거와 공개 배포 준비
 
-상태: repository/npm tarball 준비 완료, publish와 directory listing은 release blocker로 이관
+상태: repository/npm tarball 준비 완료. Registry publish operation과 Directory listing은 제품 구현과 분리된 외부 release 작업이다.
 
 - [x] `codex-agent-view` bin과 `start/status/doctor/install/uninstall` CLI surface를 구현한다.
 - [x] npm `files` allowlist에 manifests, catalog, logo assets, hooks, CLI, sender/capture scripts, skill, runtime/UI, README, LICENSE, NOTICE를 포함한다.
@@ -98,11 +111,11 @@
 각 항목은 사용자 가치와 privacy 비용을 별도로 검토한 뒤 독립 작업으로 진행한다.
 
 - [ ] App Server metadata 보강의 정확성과 장애 격리를 검증한다.
-- [ ] explicit opt-in local history의 필요성과 retention/delete 정책을 평가한다.
+- [ ] 실제 사용자 요구가 입증될 때에만 explicit opt-in local history의 가치와 retention/delete/migration/privacy 비용을 별도 proposal로 평가한다.
 - [ ] Codex version compatibility matrix와 upgrade test automation을 확장한다.
 - [ ] 제어 기능은 별도 보안 설계와 사용자 승인 model 없이는 착수하지 않는다.
 
-SQLite나 외부 service는 기본 계획이 아니다. 필요성이 증명될 때만 별도 설계 결정과 사용자 승인을 거쳐 roadmap에 추가한다.
+SQLite/영구 history는 현재 제품에 빠진 기능이 아니다. Live companion과 별개의 explicit opt-in history 요구가 입증될 때만 별도 설계 결정과 사용자 승인을 거쳐 roadmap에 추가한다. 외부 service도 같은 기준을 적용한다.
 
 ## 대화 간 인수인계 규칙
 
