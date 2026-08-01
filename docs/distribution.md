@@ -2,11 +2,14 @@
 
 조사일: 2026-08-01
 
-이 문서는 Codex Agent View `0.4.0` npm package와 Codex plugin의 배포 경계를 정리한다. Mutable npm `latest` 상태를 문서의 고정 전제로 삼지 않으며, `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` public evidence는 historical record로 보존한다. `0.4.0` registry, tag와 artifact evidence는 각 release 단계의 실제 완료를 관찰한 뒤 추가한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
+릴리스 증거 갱신일: 2026-08-02
+
+이 문서는 Codex Agent View `0.4.0` npm package와 Codex plugin의 배포 경계를 정리한다. Public npm `latest`/version은 `0.4.0`이며 `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` public evidence는 historical record로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
 
 ## 현재 상태
 
 - package 이름은 `codex-agent-view`다. Public evidence table은 historical `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2`와 `0.4.0` release evidence를 구분한다.
+- Public npm `latest`와 exact version `0.4.0`, registry signature, annotated tag, GitHub Release, main/tag CI와 this-device exact reinstall을 확인했다.
 - Public `0.3.2`는 immutable packaged README의 잘못된 release-state 안내를 수정한 patch다. Registry metadata/digest/signature, tag/GitHub Release, main/tag CI, this-device exact install과 registry/install artifact match를 확인했다. App-native snapshot은 worker activity 3개를 확인했지만 live hook E2E는 앱 restart/new-task 전이라 미완료다.
 - Node.js `>=18`을 요구하며 production dependency가 없다.
 - `package.json`은 `codex-agent-view` executable을 `bin/codex-agent-view.mjs`로 노출한다.
@@ -14,7 +17,26 @@
 - `postinstall`과 다른 npm lifecycle installer는 없다. npm package를 받는 것만으로 Codex 설정을 바꾸지 않는다.
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
-- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Historical `codex-agent-view@0.3.2` public registry artifact는 이 기기에 exact version으로 global install해 검증했다.
+- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Public exact `codex-agent-view@0.4.0`을 이 기기에 global reinstall해 CLI/plugin version, installed/enabled, hook wiring과 event 수신을 확인했다.
+
+### Public `0.4.0` registry and release evidence
+
+| 확인 항목 | 결과 |
+| --- | --- |
+| npm `latest` / `version` | `0.4.0` |
+| Release commit / annotated tag | `11f7b0511a39c5f5a61cb6da7b91fb3b8e915c6b` / `v0.4.0` |
+| npm `gitHead` | **없음**. Exact tarball publish였으므로 registry metadata가 `gitHead`를 제공하지 않으며 tag 일치를 `gitHead`로 주장하지 않음 |
+| Dist shasum | `cc379e593f4cafa5dd56f32e6741eab5ba3f4497` |
+| Exact integrity | `sha512-uS0zOoxqboqwtqtBerDdpkNujY4v0hJ1ag96vXPFXZ1eWuHbUlZlKiO9yH2tip4ABxElNEyIT7K0lABE2z29DA==` |
+| Registry signature | 존재 확인 |
+| Package contents / size | 25 files, package `52614 B`, unpacked `189181 B` |
+| Artifact comparison | Registry tarball과 release tarball byte-identical |
+| GitHub Release | [v0.4.0 public release](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.0) |
+| CI | main run `30707999873`, tag run `30708301281` 성공 |
+| This-device exact artifact | CLI/plugin `0.4.0`, plugin installed/enabled, hook wiring 9종, `events_received: true`, sessions 7 |
+| Show Agents visual E2E | In-app Browser open request는 `queued`를 반환했지만 reinstall 전부터 유지된 현재 app process에서 tab을 관찰하지 못함. 앱 완전 재시작/new task 전까지 exact visual panel E2E 완료를 주장하지 않음 |
+
+Registry metadata에 npm `gitHead`가 없으므로 release commit/tag와 npm source 일치를 `gitHead`로 증명하지 않는다. 대신 실제 publish에 사용한 release tarball과 registry tarball의 byte-identical 비교를 source artifact 증거로 기록한다.
 
 ### Historical `0.3.2` public registry evidence
 
@@ -315,6 +337,12 @@ codex plugin marketplace remove codex-agent-view
 - [x] Public exact `0.3.2` app-native thread snapshot에서 worker activity 3개 확인
 - [ ] Public exact `0.3.2` live hook E2E: 앱 full restart 후 새 task에서 검증
 - [x] Annotated `v0.3.2` tag, GitHub Release, main/tag CI와 registry/tagged-source artifact comparison
+- [x] Public `0.4.0` latest/version, shasum, integrity, signature, 25 files와 package/unpacked size 확인
+- [x] Registry metadata에 npm `gitHead`가 없음을 확인하고 exact tarball publish 경계로 기록
+- [x] `v0.4.0` annotated tag/release commit `11f7b0511a39c5f5a61cb6da7b91fb3b8e915c6b`, GitHub Release, main/tag CI 성공 확인
+- [x] Registry tarball과 release tarball byte-identical 확인
+- [x] Public exact `0.4.0` this-device reinstall: CLI/plugin version, installed/enabled, hook wiring 9종, `events_received: true`, sessions 7 확인
+- [ ] Public exact `0.4.0` Show Agents visual panel E2E: Browser open request `queued`, 현재 app process에서 tab 미관찰; 앱 restart/new task 뒤 재검증
 - [ ] Opt-in capture가 존재하는 경우의 보존·별도 정리 경로 확인
 
 Historical `0.2.0` public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest` fixture event가 status/UI에 반영됐고 search/filter가 동작했으며 browser console error가 없었다. 별도의 `0.2.1` 공식 앱 E2E에서는 실제 `PermissionRequest` hook과 read-only waiting 표시를 포함한 위 8종 event를 확인했다.
@@ -333,6 +361,9 @@ Historical `0.2.0` public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `P
 - [x] Historical `0.3.2`: public registry metadata/digest/signature, annotated tag/GitHub Release, main/tag CI, exact global install과 registry/install artifact match를 확인했다.
 - [x] `0.3.2` app-native thread snapshot에서 worker activity 3개를 확인했다.
 - [ ] `0.3.2` live hook E2E는 앱 full restart/new-task 전이라 미완료다.
+- [x] Current public `0.4.0`: latest/version, digest/signature, 25-file tarball, annotated tag/GitHub Release, main/tag CI와 registry/release tarball byte 일치를 확인했다.
+- [x] Public exact `0.4.0` CLI/plugin reinstall, installed/enabled, hook wiring 9종, event 수신과 sessions 7을 확인했다.
+- [ ] Public exact `0.4.0` Show Agents visual panel은 현재 app process에서 관찰하지 못했으므로 앱 restart/new task E2E가 필요하다.
 - [ ] npm-backed marketplace catalog를 제공한다면 package, version range, registry와 authentication policy를 확정한다.
 - [x] Historical `0.2.1` 공식 앱에서 plugin installed/enabled와 새 task 핵심 lifecycle/permission 및 task ID 등록 없는 자동 표시를 실제 사용자 환경에서 검증했다.
 - [x] 후속 `0.3.0` source에서 실제 `SessionEnd`를 독립 검증했다.
