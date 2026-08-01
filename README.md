@@ -8,7 +8,7 @@ Codex Agent View is a read-only companion plugin that shows privacy-minimized ac
 
 ## Quick start: install once, then stay inside the Codex app
 
-This README documents the unpublished `codex-agent-view@0.4.3` release candidate. Use the exact-version command below for the one-time terminal installation only after `0.4.3` appears in the registry. Public npm `latest` is currently `0.4.2`.
+This README documents the public `codex-agent-view@0.4.3` release. Use the exact-version command below for the one-time terminal installation. Public npm `latest` is `0.4.3`.
 
 Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
@@ -38,7 +38,7 @@ In short: install once in a terminal; perform snapshot queries, status checks, l
 
 ## Status
 
-This repository and package are the unpublished `0.4.3` release candidate; registry verification on 2026-08-02 reports public npm `latest` as `0.4.2`. The candidate includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, privacy-minimized hooks, a bounded in-memory reducer, a trusted-hook auto-prepared token-authenticated `127.0.0.1` live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
+This repository and public npm `latest` are `0.4.3`. The release includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, privacy-minimized hooks, a bounded in-memory reducer, a trusted-hook auto-prepared token-authenticated `127.0.0.1` live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -66,7 +66,9 @@ Public `0.4.1`: npm `latest`/version, Apache-2.0 license, executable mapping, re
 
 Public `0.4.2` changes the plugin starter to `$show-agents`, which explicitly invokes the bundled **Show Agents** skill from the plugin card; `@codex-agent-view $show-agents` is the manual in-app reopen path. Release commits `b4d923a` and `3d8f46d` were pushed, main CI run `30712375726` passed on Node.js 18/20/22, and npm publication was verified with `latest: 0.4.2`, Apache-2.0 licensing, the expected executable mapping, 25 files, registry signature, shasum `fac95689395baa26f4ad9ff0cbefd0017d2ebd8d`, and integrity `sha512-FRTPoYxjBuPC6Usb+ylSfZsZVJKlKcHnQPaAPljekg0maTPn9POsBkS+auOcHz5jspg0AXcP8R63PM0WfCn2LQ==`. The release and registry tarballs are byte-identical; annotated tag `v0.4.2` and [GitHub Release v0.4.2](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.2) are public. This machine's exact global install, plugin installed/enabled state, all nine hook declarations, installed artifact match, and official Codex in-app Browser visual E2E were also verified.
 
-The unpublished `0.4.3` candidate preserves that app-only workflow and adds restart-safe live-view authentication. A user-only private viewer credential is separate from the runtime/control token and persists for the installed plugin's lifetime. The viewer credential can read `/api/state` but cannot ingest hook events or request shutdown; the runtime/control token rotates with the monitor process. Installing `0.4.3` over `0.4.2` seeds a missing viewer credential from the valid legacy runtime token without printing it, so an already-open Codex live tab can reconnect after the backend restarts on the same loopback origin. This credential continuity does not persist task state: restart still begins an empty bounded in-memory observation window.
+Public `0.4.3` preserves that app-only workflow and adds restart-safe live-view authentication. A user-only private viewer credential is separate from the runtime/control token and persists for the installed plugin's lifetime. The viewer credential can read `/api/state` but cannot ingest hook events or request shutdown; the runtime/control token rotates with the monitor process. Installing `0.4.3` over `0.4.2` seeds a missing viewer credential from the valid legacy runtime token without printing it, so an already-open Codex live tab can reconnect after the backend restarts on the same loopback origin. This credential continuity does not persist task state: restart still begins an empty bounded in-memory observation window.
+
+Release commits `a7d938c` and `e2b0543` were pushed, and main CI run `30713618590` passed on Node.js 18/20/22. npm `latest`/version `0.4.3`, Apache-2.0 licensing, 25 files, registry signature, shasum `2dee6bb0ae8c7b4bf505b72cf10d9ec42d5afbc7`, and integrity `sha512-E0Ljs2nDuBBme9UTu66kaW66eCp8mW7BfunLaK5y3u0CVCSjRtCfC9MAJjQA91yQYpeZ1Wj2sKy7d2CW04ZOPw==` were verified. The local release and registry tarballs are byte-identical. This machine's exact global `0.4.3` install, installed/enabled plugin, copied artifact match, all nine hooks, and `doctor` event observation were verified. In the official Codex in-app Browser migration E2E, an open `0.4.2` legacy tab stayed in retrying state without an authentication error during shutdown, then reconnected to the hook-auto-started `0.4.3` monitor and rendered the workspace and agent. The annotated tag and GitHub Release have not been created yet and remain pending.
 
 ## Boundaries
 
@@ -158,7 +160,7 @@ After plugin enablement/trust and an app restart, the first trusted hook interna
 
 ## Install from npm
 
-The commands below target the unpublished `0.4.3` release candidate's exact package version. Run them only after registry publication is confirmed; an unavailable version means the candidate has not been published yet.
+The commands below install the public `0.4.3` release by exact version.
 
 ```bash
 npm install --global codex-agent-view@0.4.3
@@ -167,9 +169,9 @@ codex-agent-view install
 
 After these two commands, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. Use the plugin card's **Quick start** action to invoke **Show Agents**; after closing the panel, enter `@codex-agent-view $show-agents` in a Codex app task to reopen it.
 
-The planned `0.4.3` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. When upgrading a valid `0.4.2` installation, `install` migrates its legacy runtime token into the new read-only viewer credential only when that credential does not already exist; neither token nor the private URL is printed.
+The `0.4.3` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. When upgrading a valid `0.4.2` installation, `install` migrates its legacy runtime token into the new read-only viewer credential only when that credential does not already exist; neither token nor the private URL is printed.
 
-The `0.2.0` through public `0.4.2` release evidence is preserved. The `0.4.3` candidate must not be treated as published or visually accepted until those checks are separately recorded in [Distribution](docs/distribution.md).
+The `0.2.0` through public `0.4.3` release evidence is preserved in [Distribution](docs/distribution.md). The `0.4.3` npm/install/migration E2E is complete; its annotated tag and GitHub Release remain pending.
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 

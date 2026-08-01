@@ -10,7 +10,7 @@ Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task�
 
 ### 빠른 시작: 설치 후에는 Codex 앱 안에서만 사용
 
-이 README는 아직 배포되지 않은 `codex-agent-view@0.4.3` release candidate를 설명한다. **최초 설치만** `0.4.3`이 registry에 나타난 뒤 일반 터미널에서 아래 exact-version 명령으로 진행한다. 현재 public npm `latest`는 `0.4.2`다.
+이 README는 공개된 `codex-agent-view@0.4.3` 릴리스를 설명한다. **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다. 현재 public npm `latest`는 `0.4.3`이다.
 
 ```bash
 npm install --global codex-agent-view@0.4.3
@@ -38,7 +38,7 @@ Trust된 첫 hook이 도착하면 plugin sender가 로컬 backend를 내부적�
 
 ### 현재 상태
 
-이 repository와 package는 아직 배포되지 않은 `0.4.3` release candidate다. 2026-08-02 registry 확인 기준 public npm `latest`는 `0.4.2`다. Candidate에는 다음 구성이 포함되어 있다.
+이 repository와 public npm `latest`는 `0.4.3`이다. Release에는 다음 구성이 포함되어 있다.
 
 - 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
@@ -76,7 +76,9 @@ Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 `codex-agent-vie
 
 공개 `0.4.2`는 plugin starter를 `$show-agents`로 바꿔 plugin 카드에서 bundled **Show Agents** skill을 명시 호출하며, `@codex-agent-view $show-agents`를 수동 앱 내 재오픈 경로로 제공한다. Release commit `b4d923a`와 `3d8f46d`를 push했고 main CI run `30712375726`이 Node.js 18/20/22에서 통과했다. npm publish 뒤 `latest: 0.4.2`, Apache-2.0, 예상 executable mapping, 25 files, registry signature, shasum `fac95689395baa26f4ad9ff0cbefd0017d2ebd8d`, integrity `sha512-FRTPoYxjBuPC6Usb+ylSfZsZVJKlKcHnQPaAPljekg0maTPn9POsBkS+auOcHz5jspg0AXcP8R63PM0WfCn2LQ==`를 확인했다. Release/registry tarball은 byte-identical이고 annotated `v0.4.2` tag와 [GitHub Release v0.4.2](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.2)가 공개됐다. 이 기기의 exact global install, plugin installed/enabled, hook wiring 9종, installed artifact 일치와 공식 Codex in-app Browser visual E2E도 확인했다.
 
-아직 배포되지 않은 `0.4.3` candidate는 기존 앱 전용 사용 흐름을 유지하면서 live 화면 인증을 runtime 제어 권한에서 분리한다. 사용자 전용 private viewer credential은 설치 수명 동안 유지되고 `/api/state` 읽기만 허용한다. Hook event ingest와 shutdown에 사용하는 runtime/control token은 별도이며 monitor process와 함께 교체된다. `0.4.2`에서 upgrade할 때 viewer credential이 아직 없고 legacy runtime record가 유효하면 기존 token으로 viewer credential을 seed하되 값을 출력하지 않는다. 따라서 이미 열린 Codex live tab은 같은 loopback origin에서 backend가 다시 시작되면 재연결할 수 있다. 다만 task/event state는 계속 process-local bounded memory뿐이므로 monitor restart 뒤에는 빈 새 관찰 window가 시작된다.
+공개 `0.4.3`은 기존 앱 전용 사용 흐름을 유지하면서 live 화면 인증을 runtime 제어 권한에서 분리한다. 사용자 전용 private viewer credential은 설치 수명 동안 유지되고 `/api/state` 읽기만 허용한다. Hook event ingest와 shutdown에 사용하는 runtime/control token은 별도이며 monitor process와 함께 교체된다. `0.4.2`에서 upgrade할 때 viewer credential이 아직 없고 legacy runtime record가 유효하면 기존 token으로 viewer credential을 seed하되 값을 출력하지 않는다. 따라서 이미 열린 Codex live tab은 같은 loopback origin에서 backend가 다시 시작되면 재연결할 수 있다. 다만 task/event state는 계속 process-local bounded memory뿐이므로 monitor restart 뒤에는 빈 새 관찰 window가 시작된다.
+
+Release commit `a7d938c`와 `e2b0543`을 push했고 main CI run `30713618590`이 Node.js 18/20/22에서 통과했다. npm `latest`/version `0.4.3`, Apache-2.0, 25 files, registry signature, shasum `2dee6bb0ae8c7b4bf505b72cf10d9ec42d5afbc7`, integrity `sha512-E0Ljs2nDuBBme9UTu66kaW66eCp8mW7BfunLaK5y3u0CVCSjRtCfC9MAJjQA91yQYpeZ1Wj2sKy7d2CW04ZOPw==`를 확인했고 local release/registry tarball은 byte-identical이다. 이 기기의 exact global `0.4.3`, plugin installed/enabled, installed artifact 일치, hook wiring 9종과 `doctor` event 수신도 확인했다. 공식 Codex in-app Browser migration E2E에서는 연결된 `0.4.2` legacy tab이 install 중 old monitor shutdown 동안 인증 오류 없이 재시도 상태를 유지했고, `0.4.3` hook sender가 monitor를 auto-start한 뒤 같은 tab이 재연결되어 workspace와 agent를 표시했다. Annotated tag와 GitHub Release는 아직 생성 전이라 pending이다.
 
 ### 제품 경계
 
@@ -206,7 +208,7 @@ Plugin enable/trust와 앱 재시작 뒤 생성되거나 재개되는 task는 tr
 
 ### npm 설치 명령 참고
 
-아래 명령은 아직 배포되지 않은 `0.4.3` release candidate의 exact 설치 명령이다. Registry publish가 확인된 뒤에만 실행하며, npm이 version을 찾지 못하면 candidate가 아직 공개되지 않은 것이다.
+아래 명령은 공개된 `0.4.3`의 exact 설치 명령이다.
 
 ```bash
 npm install --global codex-agent-view@0.4.3
@@ -215,9 +217,9 @@ codex-agent-view install
 
 이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화와 hook trust를 확인한 다음 새 task를 만든다. 첫 trusted hook이 backend 준비와 event 전달을 내부 처리하므로 사용자가 monitor CLI를 실행하지 않는다. Plugin 카드의 **지금 사용해보기**로 **Show Agents**를 호출하며, panel을 닫았으면 Codex 앱 task에 `@codex-agent-view $show-agents`를 입력해 다시 연다.
 
-`0.4.3`에서 계획한 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다. 유효한 `0.4.2` 설치에서 upgrade하면 viewer credential이 없을 때에만 legacy runtime token을 새 read-only viewer credential로 migration하며 token과 private URL은 출력하지 않는다.
+`0.4.3` 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다. 유효한 `0.4.2` 설치에서 upgrade하면 viewer credential이 없을 때에만 legacy runtime token을 새 read-only viewer credential로 migration하며 token과 private URL은 출력하지 않는다.
 
-`0.2.0`부터 public `0.4.2`까지의 release evidence는 보존한다. `0.4.3` candidate는 publish와 visual acceptance를 별도로 검증해 [docs/distribution.md](docs/distribution.md)에 기록하기 전까지 공개 완료로 취급하지 않는다.
+`0.2.0`부터 public `0.4.3`까지의 release evidence는 [docs/distribution.md](docs/distribution.md)에 보존한다. `0.4.3` npm/install/migration E2E는 완료됐고 annotated tag와 GitHub Release만 pending이다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
