@@ -124,15 +124,15 @@ node bin/codex-agent-view.mjs install
 
 `/hooks`는 CLI TUI command이며 `codex /hooks`라는 shell command가 아니다. Hook definition이 바뀌면 hash도 바뀌므로 다시 검토한다. 일반 설치에서 trust-bypass option을 사용하지 않는다.
 
-### Monitor 실행과 상태 확인
+### 선택적 live monitor 실행과 상태 확인
 
-Monitor를 foreground로 실행한다.
+앱 내 `Show active tasks` snapshot이 기본이며 monitor는 필요하지 않다. 사용자가 live hook 화면을 명시적으로 요청했을 때만 foreground monitor를 실행한다. 권장 명령은 다음과 같다.
 
 ```bash
-node bin/codex-agent-view.mjs start
+node bin/codex-agent-view.mjs start --no-open
 ```
 
-기본 주소는 `127.0.0.1:43127`이다. `start`는 URL만 출력하며 운영체제의 외부 browser를 자동으로 열지 않는다. 외부 browser 열기는 사용자가 명시적으로 원할 때만 다음처럼 실행한다.
+기본 주소는 `127.0.0.1:43127`이다. 현재 `start`와 `start --no-open`은 모두 URL만 출력하며 운영체제의 외부 browser를 자동으로 열지 않는다. `--no-open`은 설치된 skill과 일치하는 명시적 권장형이다. 외부 browser 열기는 사용자가 명시적으로 원할 때만 다음처럼 실행한다.
 
 ```bash
 node bin/codex-agent-view.mjs start --open
@@ -164,16 +164,18 @@ Monitor가 실행 중이고 plugin enable/trust가 끝난 뒤 생성되거나 �
 npm install --global codex-agent-view@0.3.0
 codex-agent-view install
 codex-agent-view doctor
-codex-agent-view start
 ```
+
+설치 뒤 monitor 시작은 필수가 아니다. 앱 내 snapshot을 먼저 사용하고, live hook 화면을 명시적으로 요청했을 때만 `codex-agent-view start --no-open`을 실행한다.
 
 Global install 없이 exact version을 일회성으로 실행할 수도 있다.
 
 ```bash
 npx --yes codex-agent-view@0.3.0 doctor
 npx --yes codex-agent-view@0.3.0 install
-npx --yes codex-agent-view@0.3.0 start
 ```
+
+Global install 없이 live monitor까지 명시적으로 요청한 경우에만 `npx --yes codex-agent-view@0.3.0 start --no-open`을 추가로 실행한다.
 
 `0.2.0`/`0.2.1` evidence는 historical record로 보존한다. Public exact `0.3.0`은 registry metadata/signature, tag/release, 이 기기 global reinstall과 artifact comparison을 통과했고 실제 hook, workspace label, permission/tool lifecycle 수신을 확인했다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
 
@@ -191,18 +193,20 @@ npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` c
 
 ### 제거와 복구
 
-가능하면 monitor를 `Ctrl+C`로 먼저 종료한 뒤 실행한다.
+Public npm/global 설치를 제거할 때는 가능하면 monitor를 `Ctrl+C`로 먼저 종료한 뒤 다음을 실행한다.
 
 ```bash
-node bin/codex-agent-view.mjs doctor --json
-node bin/codex-agent-view.mjs uninstall
+codex-agent-view doctor --json
+codex-agent-view uninstall
 ```
 
 기본 `uninstall`은 plugin 등록, marketplace 등록, copied marketplace bundle을 제거하지만 runtime directory의 나머지 data는 보존한다. 사용자가 `doctor`가 보여준 exact runtime directory까지 제거하길 명시적으로 원할 때만 다음을 사용한다.
 
 ```bash
-node bin/codex-agent-view.mjs uninstall --purge
+codex-agent-view uninstall --purge
 ```
+
+Source checkout을 직접 실행한 경우에만 같은 명령의 `node bin/codex-agent-view.mjs uninstall` 또는 `node bin/codex-agent-view.mjs uninstall --purge` 형식을 사용한다.
 
 별도 `PLUGIN_DATA`, `CODEX_AGENT_VIEW_CAPTURE_DIR`, project working directory에 만든 opt-in diagnostic capture는 runtime directory 밖에 있을 수 있다. 정확한 위치를 검토해 별도로 정리하고 broad Codex/home directory를 삭제하지 않는다.
 
@@ -214,7 +218,7 @@ node bin/codex-agent-view.mjs uninstall --purge
 node bin/codex-agent-view.mjs doctor --json
 ```
 
-Monitor가 실행 중인지, stale runtime file인지, runtime directory가 예상한 위치인지 확인한다. Monitor가 실행되지 않았다면 사용자가 원할 때 `start`로 시작한다. 외부 browser는 `--open`을 명시한 경우에만 열린다.
+Monitor가 실행 중인지, stale runtime file인지, runtime directory가 예상한 위치인지 확인한다. Monitor가 실행되지 않았다면 사용자가 live 화면을 명시적으로 요청했을 때만 `start --no-open`으로 시작한다. 현재 plain `start`도 외부 browser를 자동으로 열지 않으며 외부 browser는 `--open`을 명시한 경우에만 열린다.
 
 #### UI에 task/subagent가 없음
 
@@ -329,13 +333,13 @@ There are no production dependencies; the runtime uses Node.js built-ins. `insta
 
 Review the installed plugin and `hooks/hooks.json`, inspect the `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command, and explicitly trust the current hook hash. If the app was open before installation, quit it completely and reopen it. Create the test task only after enablement and trust; earlier events are not replayed.
 
-Start the foreground monitor:
+The app-native `Show active tasks` snapshot is the default and does not require the monitor. Start the foreground monitor only when the user explicitly requests the live hook view. The recommended command is:
 
 ```bash
-node bin/codex-agent-view.mjs start
+node bin/codex-agent-view.mjs start --no-open
 ```
 
-`start` prints the local URL and does not open an operating-system browser by default. Use `--open` only when you explicitly want an external browser. In another terminal:
+Both `start` and `start --no-open` currently print the local URL without opening an operating-system browser. The explicit `--no-open` form matches the installed skill and is recommended. Use `--open` only when you explicitly want an external browser. In another terminal:
 
 ```bash
 node bin/codex-agent-view.mjs status --json
@@ -356,16 +360,18 @@ The commands below install the current public exact `0.3.0` release.
 npm install --global codex-agent-view@0.3.0
 codex-agent-view install
 codex-agent-view doctor
-codex-agent-view start
 ```
+
+Starting the monitor is not required after installation. Use the app-native snapshot first, and run `codex-agent-view start --no-open` only when the live hook view is explicitly requested.
 
 Or run the exact version without a global install:
 
 ```bash
 npx --yes codex-agent-view@0.3.0 doctor
 npx --yes codex-agent-view@0.3.0 install
-npx --yes codex-agent-view@0.3.0 start
 ```
+
+Without a global install, add `npx --yes codex-agent-view@0.3.0 start --no-open` only when the live monitor was explicitly requested.
 
 The `0.2.0` and `0.2.1` evidence remains as historical release record. Public exact `0.3.0` passed registry metadata/signature, tag/release, this-device global reinstall, and artifact comparison checks; its monitor received real hooks, workspace labeling, permission, and tool lifecycle events. See [Distribution](docs/distribution.md).
 
@@ -391,14 +397,20 @@ Read [Privacy](docs/privacy.md), [Security](SECURITY.md), and [Support](SUPPORT.
 
 ### Uninstall
 
-Stop the monitor with `Ctrl+C` when practical, then run:
+For a public npm/global installation, stop the monitor with `Ctrl+C` when practical, then run:
 
 ```bash
-node bin/codex-agent-view.mjs doctor --json
-node bin/codex-agent-view.mjs uninstall
+codex-agent-view doctor --json
+codex-agent-view uninstall
 ```
 
-The default command removes plugin/marketplace registration and the copied bundle while preserving remaining runtime data. Use `uninstall --purge` only after reviewing the exact runtime directory and explicitly deciding to remove it. Opt-in captures outside that directory require separate, exact cleanup.
+The default command removes plugin/marketplace registration and the copied bundle while preserving remaining runtime data. Use the following only after reviewing the exact runtime directory and explicitly deciding to remove it:
+
+```bash
+codex-agent-view uninstall --purge
+```
+
+For a source checkout only, use the equivalent `node bin/codex-agent-view.mjs uninstall` or `node bin/codex-agent-view.mjs uninstall --purge` form. Opt-in captures outside that directory require separate, exact cleanup.
 
 ### Documentation and license
 
