@@ -2,7 +2,7 @@
 
 조사일: 2026-08-01
 
-이 문서는 Codex Agent View `0.2.0`의 npm package와 Codex plugin 배포 경계를 정리한다. 코드·tarball 준비와 npm login은 완료됐지만 public publish는 계정 필수 2FA가 비활성화되어 E403으로 차단됐다. GitHub release와 Universal Directory publish는 npm과 별도 절차다.
+이 문서는 Codex Agent View `0.2.0`의 npm package와 Codex plugin 배포 경계를 정리한다. npm 2FA `auth-and-writes` 활성화와 public registry publish는 완료됐다. GitHub release와 Universal Directory publish는 npm과 별도 절차다.
 
 ## 현재 상태
 
@@ -13,7 +13,7 @@
 - `postinstall`과 다른 npm lifecycle installer는 없다. npm package를 받는 것만으로 Codex 설정을 바꾸지 않는다.
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
 - runtime은 `127.0.0.1`에만 bind하고 live 상태를 의도적으로 bounded process memory에 둔다. Reset-on-restart는 완성된 companion 설계이며 SQLite/영구 history는 release 누락 항목이 아니다. 외부 telemetry, 원격 server, task 제어 기능도 없다.
-- `codex-agent-view@0.2.0` 코드와 tarball, maintainer `kyurasi` login은 준비됐다. `npm profile get`의 `tfa:false` 상태에서 publish가 E403으로 실패했으므로, 필수 2FA 활성화와 publish 성공 전에는 public npm 설치 경로가 아니다.
+- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. `codex-agent-view@0.2.0`은 public npm registry에 publish됐으며 exact-version global install과 `npx`가 공개 설치 경로다.
 
 ## CLI 표면
 
@@ -63,9 +63,9 @@ npm pack --dry-run --cache ./node_modules/.cache/npm
 
 Release candidate 검증에서는 `npm pack`으로 만든 exact tarball을 임시 prefix에 설치하고, 설치된 executable에서 `--version`, `doctor`, `install`, `start --no-open`, `status --json`, `uninstall --purge` 순서의 smoke/E2E를 수행한다. Source checkout만 실행하고 tarball이 정상이라고 가정하지 않는다.
 
-## Publish 성공 후 public npm 사용자 경로
+## Public npm 사용자 경로
 
-다음 명령은 필수 2FA 활성화와 `codex-agent-view@0.2.0` publish 성공을 확인한 뒤에 유효하다. Mutable `latest`보다 문서와 함께 검증한 exact version을 우선한다.
+다음 명령은 public `codex-agent-view@0.2.0`을 사용한다. Mutable `latest`보다 문서와 함께 검증한 exact version을 우선한다.
 
 일회성 실행:
 
@@ -84,7 +84,7 @@ codex-agent-view install
 codex-agent-view start
 ```
 
-Publish 후에도 global install과 `npx`는 package download만으로 Codex 설정을 바꾸지 않는다. 사용자가 `install`을 명시적으로 실행할 때만 local plugin registration이 바뀌며, hook command와 trust boundary를 먼저 보여준다.
+Global install과 `npx`는 package download만으로 Codex 설정을 바꾸지 않는다. 사용자가 `install`을 명시적으로 실행할 때만 local plugin registration이 바뀌며, hook command와 trust boundary를 먼저 보여준다.
 
 `codex-agent-view install`의 현재 동작은 다음과 같다.
 
@@ -169,8 +169,8 @@ codex plugin marketplace remove codex-agent-view
 
 - [x] maintainer npm `kyurasi` login 확인
 - [x] `0.2.0` 코드와 publish tarball 준비 확인
-- [ ] npm account 필수 2FA 활성화 확인 (`npm profile get` 현재 `tfa:false`)
-- [ ] E403 차단 해소 후 `0.2.0` public registry publish 성공 확인
+- [x] npm account 필수 2FA `auth-and-writes`, `pending:null` 확인
+- [x] `0.2.0` public registry publish 성공 확인
 - [x] `npm pack --dry-run`에서 의도한 runtime files만 포함하고 test/dev capture는 제외
 - [x] tarball 안에 executable, manifests/catalog, logo assets, hooks, sender/capture scripts, skill, UI/runtime, README, LICENSE, NOTICE 포함
 - [ ] release repository에서 Privacy, Terms, Support, Security 문서의 public URL이 접근 가능
@@ -185,8 +185,8 @@ codex plugin marketplace remove codex-agent-view
 ## 외부 배포 운영 상태
 
 - [x] npm account login, package metadata, version, tarball을 확인했다.
-- [ ] npm account 필수 2FA를 활성화하고 E403 차단을 해소한다.
-- [ ] Package 이름 소유권과 visibility를 registry publish 성공으로 확인한다.
+- [x] npm account 필수 2FA를 활성화하고 registry publish를 완료했다.
+- [x] Package 이름 소유권과 public visibility를 registry publish 성공으로 확인했다.
 - [ ] Git tag/release와 npm artifact가 같은 source에서 만들어졌는지 확인한다.
 - [ ] Public registry에서 package provenance와 exact-version global install/`npx` 동작을 확인한다.
 - [ ] npm-backed marketplace catalog를 제공한다면 package, version range, registry와 authentication policy를 확정한다.
