@@ -20,7 +20,7 @@ Codex Agent View는 공식 Codex 앱을 그대로 사용하면서 부모 task와
 
 Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex executable에서 plugin 설치와 실제 lifecycle payload를 검증했다. Local companion 제품 구현은 완료되었으며, 공식 Codex 앱의 **현재 GUI task에서 trusted hook → local monitor → UI 전체 흐름을 확인하는 최종 E2E**와 실제 `PermissionRequest` payload 관찰은 외부 compatibility acceptance로 남아 있다. 이는 구현되지 않은 제품 기능 목록이 아니라 현재 공식 앱 조합에 대한 미확인 검증 범위다.
 
-`codex-agent-view@0.2.0`은 public npm registry에서 설치할 수 있다. npm publish와 별개인 Universal Plugins Directory 제출은 아직 완료되지 않아 directory 검색에는 나타나지 않는다.
+`codex-agent-view@0.2.0`의 코드·tarball 준비와 maintainer npm login은 완료됐다. 실제 publish는 계정의 필수 2FA가 비활성화된 상태(`tfa:false`)라 registry E403으로 차단됐다. 2FA를 활성화하고 publish 성공을 확인하기 전에는 public npm 설치 경로로 안내하지 않는다. npm publish와 별개인 Universal Plugins Directory 제출도 아직 완료되지 않아 directory 검색에는 나타나지 않는다.
 
 ### 제품 경계
 
@@ -122,9 +122,9 @@ node bin/codex-agent-view.mjs doctor --json
 
 Monitor가 꺼져 있어도 hook sender는 fail-open으로 끝나 Codex task를 막지 않는다. Monitor를 나중에 켜면 꺼져 있던 동안의 event가 복구되지는 않는다.
 
-### npm에서 설치
+### npm 공개 설치 준비 상태
 
-권장 설치 방법은 검증된 exact version을 global로 설치하는 것이다.
+다음 global install과 exact-version `npx` 명령은 필수 2FA를 활성화하고 `codex-agent-view@0.2.0` publish 성공을 확인한 뒤에 유효하다.
 
 ```bash
 npm install --global codex-agent-view@0.2.0
@@ -133,7 +133,7 @@ codex-agent-view install
 codex-agent-view start
 ```
 
-Global install 없이 exact version을 일회성으로 실행할 수도 있다.
+Publish 후에는 global install 없이 exact version을 일회성으로 실행할 수도 있다.
 
 ```bash
 npx --yes codex-agent-view@0.2.0 doctor
@@ -141,7 +141,7 @@ npx --yes codex-agent-view@0.2.0 install
 npx --yes codex-agent-view@0.2.0 start
 ```
 
-npm install은 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
+Publish 후에도 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
 ### Privacy와 opt-in diagnostic capture
 
@@ -217,7 +217,7 @@ The current source version is `0.2.0`. It includes the plugin and marketplace ma
 
 Plugin installation and real lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. The final **trusted hook → local monitor → UI E2E in a current official Codex GUI task remains unverified**, and a real `PermissionRequest` payload has not been observed. These are external compatibility-acceptance checks for the current official app combination, not missing local product features.
 
-`codex-agent-view@0.2.0` is available from the public npm registry. npm publication is separate from Universal Plugins Directory submission; the plugin has not been published through the Directory and is not directory-searchable.
+The code, tarball, and maintainer npm login for `codex-agent-view@0.2.0` are ready. The publish attempt was blocked with registry E403 because required account 2FA is disabled (`tfa:false`). Do not present npm as a public install path until 2FA is enabled and publish success is verified. npm publication remains separate from Universal Plugins Directory submission; the plugin is not directory-searchable.
 
 ### Boundaries
 
@@ -275,9 +275,9 @@ node bin/codex-agent-view.mjs doctor --json
 
 An empty session list means that this monitor observed no events. It does not prove that Codex has no running task. Stopping or restarting the monitor discards its in-memory state, and downtime events are not replayed.
 
-### Install from npm
+### npm publication readiness
 
-Install the verified exact version globally:
+The following global-install and exact-version `npx` commands become valid after required 2FA is enabled and `codex-agent-view@0.2.0` is successfully published.
 
 ```bash
 npm install --global codex-agent-view@0.2.0
@@ -286,7 +286,7 @@ codex-agent-view install
 codex-agent-view start
 ```
 
-Or run the exact version without a global install:
+After publication, the exact version can also run without a global install:
 
 ```bash
 npx --yes codex-agent-view@0.2.0 doctor
@@ -294,7 +294,7 @@ npx --yes codex-agent-view@0.2.0 install
 npx --yes codex-agent-view@0.2.0 start
 ```
 
-npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
+After publication, npm installation still does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 
 ### Privacy
 

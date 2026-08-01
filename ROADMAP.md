@@ -26,8 +26,10 @@
 ## 외부 npm distribution operation
 
 - [x] Maintainer가 npm account와 `kyurasi` login을 확인했다.
-- [x] `codex-agent-view@0.2.0` public npm registry publish를 완료했다.
-- [ ] Published exact artifact에서 global install과 exact-version `npx` install/start/status/uninstall smoke test를 완료한다.
+- [x] `codex-agent-view@0.2.0` 코드와 publish tarball 준비를 완료했다.
+- [ ] npm account 필수 2FA를 활성화한다. 현재 `npm profile get`은 `tfa:false`이며 publish가 E403으로 차단됐다.
+- [ ] 2FA 활성화 뒤 `codex-agent-view@0.2.0` public registry publish 성공을 확인한다.
+- [ ] Publish 성공 뒤 exact artifact에서 global install과 exact-version `npx` install/start/status/uninstall smoke test를 완료한다.
 
 ## 외부 Universal Directory listing
 

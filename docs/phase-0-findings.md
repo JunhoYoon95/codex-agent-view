@@ -138,7 +138,7 @@ Phase 0 당시 local marketplace가 repository root를 가리키면 source tree 
 
 `codex-agent-view install`은 package에 포함된 allowlisted entry만 runtime directory 아래 copied local marketplace로 옮긴 뒤 Codex plugin을 등록한다. npm package를 받았다고 hook trust를 자동 승인하지 않으며, 사용자 설정을 몰래 바꾸는 `postinstall`도 없다.
 
-`codex-agent-view@0.2.0` public npm registry publish는 완료됐다. Exact published artifact의 global install/`npx` smoke evidence와 Universal Plugins Directory 제출은 각각 별도 외부 절차로 추적한다.
+`codex-agent-view@0.2.0` 코드·tarball 준비와 maintainer npm login은 완료됐다. 실제 registry publish는 `tfa:false` 계정의 필수 2FA 요구로 E403 차단됐으며, 2FA 활성화 후 publish 성공과 exact artifact global install/`npx` smoke를 다시 확인해야 한다. Universal Plugins Directory 제출은 npm과 별도 외부 절차다.
 
 ## Phase 0 권장과 `0.2.0`에서 확정한 아키텍처
 
@@ -225,11 +225,13 @@ Local 제품 구현은 완료되었다. 사용자가 공식 Codex 앱에서 다�
 
 공개 배포에는 다음 제품 외부 운영 단계가 남아 있다.
 
-- [x] maintainer npm login(`kyurasi`)과 `0.2.0` public registry publish
-- [ ] published exact artifact에서 global install/`npx` smoke test
+- [x] maintainer npm login(`kyurasi`)과 `0.2.0` 코드·tarball 준비
+- [ ] npm account 필수 2FA 활성화 (`npm profile get` 현재 `tfa:false`)
+- [ ] E403 차단 해소 뒤 `0.2.0` public registry publish 성공
+- [ ] publish 성공 뒤 exact artifact global install/`npx` smoke test
 - Universal Plugins Directory portal 제출, review, publish, search visibility 확인
 
-README는 exact-version global install과 `npx`를 public npm 사용법으로 안내한다. Directory publish 전에는 Universal Directory에서 검색 가능하다고 주장하지 않는다.
+README의 exact-version global install과 `npx`는 publish 성공 후 유효한 명령으로 표시한다. 2FA/publish 성공 전에는 public npm 설치가 가능하다고 안내하지 않고, Directory publish 전에는 Universal Directory에서 검색 가능하다고 주장하지 않는다.
 
 ## QA 결과
 
@@ -240,4 +242,4 @@ README는 exact-version global install과 `npx`를 public npm 사용법으로 �
 - source CLI `--version`: `0.2.0`
 - source CLI `doctor --json`: Codex CLI version, plugin/monitor 상태, runtime directory 진단 확인
 
-Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring으로 local live companion 제품 구현은 완료됐다. 새 official GUI task E2E와 실제 `PermissionRequest`는 external compatibility evidence이고, published exact npm artifact smoke와 Universal Directory listing은 external distribution/listing operation이다. 어느 항목도 SQLite/영구 history 같은 미구현 제품 기능을 뜻하지 않는다.
+Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring으로 local live companion 제품 구현은 완료됐다. 새 official GUI task E2E와 실제 `PermissionRequest`는 external compatibility evidence이고, npm 필수 2FA/publish/exact artifact smoke와 Universal Directory listing은 external distribution/listing operation이다. 어느 항목도 SQLite/영구 history 같은 미구현 제품 기능을 뜻하지 않는다.
