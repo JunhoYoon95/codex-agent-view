@@ -20,7 +20,7 @@ Codex Agent View는 공식 Codex 앱을 그대로 사용하면서 부모 task와
 
 Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex executable에서는 plugin 설치와 lifecycle payload를 검증했다. 그러나 `0.2.0`을 실행 중인 공식 앱 process에 설치·enable한 실사용 재현에서는 실제 subagent 2개를 실행해도 monitor가 event를 0건 수신했다. Monitor, plugin 등록, enable, 설치 bundle은 정상이었지만 앱 log에는 sender 실행 흔적이 없었다. 같은 app process가 설치 전의 `hooks/list` snapshot을 유지한 정황이 있으며, CLI JSON으로 exact hook trust 상태를 확인할 수 없어 config snapshot과 trust 중 어느 경계에서 skip됐는지는 확정하지 않았다.
 
-`0.2.1`은 부모 task lifecycle hook을 추가하고, `status`, `doctor`, 빈 UI가 “monitor 정상”과 “hook event 수신”을 구분하도록 개선한 patch다. **공식 앱을 완전히 재시작하고 hook을 검토·trust한 뒤 새 task에서 수행하는 E2E가 끝나기 전에는 공식 GUI 호환 성공을 주장하지 않는다.**
+`0.2.1`은 부모 task lifecycle hook을 추가하고, `status`, `doctor`, 빈 UI가 “monitor 정상”과 “hook event 수신”을 구분하도록 개선한 patch다. 공식 Codex 앱 `26.727.40816`(`build 6067`)을 재시작하고 설치·활성화된 plugin `0.2.1`을 사용한 실제 E2E에서 task ID를 사전 등록하지 않아도 parent session 3개와 subagent 3개가 UI에 자동으로 나타났다. 실제 hook의 `SessionStart`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest`가 sender → loopback monitor → UI 경로에 반영됐다. `SessionEnd` wiring은 포함돼 있지만 실제 공식 앱 event는 아직 관찰하지 않았으므로 호환 확인을 주장하지 않는다.
 
 Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 `codex-agent-view@0.2.0`은 public npm registry에서 사용할 수 있다. npm publish와 별개인 Universal Plugins Directory 제출은 아직 완료되지 않아 directory 검색에는 나타나지 않는다.
 
@@ -57,7 +57,7 @@ Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`,
 
 | Runtime | 확인된 버전 | 확인 범위 |
 | --- | --- | --- |
-| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | 설치 전 열린 process에서 event 0건 재현; restart/trust/new-task E2E 대기 |
+| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | 재시작한 현재 조합에서 plugin `0.2.1`의 parent 3개·subagent 3개 자동 표시 및 실제 hook 8종 E2E 확인; `SessionEnd` 미관찰 |
 | 앱 embedded Codex | `0.146.0-alpha.9.2` | isolated plugin install/runtime 및 lifecycle probe |
 | Homebrew Codex CLI | `0.146.0` | isolated plugin install/runtime probe |
 
@@ -140,7 +140,7 @@ Monitor가 실행 중이고 plugin enable/trust가 끝난 뒤 생성되거나 �
 
 ### npm에서 설치
 
-`0.2.1`이 public registry에 반영된 뒤 권장 설치 방법은 exact version을 global로 설치하는 것이다. Publish 확인 전에는 이 repository source에서 검증한다.
+`0.2.1` release의 권장 설치 방법은 exact version을 global로 설치하는 것이다. 이 문서 작성 시점에 public registry에서 확인된 버전은 아직 `0.2.0`이므로, `0.2.1` publish가 확인되기 전에는 이 repository source에서 검증한다.
 
 ```bash
 npm install --global codex-agent-view@0.2.1
@@ -157,7 +157,7 @@ npx --yes codex-agent-view@0.2.1 install
 npx --yes codex-agent-view@0.2.1 start
 ```
 
-위 public artifact 검증 기록은 `0.2.0`에 대한 것이다. Isolated global install과 exact-version `npx` 양쪽에서 CLI lifecycle을 통과했고 fixture event는 status/UI에 반영됐지만, 이후 실제 공식 앱 process에서는 event 0건이 재현됐다. `0.2.1`은 source/package QA와 공식 앱 restart/trust/new-task E2E를 다시 통과한 뒤에만 같은 수준의 검증 완료로 기록한다. Registry digest와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
+위 public artifact 검증 기록은 `0.2.0`에 대한 것이다. Isolated global install과 exact-version `npx` 양쪽에서 CLI lifecycle을 통과했고 fixture event는 status/UI에 반영됐지만, 이후 실행 중이던 실제 공식 앱 process에서는 event 0건이 재현됐다. 별도의 `0.2.1` source/package QA와 재시작한 공식 앱 E2E에서는 실제 hook 8종과 task ID 등록 없는 자동 표시를 확인했다. 다만 `0.2.1` registry artifact, digest, tag·GitHub Release는 publish 뒤 별도로 검증해야 하며, 실제 `SessionEnd`도 아직 미관찰이다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
@@ -212,7 +212,7 @@ Monitor가 실행 중인지, stale runtime file인지, runtime directory가 예�
 
 #### `PermissionRequest`가 표시되지 않음
 
-Approval이 실제 필요한 동작에서만 발생할 수 있다. 현재 공식 앱 GUI의 실제 payload는 external compatibility evidence가 아직 없어, 표시되지 않는 원인을 schema 문제와 “event 자체가 발생하지 않음”으로 분리해 조사한다. Monitor는 approval을 자동 처리하지 않는다.
+Approval이 실제 필요한 동작에서만 발생할 수 있다. 공식 앱 `26.727.40816`(`build 6067`) E2E에서는 실제 `PermissionRequest` hook이 sender → loopback monitor → UI에 도착해 read-only waiting 상태로 표시되는 것을 확인했다. 다른 환경에서 표시되지 않으면 schema 문제와 “event 자체가 발생하지 않음”을 분리해 조사한다. Monitor는 approval을 자동 처리하지 않는다.
 
 ### 문서와 지원
 
@@ -239,7 +239,7 @@ The current source version is `0.2.1`. It includes the plugin and marketplace ma
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
-`0.2.1` adds `SessionStart`, `SessionEnd`, `UserPromptSubmit`, and `Stop` for parent-task lifecycle visibility and makes `status`, `doctor`, and the empty UI distinguish monitor health from hook delivery. We do **not** claim official GUI compatibility until a full app restart, explicit current-hook review/trust, and a new-task E2E succeed.
+`0.2.1` adds `SessionStart`, `SessionEnd`, `UserPromptSubmit`, and `Stop` for parent-task lifecycle visibility and makes `status`, `doctor`, and the empty UI distinguish monitor health from hook delivery. In a real E2E after restarting official Codex app `26.727.40816` (`build 6067`) with plugin `0.2.1` installed and enabled, three parent sessions and three subagents appeared automatically without pre-registering task IDs. Real `SessionStart`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, and `PermissionRequest` hooks reached the sender, loopback monitor, and UI. `SessionEnd` is wired but has not yet been observed from the real official app, so compatibility for that event is not claimed.
 
 Maintainer npm 2FA is enabled in `auth-and-writes` mode, and `codex-agent-view@0.2.0` is available from the public npm registry. npm publication remains separate from Universal Plugins Directory submission; the plugin is not directory-searchable.
 
@@ -272,7 +272,7 @@ A separately launched Codex `0.146` App Server `thread/list` fallback was also t
 
 | Runtime | Tested version | Scope |
 | --- | --- | --- |
-| Official Codex app | `26.727.40816` (`build 6067`) | zero-event reproduction in a pre-existing process; restart/trust/new-task E2E pending |
+| Official Codex app | `26.727.40816` (`build 6067`) | real E2E after restart with plugin `0.2.1`: three parents and three subagents appeared automatically and eight real hook types reached the UI; `SessionEnd` unobserved |
 | App-embedded Codex | `0.146.0-alpha.9.2` | isolated install/runtime and lifecycle probe |
 | Homebrew Codex CLI | `0.146.0` | isolated install/runtime probe |
 
@@ -315,7 +315,7 @@ Once the monitor is running and plugin enablement/trust is complete, hooks from 
 
 ### Install from npm
 
-After `0.2.1` appears in the public registry, install that exact version globally. Until publication is confirmed, validate from this repository source.
+The recommended installation for the `0.2.1` release is the exact global version below. At the time of writing, the public registry version confirmed by this document is still `0.2.0`; validate from this repository source until the `0.2.1` publication is confirmed.
 
 ```bash
 npm install --global codex-agent-view@0.2.1
@@ -332,7 +332,7 @@ npx --yes codex-agent-view@0.2.1 install
 npx --yes codex-agent-view@0.2.1 start
 ```
 
-That public-artifact evidence applies to `0.2.0`: isolated global and exact-version `npx` CLI lifecycles passed, and fixture events reached status/UI. A later real official-app process reproduced zero delivered events. Record `0.2.1` as verified only after source/package QA and the official-app restart/trust/new-task E2E both pass. See [Distribution](docs/distribution.md) for the registry evidence and verification boundary.
+That public-artifact evidence applies to `0.2.0`: isolated global and exact-version `npx` CLI lifecycles passed, and fixture events reached status/UI. A later already-running official-app process reproduced zero delivered events. Separate `0.2.1` source/package QA and a restarted official-app E2E confirmed eight real hook types and automatic listing without task-ID registration. The `0.2.1` registry artifact, digest, tag, and GitHub Release still require separate post-publication verification, and a real `SessionEnd` remains unobserved. See [Distribution](docs/distribution.md) for the registry evidence and verification boundary.
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 
