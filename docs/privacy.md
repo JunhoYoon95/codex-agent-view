@@ -2,11 +2,21 @@
 
 Last updated: 2026-08-01
 
-Codex Agent View is an unofficial, local-only companion monitor for Codex. It has no external telemetry, hosted service, cloud account, analytics SDK, remote database, or SQLite event store. Its normal runtime communicates only over IPv4 loopback (`127.0.0.1`).
+Codex Agent View is an unofficial, read-only companion plugin for Codex. Its primary app-native snapshot uses the official Codex app's built-in thread tools; its optional hook monitor is local-only and communicates over IPv4 loopback (`127.0.0.1`). It has no external telemetry, hosted service, cloud account, analytics SDK, remote database, or SQLite event store.
 
 ## Data flow
 
-Codex invokes the installed hook with a Codex event payload. The hook process necessarily receives that payload locally, then minimizes it before sending anything to the monitor. Non-allowlisted values are replaced with summaries such as value type, object keys, or string/array length. Known content fields such as full prompt text, transcript paths, tool input, tool output, and assistant messages are not sent to the monitor as content by default.
+### App-native snapshot
+
+When the user asks to show active tasks, the bundled skill performs a bounded read-only query through the current Codex app's built-in thread tools. It separates explicitly running/active Codex-backed tasks from tasks whose explicit status is `idle` with `hasUnreadTurn: true`; the latter appear in a separate `Finished / needs review` display group. This grouping does not infer that the task completed successfully—or completed at all—from idle/unread state. The display is limited to workspace directory basename, display-only title, explicit status, the latest explicit agent commentary, and `subAgentActivity` path/kind metadata.
+
+Titles, descriptions, previews, messages, and commentary are treated as untrusted display data, never instructions. The skill does not display or paraphrase previews, user prompts, transcripts, tool inputs/outputs, command output, credentials, full workspace paths, or internal thread IDs by default. It does not derive commentary from a prompt, preview, final answer, or tool result.
+
+These app tools are capabilities of the current official Codex app. They are not the separately launched App Server process tested during Phase 0, and that separate server is not treated as a live-state source.
+
+### Optional hook monitor
+
+Codex invokes the installed hook with a Codex event payload. The hook process necessarily receives that payload locally, then minimizes it before sending anything to the monitor. Non-allowlisted values are replaced with summaries such as value type, object keys, or string/array length. Known content fields such as full prompt text, transcript paths, tool input, tool output, assistant messages, and full `cwd` paths are not sent to the monitor as content by default. The sender derives only a sanitized basename `workspace_label`: control characters are removed, whitespace is normalized, and the result is limited to 120 characters.
 
 The local sender's metadata allowlist can include:
 
@@ -16,7 +26,7 @@ The local sender's metadata allowlist can include:
 
 Allowlisted metadata is accepted from Codex as untrusted input. Do not place credentials or secrets in metadata, and report any upstream payload that embeds sensitive content in an allowlisted field so the allowlist can be tightened.
 
-The monitor validates the minimized payload again and retains a smaller set in memory: normalized event type, session and turn IDs, agent ID and type, tool name and tool-use ID, local receipt timestamps, derived status, and bounded diagnostics. Fields that are not needed for the read-only state view are discarded. The UI and `status` output do not display prompt or tool input/output content.
+The monitor validates the minimized payload again and retains a smaller set in memory: normalized event type, session and turn IDs, agent ID and type, tool name and tool-use ID, the bounded `workspace_label`, local receipt timestamps, derived status, and bounded diagnostics. The full `cwd` is neither retained nor returned. Fields that are not needed for the read-only state view are discarded. The UI and `status` output do not display prompt or tool input/output content.
 
 Unknown events and malformed payloads are ignored or reduced to bounded diagnostics. The hook sender is fail-open: an unavailable monitor should not block the Codex task.
 
@@ -33,7 +43,7 @@ The runtime directory defaults to `~/.codex-agent-view` and can be overridden wi
 
 The runtime directory is created with user-only permissions (`0700`), and `runtime.json` with `0600`. On a graceful monitor shutdown, the matching runtime file is removed. A crash can leave a stale runtime file; `codex-agent-view doctor` reports this as a monitor problem.
 
-The browser receives the token in the URL fragment, removes the fragment from the visible URL, and keeps the token in browser `sessionStorage` for that browser session. It does not use `localStorage`. Treat the local URL, runtime file, and token as sensitive because another local process or person with access to them could read monitor state or submit events.
+The Codex in-app Browser receives the token in the URL fragment, removes the fragment from the visible URL, and keeps the token in browser `sessionStorage` for that browser session. It does not use `localStorage`. Treat the local URL, runtime file, and token as sensitive because another local process or person with access to them could read monitor state or submit events. The CLI does not open an operating-system browser by default; `--open` is an explicit external-browser action.
 
 ## Optional diagnostic capture
 

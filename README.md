@@ -1,6 +1,6 @@
 # Codex Agent View
 
-Codex Agent View는 공식 Codex 앱을 그대로 사용하면서 부모 task와 subagent의 hook 기반 활동을 한눈에 보여주는 가벼운 read-only companion monitor다. Codex를 대체하거나 task를 제어하지 않는다.
+Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task와 subagent를 privacy-minimized snapshot으로 보여주고, 필요할 때만 hook 기반 local live monitor를 여는 read-only companion plugin이다. Codex를 대체하거나 task를 제어하지 않는다.
 
 > 비공식 커뮤니티 프로젝트이며 OpenAI의 공식 제품, 제휴 제품, 공식 지원 프로젝트가 아니다.
 
@@ -8,8 +8,9 @@ Codex Agent View는 공식 Codex 앱을 그대로 사용하면서 부모 task와
 
 ### 현재 상태
 
-현재 source version은 `0.2.1`이다. 다음 구성은 구현되어 있다.
+현재 source는 아직 배포되지 않은 `0.3.0` candidate이며 public npm `latest`는 `0.2.1`이다. 다음 구성은 source에 구현되어 있다.
 
+- 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
 - 부모 task용 `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`과 subagent/tool/permission hook wiring
 - privacy-minimized hook sender와 bounded in-memory reducer
@@ -22,6 +23,8 @@ Homebrew Codex CLI와 공식 앱에 포함된 embedded Codex executable에서는
 
 `0.2.1`은 부모 task lifecycle hook을 추가하고, `status`, `doctor`, 빈 UI가 “monitor 정상”과 “hook event 수신”을 구분하도록 개선한 patch다. 공식 Codex 앱 `26.727.40816`(`build 6067`)을 재시작하고 설치·활성화된 plugin `0.2.1`을 사용한 실제 E2E에서 task ID를 사전 등록하지 않아도 parent session 3개와 subagent 3개가 UI에 자동으로 나타났다. 실제 hook의 `SessionStart`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest`가 sender → loopback monitor → UI 경로에 반영됐다. `SessionEnd` wiring은 포함돼 있지만 실제 공식 앱 event는 아직 관찰하지 않았으므로 호환 확인을 주장하지 않는다.
 
+`0.3.0` candidate의 팀장 E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 active task, workspace basename, title, description, explicit `inProgress` status, 최신 explicit agent commentary와 `subAgentActivity`를 확인했다. 완료 직후 list 결과가 explicit `idle`, `hasUnreadTurn: true`로 바뀌는 것도 확인했다. Skill은 이를 running/active와 분리한 `완료/확인 대기` 표시 그룹에 포함하지만, `idle + unread`만으로 완료 또는 성공을 추론하지 않는다. 별도의 hook/browser monitor에서는 실제 `SessionEnd`까지 관찰했다. 이는 source candidate 증거이며 `0.3.0` npm publish, tag, GitHub Release 또는 public artifact 설치 E2E를 뜻하지 않는다.
+
 Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 현재 `latest`인 `codex-agent-view@0.2.1`은 public npm registry에서 사용할 수 있다. npm publish와 별개인 Universal Plugins Directory 제출은 아직 완료되지 않아 directory 검색에는 나타나지 않는다.
 
 검증된 `0.2.0` 릴리스: npm `gitHead`와 annotated `v0.2.0` tag는 commit `00b62af56698ac875e39c7d1386905c157c3a7e8`로 일치하고, registry SRI/signature 및 tag source와 registry artifact의 21개 package file byte 일치를 확인했다. [GitHub Release v0.2.0](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.2.0)은 공개 상태다. 별도 npm provenance attestation은 선택 사항이며 이 릴리스에는 없다.
@@ -32,22 +35,33 @@ Maintainer npm 2FA는 `auth-and-writes` mode로 활성화됐고 현재 `latest`�
 
 Codex Agent View는 historical audit이나 session replay 제품이 아니라 현재 활동을 보여주는 live companion이다. Bounded in-memory state와 monitor 재시작 시 reset은 privacy와 단순한 failure boundary를 위한 의도된 완성 설계다. SQLite/영구 history는 누락된 요구사항이 아니다. 실제 사용자 요구가 입증될 때에만 retention, migration, deletion, privacy 비용을 별도 검토하는 명시적 opt-in 기능 후보로 취급한다.
 
-- live 상태의 source of truth는 hook event다.
-- Live 상태는 설계대로 monitor process의 bounded memory에만 있고 재시작하면 새 관찰 window가 시작된다.
+- 앱 안의 현재 task snapshot은 공식 Codex 앱이 제공하는 내장 thread tools의 explicit status와 `subAgentActivity`를 우선 사용한다.
+- Hook event는 local monitor의 세부 lifecycle 상태에 대한 source of truth다. Monitor state는 bounded memory에만 있고 재시작하면 새 관찰 window가 시작된다.
 - 외부 telemetry, 원격 server, account, 필수 SQLite/영구 event store가 없다.
 - prompt, transcript path, 전체 tool input/output, assistant message를 monitor 상태나 UI에 저장·표시하지 않는다.
 - task/subagent 중지·재시작, message 전송, permission 자동 승인·거절 기능이 없다.
-- App Server는 향후 계층 metadata 보강 후보일 뿐이며 공식 앱 process와 memory를 공유한다고 가정하지 않는다.
+- 별도로 실행한 App Server는 앱 내장 thread tools와 다른 process다. 공식 앱의 live source로 간주하거나 둘을 같은 API로 설명하지 않는다.
 
-별도로 실행한 Codex `0.146` App Server의 `thread/list` fallback도 실제 확인했지만 현재 root/subagent가 모두 `notLoaded`로 나타나 공식 앱의 live running/completed 상태를 공유하지 않았다. Persisted parent ID, alias, depth 보강은 가능하나 live 판별은 불가능했고 state DB read, privacy, 복잡도만 늘어나므로 `0.2.1`에는 채택하지 않았다.
+별도로 실행한 Codex `0.146` App Server의 `thread/list` fallback도 실제 확인했지만 현재 root/subagent가 모두 `notLoaded`로 나타나 공식 앱의 live running/completed 상태를 공유하지 않았다. Persisted parent ID, alias, depth 보강은 가능했지만 live 판별에는 채택하지 않았다. `0.3.0`의 primary snapshot은 이 별도 server가 아니라 현재 공식 앱이 직접 제공하는 내장 thread tools를 사용한다.
 
 ### npm, local browser UI, Plugins Directory가 각각 필요한 이유
 
-- npm은 `codex-agent-view` local executable, hook sender, runtime, static UI를 사용자 machine에 배포하는 경로다.
-- Browser는 `127.0.0.1`에서만 열리는 현재 read-only companion UI다. 외부 website나 telemetry dashboard가 아니다.
+- 공식 Codex 앱에서 plugin에게 `Show active tasks`라고 요청하는 것이 `0.3.0`의 primary UX다. 별도 monitor 실행이나 task ID 등록이 필요 없다.
+- npm은 plugin bundle과 optional local executable, hook sender, runtime, static UI를 사용자 machine에 배포하는 fallback 경로다.
+- Codex in-app Browser는 명시적으로 live view를 요청했을 때만 `127.0.0.1` monitor를 보여준다. 외부 website나 telemetry dashboard가 아니다.
 - Universal Plugins Directory는 npm의 대체재가 아니다. 공개 directory의 in-app custom UI 경로는 public HTTPS MCP server와 domain verification이 필요해 local-only/no-external-server 원칙과 충돌한다. 현재는 별도의 listing/skills 제출 가능성만 검토하며, 심사·publish 전에는 Codex plugin 검색으로 설치할 수 있다고 안내하지 않는다.
 
 Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`, `stopped_without_start`, 빈 상태는 그대로 해석해야 한다. 빈 session 목록은 “이 monitor가 event를 관찰하지 못함”이며 “실행 중인 task가 없음”의 증거가 아니다.
+
+### 공식 Codex 앱에서 사용 — 권장
+
+1. Codex 앱에서 Codex Agent View plugin을 선택한다.
+2. `Show active tasks` 또는 “현재 active task와 subagent를 보여줘”라고 요청한다.
+3. Plugin은 여러 workspace의 running/active task와 explicit `idle + hasUnreadTurn` task를 조회한다. 후자는 별도 `완료/확인 대기` 그룹에 표시하되 완료·성공으로 단정하지 않는다.
+4. Workspace basename, 표시용 title, explicit status, 최신 explicit agent commentary와 `subAgentActivity`만 간결하게 보여준다.
+5. Prompt, preview, tool input/output, full workspace path와 internal thread ID는 기본 표시하지 않는다.
+
+Live hook detail이 필요할 때만 “Open the live Codex Agent View in the built-in Browser”라고 요청한다. Plugin은 healthy monitor를 재사용하며 tokenized localhost URL을 대화에 노출하지 않는다.
 
 ### 요구사항과 검증 범위
 
@@ -59,7 +73,7 @@ Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`,
 
 | Runtime | 확인된 버전 | 확인 범위 |
 | --- | --- | --- |
-| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | 재시작한 현재 조합에서 plugin `0.2.1`의 parent 3개·subagent 3개 자동 표시 및 실제 hook 8종 E2E 확인; `SessionEnd` 미관찰 |
+| 공식 Codex 앱 | `26.727.40816` (`build 6067`) | `0.3.0` source candidate app-native snapshot에서 active task/title/description/inProgress/commentary/subAgentActivity 확인; browser monitor에서 실제 `SessionEnd` 확인 |
 | 앱 embedded Codex | `0.146.0-alpha.9.2` | isolated plugin install/runtime 및 lifecycle probe |
 | Homebrew Codex CLI | `0.146.0` | isolated plugin install/runtime probe |
 
@@ -116,10 +130,10 @@ Monitor를 foreground로 실행한다.
 node bin/codex-agent-view.mjs start
 ```
 
-기본 주소는 `127.0.0.1:43127`이며 실행 시 local bearer token을 포함한 URL을 browser에서 연다. 자동으로 browser를 열지 않으려면 다음을 사용한다.
+기본 주소는 `127.0.0.1:43127`이다. `start`는 URL만 출력하며 운영체제의 외부 browser를 자동으로 열지 않는다. 외부 browser 열기는 사용자가 명시적으로 원할 때만 다음처럼 실행한다.
 
 ```bash
-node bin/codex-agent-view.mjs start --no-open
+node bin/codex-agent-view.mjs start --open
 ```
 
 다른 terminal에서 상태를 확인한다.
@@ -142,7 +156,7 @@ Monitor가 실행 중이고 plugin enable/trust가 끝난 뒤 생성되거나 �
 
 ### npm에서 설치
 
-현재 public release `0.2.1`의 권장 설치 방법은 exact version을 global로 설치하는 것이다.
+아래는 아직 public `latest`인 `0.2.1`의 fallback 설치 방법이다. App-first `0.3.0` candidate는 publish 전이므로 이 명령으로 설치된다고 안내하지 않는다.
 
 ```bash
 npm install --global codex-agent-view@0.2.1
@@ -159,13 +173,13 @@ npx --yes codex-agent-view@0.2.1 install
 npx --yes codex-agent-view@0.2.1 start
 ```
 
-`0.2.0` public artifact는 isolated global install과 exact-version `npx` 양쪽에서 CLI lifecycle을 통과했고 fixture event가 status/UI에 반영됐지만, 이후 실행 중이던 실제 공식 앱 process에서는 event 0건이 재현됐다. 별도의 public exact `0.2.1` artifact는 this-device global install, copied marketplace, clean-cache exact-version `npx --version`, tag/release/source byte comparison을 통과했다. 재시작한 공식 앱 E2E에서도 실제 hook 8종과 task ID 등록 없는 자동 표시를 확인했다. 실제 `SessionEnd`만 아직 미관찰이다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
+`0.2.0` public artifact는 isolated global install과 exact-version `npx` 양쪽에서 CLI lifecycle을 통과했고 fixture event가 status/UI에 반영됐지만, 이후 실행 중이던 실제 공식 앱 process에서는 event 0건이 재현됐다. 별도의 public exact `0.2.1` artifact는 this-device global install, copied marketplace, clean-cache exact-version `npx --version`, tag/release/source byte comparison을 통과했다. 재시작한 공식 앱 E2E에서도 실제 hook 8종과 task ID 등록 없는 자동 표시를 확인했다. 후속 `0.3.0` source E2E의 browser monitor에서 실제 `SessionEnd`도 관찰했지만 `0.3.0` public artifact evidence는 아직 없다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
 ### Privacy와 opt-in diagnostic capture
 
-정상 hook 경로는 `scripts/send-hook.mjs`다. 이 sender는 allowlisted metadata만 값으로 남기고 나머지는 type/key/length summary로 바꾼 뒤 loopback으로 보낸다. Runtime reducer는 그중 event type, session/turn ID, agent ID/type, tool name/use ID, local receipt time처럼 상태 표시에 필요한 더 좁은 field만 memory에 유지한다.
+정상 hook 경로는 `scripts/send-hook.mjs`다. 이 sender는 allowlisted metadata만 값으로 남기고 나머지는 type/key/length summary로 바꾼 뒤 loopback으로 보낸다. 전체 `cwd` 대신 control character를 제거하고 120자로 제한한 basename `workspace_label`만 파생한다. Runtime reducer는 lifecycle field와 이 label을 bounded memory에만 유지한다.
 
 정상 monitor는 event JSONL을 쓰지 않는다. `scripts/capture-hook.mjs`는 Phase 0 검증용 별도 diagnostic script이며 누군가 명시적으로 실행하거나 hook에 연결할 때만 `events.jsonl`을 만든다.
 
@@ -198,7 +212,7 @@ node bin/codex-agent-view.mjs uninstall --purge
 node bin/codex-agent-view.mjs doctor --json
 ```
 
-Monitor가 실행 중인지, stale runtime file인지, runtime directory가 예상한 위치인지 확인한다. Monitor가 실행되지 않았다면 사용자가 원할 때 `start --no-open`으로 시작한다.
+Monitor가 실행 중인지, stale runtime file인지, runtime directory가 예상한 위치인지 확인한다. Monitor가 실행되지 않았다면 사용자가 원할 때 `start`로 시작한다. 외부 browser는 `--open`을 명시한 경우에만 열린다.
 
 #### UI에 task/subagent가 없음
 
@@ -231,17 +245,19 @@ Copyright 2026 Junho Yoon. Apache License 2.0은 [LICENSE](LICENSE), attribution
 
 ## English Usage
 
-Codex Agent View is a lightweight, read-only companion monitor for the official Codex app. It shows hook-observed parent task/session and subagent activity without replacing or controlling Codex.
+Codex Agent View is a read-only companion plugin that shows privacy-minimized active tasks and subagents across workspaces inside the official Codex app, with an optional hook-based local live monitor.
 
 > This is an unofficial community project. It is not an OpenAI product, affiliate, or officially supported project.
 
 ### Status
 
-The current source version is `0.2.1`. It includes the plugin and marketplace manifests, a genuine Codex skill, privacy-minimized parent-task, subagent, tool, and permission hooks, a bounded in-memory reducer, a token-authenticated `127.0.0.1` runtime, a local dashboard, and `start`, `status`, `doctor`, `install`, and `uninstall` commands.
+The current source is an unpublished `0.3.0` candidate; public npm `latest` remains `0.2.1`. The source includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, plus privacy-minimized hooks, a bounded in-memory reducer, an optional token-authenticated `127.0.0.1` dashboard, and lifecycle CLI commands.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
 `0.2.1` adds `SessionStart`, `SessionEnd`, `UserPromptSubmit`, and `Stop` for parent-task lifecycle visibility and makes `status`, `doctor`, and the empty UI distinguish monitor health from hook delivery. In a real E2E after restarting official Codex app `26.727.40816` (`build 6067`) with plugin `0.2.1` installed and enabled, three parent sessions and three subagents appeared automatically without pre-registering task IDs. Real `SessionStart`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, and `PermissionRequest` hooks reached the sender, loopback monitor, and UI. `SessionEnd` is wired but has not yet been observed from the real official app, so compatibility for that event is not claimed.
+
+In the lead's `0.3.0` candidate E2E, the official app's built-in thread tools reported the active `kyurasi-next-supabase` task with workspace basename, title, description, explicit `inProgress` status, latest explicit agent commentary, and `subAgentActivity`. Immediately afterward, the list result changed to explicit `idle` with `hasUnreadTurn: true`. The skill separates this into a `Finished / needs review` display group instead of the running/active group, but does not infer completion or success from `idle + unread`. The separate hook/browser monitor also observed a real `SessionEnd`. This is source-candidate evidence, not a claim that `0.3.0` has been published, tagged, released, or installed from a public artifact.
 
 Maintainer npm 2FA is enabled in `auth-and-writes` mode, and the current public `latest`, `codex-agent-view@0.2.1`, is available from the npm registry. npm publication remains separate from Universal Plugins Directory submission; the plugin is not directory-searchable.
 
@@ -253,20 +269,31 @@ Public `0.2.1` patch: registry `latest`, version, `Apache-2.0` license, executab
 
 Codex Agent View is a live companion, not a historical audit or session-replay product. Bounded in-memory state and reset-on-restart semantics are intentional: they keep privacy and failure boundaries small. SQLite or persistent history is not a missing requirement. Consider it only as a separate explicit opt-in feature if demonstrated user demand justifies retention, migration, deletion, and privacy costs.
 
-- Hooks are the source of truth for live state.
-- Operational state exists by design only in bounded process memory; restart begins a new observation window.
+- The app-native current-task snapshot prioritizes explicit status and `subAgentActivity` from the official Codex app's built-in thread tools.
+- Hooks remain the source of truth for detailed lifecycle state in the optional local monitor. Its operational state exists only in bounded process memory; restart begins a new observation window.
 - There is no external telemetry, remote server, account, required SQLite/persistent event store, or remote control.
 - Prompt text, transcript paths, full tool input/output, and assistant messages are not retained or displayed by the monitor.
 - The product cannot stop or restart tasks/subagents, send messages, or approve/deny permissions.
 - Missing, duplicated, or out-of-order events remain visible as empty, unknown, or degraded state instead of being guessed away.
 
-A separately launched Codex `0.146` App Server `thread/list` fallback was also tested. It reported both the current root and subagents as `notLoaded`, so it did not share the official app's live running/completed state. Persisted parent IDs, aliases, and depth could enrich metadata, but the fallback could not determine live status and would add state-database reads, privacy surface, and complexity. It is therefore not included in `0.2.1`.
+A separately launched Codex `0.146` App Server `thread/list` fallback was also tested. It reported both the current root and subagents as `notLoaded`, so it did not share the official app's live running/completed state. That separate process is not the same as the built-in thread tools exposed directly by the current official app; `0.3.0` uses the latter for its primary snapshot.
 
 ### Why npm, a local browser UI, and the Plugins Directory are different
 
-- npm distributes the local `codex-agent-view` executable, hook sender, runtime, and static UI to the user's machine.
-- The browser renders the current read-only companion UI on `127.0.0.1`; it is not an external website or telemetry dashboard.
+- Asking the plugin `Show active tasks` inside the official Codex app is the primary `0.3.0` UX; it does not require starting a monitor or registering task IDs.
+- npm distributes the plugin bundle and optional local executable, hook sender, runtime, and static UI as a fallback path.
+- The Codex in-app Browser opens the `127.0.0.1` live monitor only when explicitly requested; it is not an external website or telemetry dashboard.
 - The Universal Plugins Directory does not replace npm. A public in-app custom UI path requires a public HTTPS MCP server and domain verification, which conflicts with this project's local-only, no-external-server boundary. Only a separate listing/skills submission remains under consideration; do not expect Directory search installation until review and publication actually finish.
+
+### Use in the official Codex app — recommended
+
+1. Select the Codex Agent View plugin in the Codex app.
+2. Ask `Show active tasks`.
+3. The plugin queries running/active tasks plus tasks with explicit `idle` and `hasUnreadTurn: true`. It places the latter in a separate `Finished / needs review` display group without claiming completion or success.
+4. It displays only workspace basename, display-only title, explicit status, latest explicit agent commentary, and a small `subAgentActivity` tree.
+5. Prompts, previews, tool input/output, full workspace paths, and internal thread IDs remain hidden by default.
+
+Ask `Open the live Codex Agent View in the built-in Browser` only when you want hook-level live detail. The plugin reuses a healthy monitor and never exposes its tokenized localhost URL in chat.
 
 ### Requirements and tested versions
 
@@ -276,7 +303,7 @@ A separately launched Codex `0.146` App Server `thread/list` fallback was also t
 
 | Runtime | Tested version | Scope |
 | --- | --- | --- |
-| Official Codex app | `26.727.40816` (`build 6067`) | real E2E after restart with plugin `0.2.1`: three parents and three subagents appeared automatically and eight real hook types reached the UI; `SessionEnd` unobserved |
+| Official Codex app | `26.727.40816` (`build 6067`) | `0.3.0` source snapshot confirmed active task/title/description/inProgress/commentary/subAgentActivity; browser monitor observed real `SessionEnd` |
 | App-embedded Codex | `0.146.0-alpha.9.2` | isolated install/runtime and lifecycle probe |
 | Homebrew Codex CLI | `0.146.0` | isolated install/runtime probe |
 
@@ -304,7 +331,7 @@ Start the foreground monitor:
 node bin/codex-agent-view.mjs start
 ```
 
-Use `--no-open` to suppress automatic browser opening. In another terminal:
+`start` prints the local URL and does not open an operating-system browser by default. Use `--open` only when you explicitly want an external browser. In another terminal:
 
 ```bash
 node bin/codex-agent-view.mjs status --json
@@ -319,7 +346,7 @@ Once the monitor is running and plugin enablement/trust is complete, hooks from 
 
 ### Install from npm
 
-The recommended installation for the current public `0.2.1` release is the exact global version below.
+The commands below install the public `0.2.1` fallback. The app-first `0.3.0` candidate is not yet published and must not be presented as available from npm.
 
 ```bash
 npm install --global codex-agent-view@0.2.1
@@ -336,7 +363,7 @@ npx --yes codex-agent-view@0.2.1 install
 npx --yes codex-agent-view@0.2.1 start
 ```
 
-The `0.2.0` public artifact passed isolated global and exact-version `npx` CLI lifecycles and delivered fixture events to status/UI, while a later already-running official-app process reproduced zero delivered events. The separate public exact `0.2.1` artifact passed this-device global/copy verification, clean-cache exact-version `npx --version`, and tag/release/source byte comparison. A restarted official-app E2E also confirmed eight real hook types and automatic listing without task-ID registration. Only a real `SessionEnd` remains unobserved. See [Distribution](docs/distribution.md) for the registry evidence and verification boundary.
+The `0.2.0` public artifact passed isolated global and exact-version `npx` CLI lifecycles and delivered fixture events to status/UI, while a later already-running official-app process reproduced zero delivered events. The separate public exact `0.2.1` artifact passed this-device global/copy verification, clean-cache exact-version `npx --version`, and tag/release/source byte comparison. A restarted official-app E2E confirmed eight real hook types and automatic listing without task-ID registration. A later `0.3.0` source E2E observed real `SessionEnd`, but no `0.3.0` public artifact evidence exists yet. See [Distribution](docs/distribution.md).
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 
@@ -352,7 +379,7 @@ If events are still absent, report the Codex app/CLI version, plugin version, ap
 
 ### Privacy
 
-The normal hook path uses `scripts/send-hook.mjs`. It minimizes the local Codex payload before loopback delivery, and the reducer retains only a narrower state schema in memory. The normal monitor does not write an event JSONL history.
+The normal hook path uses `scripts/send-hook.mjs`. It derives only a sanitized, 120-character-bounded workspace basename as `workspace_label`; the full `cwd` is not sent or stored as content. The reducer keeps this label and narrower lifecycle state only in bounded memory. The normal monitor does not write an event JSONL history.
 
 `scripts/capture-hook.mjs` is a separate, explicitly invoked Phase 0 diagnostic tool. Setting `CODEX_AGENT_VIEW_CAPTURE_FULL=1` for that script can write raw prompts, tool data, credentials, and other secrets. Normal install/start and the bundled skill never enable it automatically. Do not commit or publicly attach captures or runtime tokens.
 

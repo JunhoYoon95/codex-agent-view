@@ -1,12 +1,13 @@
 # Codex Agent View Roadmap
 
-현재 source 및 public npm `latest` version은 `0.2.1`이다. Bounded in-memory live state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0` 실사용의 공식 앱 hook 전달 0건 기록은 historical evidence로 보존하며, 재시작한 공식 앱의 `0.2.1` 핵심 E2E, public exact artifact, tag/release/source 비교는 통과했다. 실제 `SessionEnd`만 compatibility acceptance로 남긴다.
+현재 source는 아직 배포되지 않은 `0.3.0` candidate이고 public npm `latest`는 `0.2.1`이다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0`/`0.2.1` release evidence는 historical로 보존하고, `0.3.0` app-first source QA와 release acceptance를 분리한다.
 
 ## 제품 원칙
 
-- 공식 Codex 앱을 대체하지 않는 read-only companion monitor다.
-- live 상태의 source of truth는 hook event다.
-- App Server는 optional metadata 보강 후보이며 공식 앱 process와 memory를 공유한다고 가정하지 않는다.
+- 공식 Codex 앱을 대체하지 않는 read-only companion plugin이다.
+- 앱 안의 current-task snapshot은 공식 앱 내장 thread tools의 explicit status와 `subAgentActivity`를 우선 사용한다.
+- Hook event는 optional local monitor의 세부 lifecycle source of truth다.
+- 별도 App Server는 앱 내장 thread tools와 다른 process이며 공식 앱의 live source로 가정하지 않는다.
 - local-only, bounded in-memory, no external telemetry가 완성된 기본 architecture다.
 - 전체 prompt와 tool input/output을 기본 저장·표시하지 않는다.
 - 설치, hook trust, 제거는 사용자가 명시적으로 수행하고 복구 경로를 제공한다.
@@ -24,7 +25,7 @@
 - [x] CLI JSON으로 persisted exact-hook trust를 확인할 수 없으며, 공식 절차상 interactive `/hooks` 검토와 새 task가 필요함을 기록했다.
 - [x] `0.2.1`을 설치한 뒤 공식 앱을 완전히 재시작한 현재 조합에서 `SessionStart`, `UserPromptSubmit`, `SubagentStart`, `PreToolUse`, `PostToolUse`, `SubagentStop`, `Stop` → loopback monitor → UI E2E와 task ID 등록 없는 parent/subagent 자동 표시를 팀장이 직접 확인했다.
 - [x] 실제 approval prompt에서 공식 앱 `PermissionRequest` hook과 read-only waiting 표시를 확인했다.
-- [ ] 실제 공식 앱 `SessionEnd` event를 관찰하고 completed session 반영을 확인한다. Wiring/fixture 성공만으로 이 항목을 닫지 않는다.
+- [x] 후속 `0.3.0` source E2E의 browser monitor에서 실제 공식 앱 `SessionEnd` event를 관찰하고 completed session 반영을 확인했다.
 
 ## `0.2.1` 실사용 복구 patch
 
@@ -37,7 +38,23 @@
 - [x] Source test, plugin validation, package check를 팀장이 직접 실행한다.
 - [x] 실제 공식 앱 restart/new-task 핵심 E2E를 팀장이 직접 실행하고 parent 3개·subagent 3개 자동 표시와 실제 hook 8종을 확인했다.
 - [x] 확인된 event set의 공식 GUI compatibility와 `0.2.1` npm patch publish를 검증 증거와 함께 선언한다.
-- [ ] 아직 실제 미관찰인 `SessionEnd` compatibility는 독립 항목으로 유지한다.
+- [x] 후속 source E2E에서 실제 `SessionEnd` compatibility를 확인했다.
+
+## `0.3.0` app-first candidate
+
+- [x] 공식 Codex 앱 내장 thread tools를 active-task snapshot의 primary source로 사용하고 local monitor 자동 시작을 요구하지 않는다.
+- [x] Workspace basename, display-only title, explicit status, 최신 explicit commentary와 `subAgentActivity`만 표시하는 privacy-minimized skill contract를 구현한다.
+- [x] Preview, user prompt, transcript, tool input/output, full workspace path와 internal thread ID를 기본 표시하지 않는다.
+- [x] Hooks/local monitor를 lifecycle detail source와 optional Codex in-app Browser live view로 유지한다.
+- [x] CLI `start` 기본값이 외부 browser를 열지 않고 `--open`만 명시적 external action이 되도록 한다.
+- [x] 전체 `cwd` 대신 sanitized basename `workspace_label`만 120자로 제한해 process memory에 유지한다.
+- [x] 팀장 E2E에서 `kyurasi-next-supabase` active task의 workspace/title/description/explicit `inProgress`/latest commentary/subAgentActivity를 앱 내장 tools로 확인했다.
+- [x] 같은 task 직후 list가 explicit `idle`, `hasUnreadTurn: true`로 전환되는 것을 확인하고 running/active와 별도 `완료/확인 대기` 그룹에 포함했다. 이 조합만으로 완료·성공을 추론하지 않는다.
+- [x] 별도 browser monitor에서 실제 `SessionEnd`를 관찰했다.
+- [ ] `0.3.0` 전체 test/plugin/package validation과 final tarball QA를 완료한다.
+- [ ] `0.3.0` exact artifact를 이 기기에 설치해 app snapshot, hook, in-app Browser E2E를 다시 수행한다.
+- [ ] `0.3.0`을 npm publish하고 registry metadata/signature를 검증한다.
+- [ ] Annotated `v0.3.0` tag, origin push, GitHub Release와 source/artifact byte comparison을 완료한다.
 
 ## 외부 npm distribution operation
 
@@ -119,6 +136,7 @@
 - [x] npm `files` allowlist에 manifests, catalog, logo assets, hooks, CLI, sender/capture scripts, skill, runtime/UI, README, LICENSE, NOTICE를 포함한다.
 - [x] `0.2.0` public release에서 package와 plugin manifest version 및 release artifact metadata를 일치시킨다.
 - [x] `0.2.1` source에서 package와 plugin manifest version 및 final tarball metadata를 일치시킨다.
+- [x] `0.3.0` source candidate에서 package와 plugin manifest version을 일치시킨다.
 - [x] explicit install이 copied local marketplace와 plugin을 등록하고 hook trust는 사용자에게 남기도록 구현한다.
 - [x] default uninstall과 explicit `--purge`를 분리하고 unsafe target/symlink 경계를 검토한다.
 - [x] npm lifecycle에 `postinstall`을 두지 않고 사용자 설정을 자동 변경하지 않음을 확인한다.
@@ -129,7 +147,7 @@
 
 ## 검증 snapshot
 
-- Node tests: `55/55` pass
+- Historical `0.2.1` Node tests: `55/55` pass
 - Plugin scaffold validation: pass
 - Skill `quick_validate.py`: pass
 - `npm pack --dry-run`: pass, `codex-agent-view@0.2.1`, 21 files, logo assets와 skill 포함
@@ -144,9 +162,11 @@
 - Current public `0.2.1`: `latest`, npm `gitHead` `8d6a67c9aafa23f801235d747ff018d254378970`, `Apache-2.0`, bin mapping, 21 files, unpacked size `144644`, shasum/exact SRI/signature 확인
 - Current `0.2.1` release source: annotated tag와 public GitHub Release, clean-cache exact-version `npx --version`, registry tarball ↔ tagged source 21 files byte-identical 확인
 - This-device public exact `0.2.1`: global reinstall/copy ↔ registry tarball 21 files byte-identical, CLI `0.2.1`, plugin installed/enabled, hook wiring 9종, monitor 재시작 뒤 실제 sessions 자동 수신과 probe subagent running → stopped/UI 완료 반영 확인
-- Official app `0.2.1` E2E: parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 `PermissionRequest` waiting 확인; 실제 `SessionEnd` 미관찰
+- Official app `0.2.1` E2E: parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 `PermissionRequest` waiting 확인
+- Source `0.3.0` app-native E2E: `kyurasi-next-supabase`의 running `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환 확인; 후자는 별도 확인 대기 그룹이며 완료·성공으로 추론하지 않음
+- Source `0.3.0` hook/browser E2E: actual `SessionEnd`와 completed 반영 확인
 
-이 snapshot은 `0.2.0` historical evidence와 `0.2.1` source, registry, tag/release/source match, this-device reinstall, official-app evidence를 분리해 기록한다. 실제 `SessionEnd`와 Universal Directory listing은 아직 증명하지 않는다. 별도 npm provenance attestation은 선택 사항이며 확인되지 않았다.
+이 snapshot은 public `0.2.0`/`0.2.1` evidence와 unpublished `0.3.0` source evidence를 분리해 기록한다. `0.3.0` publish/tag/release/public artifact install E2E와 Universal Directory listing은 아직 증명하지 않는다. 별도 npm provenance attestation은 선택 사항이며 확인되지 않았다.
 
 ## Phase 4 — 선택적 보강
 

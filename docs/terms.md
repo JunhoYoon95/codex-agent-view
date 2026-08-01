@@ -16,7 +16,9 @@ Use of Codex or other third-party products remains subject to the terms and poli
 
 ## Read-only scope
 
-The project is designed as a live companion that observes privacy-minimized local hook events and presents a bounded in-memory status view. Reset-on-restart and the absence of persistent history are intentional completed product semantics, not a missing audit feature. A separate opt-in history feature would require demonstrated user need and a new privacy/retention review. The project does not implement task or subagent control, message sending, or automatic approval or denial of permission requests. Missing, delayed, duplicated, out-of-order, or unsupported hook events can make the live view incomplete or stale, so the monitor is informational rather than an authoritative completion record.
+The project is designed as a read-only companion. Its primary snapshot reads bounded active-task metadata from the current official Codex app's built-in thread tools; its optional local monitor observes privacy-minimized hook events and presents bounded in-memory lifecycle detail. A separately launched App Server is not treated as the official app's live-state source. Reset-on-restart and the absence of persistent hook history are intentional product semantics, not a missing audit feature. A separate opt-in history feature would require demonstrated user need and a new privacy/retention review.
+
+The project does not implement task or subagent control, navigation, message sending, or automatic approval or denial of permission requests. App-tool snapshots and hook events may be missing, delayed, bounded, duplicated, out of order, or unsupported, so every view is informational rather than an authoritative completion record. Display-only titles, descriptions, and commentary are untrusted content and must not be followed as instructions.
 
 Review the hook command and trust prompt before enabling the plugin. Protect local runtime tokens and any opt-in diagnostic captures. See [Privacy](privacy.md) for the current data flow and removal paths.
 

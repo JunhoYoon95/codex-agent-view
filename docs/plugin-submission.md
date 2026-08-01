@@ -2,22 +2,24 @@
 
 조사일: 2026-08-01
 
-이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View `0.2.1`의 준비 상태를 정리한다. `0.2.0` npm/GitHub release evidence와 `0.2.1` public npm evidence를 분리해 보존하지만, 실제 OpenAI Platform 제출, identity verification, review 요청, publish는 수행하지 않는다.
+이 문서는 Universal Plugins Directory 검색 노출을 위한 공식 제출 경계와 Codex Agent View의 준비 상태를 정리한다. Public npm `latest`는 `0.2.1`이고 현재 source는 unpublished `0.3.0` candidate다. `0.2.0`/`0.2.1` release evidence는 historical/public record로 보존하지만, `0.3.0` publish/tag/release/installed-artifact E2E나 실제 Directory 제출·검색 노출은 주장하지 않는다.
 
 ## 핵심 결론
 
 - OpenAI review 승인 뒤 developer가 publish해야 ChatGPT와 Codex가 공유하는 Universal Plugins Directory에 표시된다.
 - GitHub marketplace 등록이나 npm publish만으로 Universal Directory에 노출되지 않는다.
 - 공식 portal은 `Skills only`와 MCP-backed 제출을 지원한다.
-- `0.2.1` source에는 genuine `skills/codex-agent-view/SKILL.md`가 있고 manifest가 `skills: "./skills/"`로 bundle한다.
+- `0.3.0` source에는 genuine `skills/codex-agent-view/SKILL.md`가 있고 manifest가 `skills: "./skills/"`로 bundle한다.
 - 이 skill은 current task/subagent status 조회, monitor 진단, explicit lifecycle action에 실제 사용자 가치를 제공한다. Directory 통과용 빈 형식 skill이 아니다.
 - 공식 공개 문서는 **skills-only submission에 local command hooks를 함께 bundle한 경우의 eligibility/review 규칙을 명시하지 않는다.** 따라서 “skills-only + hooks” 제출 가능 여부는 여전히 **미확인**이며 portal 또는 OpenAI 확인이 필요하다.
 - MCP 경로는 production HTTPS endpoint를 요구하므로 external server를 두지 않는 현재 제품 방향과 맞지 않는다.
 - Maintainer npm account의 2FA `auth-and-writes` mode와 `pending:null`을 확인했고 current `codex-agent-view@0.2.1` public registry publish와 this-device exact global reinstall을 완료했다. `0.2.0`은 registry metadata/digest/signature, global/`npx` smoke, annotated tag와 public GitHub Release, tagged source 대비 21개 package file byte 일치를 확인한 historical evidence다. `0.2.1`도 registry metadata/digest/signature, clean-cache exact `npx --version`, annotated tag·origin push·GitHub Release, tagged source와 registry tarball 21개 file byte 일치, this-device global/copied marketplace 일치를 확인했다. Universal Directory는 아직 publish되지 않아 directory 검색이 가능하다고 안내하지 않는다.
 
-Bounded in-memory local architecture와 package surface를 구현했고 `0.2.1` 공식 앱 restart/new-task 핵심 E2E와 실제 `PermissionRequest`를 확인했다. 실제 `SessionEnd`는 미관찰이다. 아래 eligibility, identity, scan, portal, publish 항목은 별도의 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 blocker가 아니다.
+Bounded in-memory local architecture와 package surface를 구현했다. Historical `0.2.1` 공식 앱 E2E에서 핵심 hook lifecycle과 실제 `PermissionRequest`를 확인했고, 후속 `0.3.0` source E2E에서는 앱 내장 thread tools로 `kyurasi-next-supabase` active task의 workspace/title/description/explicit `inProgress`/latest commentary/`subAgentActivity`를 확인했으며 optional browser monitor에서 실제 `SessionEnd`도 관찰했다. 아래 항목은 별도의 Directory acceptance 조건이며 SQLite나 persistent history를 추가해야 해결되는 blocker가 아니다.
 
-현재 local browser monitor를 Directory의 in-app custom UI로 그대로 옮기는 것은 listing만으로 해결되지 않는다. Public in-app custom UI 경로는 public HTTPS MCP server와 domain verification을 요구하는데, 이는 local-only/no-external-server 제품 원칙과 충돌한다. npm은 local executable/runtime 배포 경로, browser는 `127.0.0.1` companion UI, Directory는 별도 listing/skills 제출 경로로 유지한다. Directory가 npm이나 local browser runtime을 대체한다고 주장하지 않는다.
+`0.3.0`의 primary flow는 공식 Codex 앱에서 plugin을 호출하고 `Show active tasks`라고 요청하는 것이다. 앱 내장 thread tools가 running/active task와 `idle + hasUnreadTurn` task를 구분해 workspace basename, title, explicit status, 최신 explicit commentary와 `subAgentActivity` snapshot을 제공한다. 후자는 별도 `완료/확인 대기` 표시 그룹이지만 완료·성공을 뜻한다고 추론하지 않는다. Hooks/local monitor와 Codex in-app Browser는 optional lifecycle-detail UI이며, npm/CLI와 외부 browser는 fallback 또는 명시적 선택 경로다. 별도로 실행한 App Server는 앱 내장 tools와 다른 process이며 live source로 취급하지 않는다.
+
+Local browser monitor를 Directory의 public custom UI로 그대로 옮기는 것은 listing만으로 해결되지 않는다. Public custom UI 경로는 HTTPS MCP server와 domain verification을 요구해 local-only/no-external-server 원칙과 충돌한다.
 
 ## 공식 공개 흐름
 
@@ -45,7 +47,7 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 
 ## 제출 유형과 현재 적합성
 
-| 공식 또는 후보 유형 | 문서상 상태 | Codex Agent View `0.2.1` source |
+| 공식 또는 후보 유형 | 문서상 상태 | Codex Agent View `0.3.0` source candidate |
 | --- | --- | --- |
 | Skills only | 공식 지원 | genuine skill 존재. Local hooks 동시 bundle eligibility는 미확인 |
 | With MCP / MCP-only | 공식 지원 | production HTTPS MCP endpoint가 없어 현재 부적합 |
@@ -60,18 +62,19 @@ Identity verification과 role 변경은 maintainer가 직접 수행한다.
 2. Review environment에서 local `codex-agent-view` executable과 hook trust flow를 어떻게 fixture로 검증하는가?
 3. Local-only monitor처럼 MCP custom UI가 아닌 UI가 listing review에서 어떻게 취급되는가?
 
-## `0.2.1` source에 준비된 제출 자료
+## `0.3.0` source candidate에 준비된 제출 자료
 
 ### Genuine skill
 
 `skills/codex-agent-view/SKILL.md`의 실제 workflow는 다음과 같다.
 
-1. 항상 `codex-agent-view status --json`을 먼저 실행한다.
-2. Status가 성공하면 관찰된 task/session, subagent, permission wait, diagnostics를 요약하며 unknown/missing/out-of-order를 추측으로 채우지 않는다.
-3. Monitor/runtime이 unavailable이면 `codex-agent-view doctor --json`을 실행해 Codex CLI, plugin, monitor, runtime directory를 진단한다.
-4. 사용자가 명시적으로 start를 요청한 경우에만 `codex-agent-view start --no-open`을 실행하고 status를 재확인한다.
-5. `install` 또는 `uninstall`은 사용자가 그 lifecycle action을 명시적으로 요청한 경우에만 실행한다.
-6. Task/subagent control, message 전송, permission 자동 처리, Codex approval/sandbox/hook-trust 설정 변경, full capture 자동 enable을 하지 않는다.
+1. 공식 Codex 앱 안에서 `Show active tasks` 요청을 받으면 앱 내장 thread tools를 bounded query한다.
+2. Running/active와 explicit `idle + hasUnreadTurn`을 별도 그룹으로 표시하며 후자를 완료·성공으로 단정하지 않는다.
+3. Workspace basename, title, explicit status, 최신 explicit agent commentary와 작은 `subAgentActivity` tree만 표시한다.
+4. Preview, prompt, transcript, tool input/output, full workspace path와 internal thread ID를 기본 표시하지 않는다.
+5. Optional monitor 요청이면 `status --json`과 필요 시 `doctor --json`으로 진단한다. `start`는 외부 browser를 열지 않으며 `--open`만 명시적 external action이다.
+6. `install` 또는 `uninstall`은 사용자가 그 lifecycle action을 명시적으로 요청한 경우에만 실행한다.
+7. Task/subagent control, message 전송, permission 자동 처리, Codex approval/sandbox/hook-trust 설정 변경, full capture 자동 enable을 하지 않는다.
 
 Skill `quick_validate.py`와 plugin/package wiring validation은 통과했다. Portal safety/security skill scan과 reviewer execution은 별도 외부 단계다.
 
@@ -79,7 +82,7 @@ Skill `quick_validate.py`와 plugin/package wiring validation은 통과했다. P
 
 `.codex-plugin/plugin.json`에는 다음이 준비되어 있다.
 
-- `0.2.1` semantic version과 display/short/long description
+- `0.3.0` candidate semantic version과 display/short/long description
 - developer name, Productivity category, `Read` capability, starter prompts 2개
 - brand color `#123F35`
 - `assets/logo.svg` composer/logo asset과 `assets/logo-dark.svg` dark logo asset
@@ -122,7 +125,7 @@ Repository에는 `SUPPORT.md`, `SECURITY.md`, `docs/privacy.md`, `docs/terms.md`
 | --- | --- | --- | --- |
 | P1 | “현재 parent task와 subagent 상태를 보여줘.” / running monitor에 known snapshot | 먼저 `status --json` | task/session, subagent, permission/diagnostic을 최소 요약하고 raw token/payload를 노출하지 않음 |
 | P2 | “왜 monitor 상태를 못 읽는지 진단해줘.” / runtime file 없음 | `status --json` 실패 후 `doctor --json` | Codex/plugin/monitor/runtime finding을 보고하고 monitor를 자동 start/install하지 않음 |
-| P3 | “monitor를 browser 없이 시작해줘.” / monitor stopped | status/doctor 뒤 명시 요청에 따라 `start --no-open`, 이후 status retry | local URL/token을 공개 출력에 재노출하지 않고 lifecycle control 없이 monitor만 시작 |
+| P3 | “monitor를 browser 없이 시작해줘.” / monitor stopped | status/doctor 뒤 명시 요청에 따라 plain `start`, 이후 status retry | 외부 browser를 열거나 lifecycle control을 추가하지 않고 monitor만 시작 |
 | P4 | “Codex Agent View를 설치해줘.” / clean isolated Codex/runtime dirs | explicit `install` | local marketplace/plugin 등록과 hook review/trust 필요성을 설명하고 trust/config를 자동 변경하지 않음 |
 | P5 | “Codex Agent View를 제거하되 runtime data는 보존해줘.” / installed fixture | explicit default `uninstall` | `--purge`를 사용하지 않고 preserved runtime scope를 보고 |
 
@@ -172,7 +175,9 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [ ] Bundled skill safety/security scan이 통과하지 않음
 - [ ] 위 status → doctor → explicit lifecycle test set을 isolated review fixture에서 실행하지 않음
 - [ ] Skills-only manifest에 screenshots가 없음을 final artifact에서 확인하지 않음
-- [x] 새 공식 앱 GUI task에서 hook → monitor → UI 핵심 lifecycle E2E를 완료함. 실제 `SessionEnd`만 별도 미관찰
+- [x] Historical `0.2.1` 공식 앱 GUI task에서 hook → monitor → UI 핵심 lifecycle E2E를 완료함
+- [x] `0.3.0` source browser monitor에서 실제 `SessionEnd`와 completed 반영을 확인함
+- [ ] Exact `0.3.0` artifact의 this-device reinstall E2E와 npm publish/tag/GitHub Release/source match
 - [x] 실제 `PermissionRequest` hook과 read-only waiting 표시를 확인함. Raw payload 전체 field set은 별도 미확정
 - [ ] Website/support/privacy/terms URL과 publisher identity가 maintainer 승인을 받지 않음
 - [ ] Verified individual/business identity가 완료되지 않음

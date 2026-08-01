@@ -10,7 +10,7 @@
 
 해당 app process에는 plugin 설치 전 `hooks/list` 응답이 있었고 설치 뒤에도 process가 유지됐다. 이는 stale config/hook snapshot 가설과 일치하지만 인과관계를 확정하지는 않는다. 또한 `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않아 config snapshot과 untrusted hook skip을 자동 진단으로 분리할 수 없었다. 따라서 당시 실패 원인을 “재시작 부족”으로 단정하지 않는다.
 
-Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. `0.2.1`은 실사용 실패를 진단 가능하게 만들고 parent task lifecycle도 관찰하기 위한 patch다. 후속으로 공식 앱 `26.727.40816`(`build 6067`)을 재시작한 현재 조합에서 installed/enabled plugin `0.2.1`을 사용해 task ID 등록 없이 parent 3개와 subagent 3개가 자동 표시되는 것을 확인했다. 실제 `SessionStart`, `UserPromptSubmit`, `Stop`, `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest`가 sender → loopback monitor → UI에 도착했다. `SessionEnd`는 wiring에 포함되지만 실제 event는 아직 미관찰이다.
+Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. Public npm `latest`는 `0.2.1`이며, 현재 source는 아직 publish/tag/release/installed-artifact E2E를 주장하지 않는 `0.3.0` candidate다. `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했고 `SessionEnd`만 당시 미관찰이었다. 후속 `0.3.0` source E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase` active task의 workspace basename, title, description, explicit `inProgress`, 최신 explicit commentary와 `subAgentActivity`를 확인했다. 직후 list는 explicit `idle`, `hasUnreadTurn: true`로 전환됐으며, 이는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Optional browser monitor에서는 실제 `SessionEnd`와 completed lifecycle 반영도 관찰했다.
 
 ## 검증 환경
 
@@ -93,7 +93,8 @@ Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. `0.2.1`은
 | GUI 미캡처 해석 | 설치 전 `hooks/list` snapshot 유지 정황이 있으나 config snapshot 또는 untrusted hook skip 가능성을 분리하지 못함. hot-load 불가나 restart 해결을 단정하지 않음 |
 | Trust 관찰 한계 | `codex plugin list --json`으로 installed/enabled는 확인 가능하지만 persisted exact-hook trust는 확인 불가. interactive `/hooks` 검토가 필요 |
 | `0.2.1` 공식 앱 E2E | 재시작한 앱 `26.727.40816`(`build 6067`)에서 parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 permission waiting 확인 |
-| GUI 최종 결론 | 확인된 8종 event 경로는 호환 확인. `SessionEnd`는 실제 미관찰이므로 독립 미확인 |
+| `0.2.1` GUI 결론 | 확인된 8종 event 경로는 호환 확인. `SessionEnd`는 이 historical E2E에서 미관찰 |
+| `0.3.0` source E2E | 앱 내장 tools에서 `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환 확인. 후자는 running과 분리해 표시하되 완료·성공으로 추론하지 않음. Browser monitor에서 실제 `SessionEnd` lifecycle 반영 관찰 |
 
 앱 embedded executable을 직접 실행한 결과는 해당 executable과 plugin runtime의 호환성 증거다. GUI가 그 executable을 어떤 config/trust lifecycle로 실행하는지까지 증명하지는 않는다.
 
@@ -107,7 +108,7 @@ Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. `0.2.1`은
 
 격리된 임시 home으로 별도 App Server를 시작한 probe에서는 `thread/loaded/list`와 `thread/list`가 모두 비어 있었다. 후속으로 Codex `0.146` App Server의 persisted `thread/list` fallback도 실제 검증했으나 현재 root와 subagent 모두 `notLoaded`로 나타나 공식 앱의 live running/completed 상태를 공유하지 않았다. Persisted `parentThreadId`, alias, depth는 계층 metadata로 복원할 수 있었지만 live lifecycle 판별에는 사용할 수 없었다. 공식 앱 daemon에 attach할 수 있는 control socket도 발견하지 못했다.
 
-따라서 App Server는 optional metadata enrichment 후보로만 둔다. `thread/loaded/list`는 별도 attach 근거가 생기기 전까지 “현재 GUI 앱 전체의 loaded set”이 아니라 요청을 받은 해당 server instance의 loaded set으로 해석한다. Persisted fallback은 state DB read와 privacy/복잡도 비용을 추가하면서 현재 활동을 정확히 판별하지 못하므로 `0.2.1` live fallback으로 채택하지 않았다.
+따라서 별도로 실행한 App Server는 optional metadata enrichment 후보로만 둔다. 이는 현재 공식 Codex 앱이 직접 노출하는 내장 thread tools와 다른 process/capability다. `0.3.0`의 primary snapshot은 앱 내장 tools의 bounded read를 사용하며, 별도 App Server를 공식 앱 live source로 간주하지 않는다. Persisted fallback은 state DB read와 privacy/복잡도 비용을 추가하면서 현재 활동을 정확히 판별하지 못하므로 채택하지 않았다.
 
 ## 가능한 것과 아직 불가능하거나 미확인인 것
 
@@ -118,14 +119,17 @@ Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. `0.2.1`은
 - collaboration tool과 Bash의 pre/post activity를 관찰할 수 있다.
 - payload를 값 없이 key/type 중심으로 redaction해 기술 검증할 수 있다.
 - monitor core를 외부 DB 없이 bounded in-memory reducer로 구현했고, live companion의 완성 architecture로 채택했다.
+- 공식 앱 내장 thread tools로 workspace를 넘나드는 active task의 explicit status, 최신 explicit commentary와 `subAgentActivity`를 bounded snapshot으로 읽을 수 있다.
+- Explicit active status와 `idle + hasUnreadTurn`을 구분해 후자를 별도 확인 대기 그룹에 표시할 수 있다. `idle` 또는 unread만으로 성공이나 완료를 추론할 수는 없다.
+- 전체 `cwd` 대신 control-character 제거, whitespace 정규화, 최대 120자의 basename `workspace_label`만 optional monitor의 process memory에 유지할 수 있다.
 
 ### 아직 미확인인 것
 
-- 공식 앱에서 실제 `SessionEnd` event가 실행되고 completed session으로 반영되는지
 - GUI task의 plugin/hook hot-load 지원 여부
 - GUI `PermissionRequest` raw payload의 전체 field set
 - 별도 App Server로 현재 GUI process의 in-memory 상태를 공유하거나 attach하는 방법
 - hook event가 누락되거나 순서가 바뀌는 모든 조건
+- `0.3.0` exact artifact의 publish/tag/release와 이 기기 재설치 후 전체 E2E
 
 ### Phase 0 범위와 현재의 의도적 non-goal
 
@@ -232,7 +236,7 @@ hook 파일을 변경하면 기존 trust를 재사용할 수 없으며 새 hash�
 - 일반 tool 한 개를 실행
 - sandbox escalation 등 실제 approval prompt가 필요한 동작을 실행해 `PermissionRequest` 발생
 
-이 과정에서 실제 hook 8종, parent 3개와 subagent 3개의 자동 표시, permission waiting을 확인했다. Fixture 성공이나 monitor 연결만으로 선언한 결과가 아니다. 다만 실제 `SessionEnd`는 발생하지 않았으므로 해당 event의 compatibility는 별도 미확인으로 남긴다.
+이 과정에서 실제 hook 8종, parent 3개와 subagent 3개의 자동 표시, permission waiting을 확인했다. Fixture 성공이나 monitor 연결만으로 선언한 결과가 아니다. 이 historical `0.2.1` E2E에서는 실제 `SessionEnd`가 발생하지 않았지만, 후속 `0.3.0` source browser monitor E2E에서 해당 event와 completed 반영을 확인했다.
 
 ## 외부 distribution과 listing 작업
 
@@ -260,8 +264,8 @@ README는 exact-version global install과 `npx`를 public npm 사용법으로 �
 - 프로젝트 내부 plugin validation: 통과
 - bundled skill `quick_validate.py`: 통과
 - `npm pack --dry-run`: 통과, `codex-agent-view@0.2.1`, logo assets와 skill을 포함한 21 files
-- package/plugin manifest version 및 final tarball metadata: `0.2.1` 일치
-- source CLI `--version`: `0.2.1`
+- Historical package/plugin manifest version 및 final tarball metadata: `0.2.1` 일치
+- Historical `0.2.1` source CLI `--version`: `0.2.1`
 - installed `0.2.1` sender → monitor → UI fixture E2E: task ID를 사전 등록하지 않아도 parent와 agent가 hook에서 자동 생성됐고 running, waiting, completed 상태 반영 확인
 - reset 뒤 source CLI `doctor --json`: plugin `installed: true`, `enabled: true`, hook `wiring_ok: true`, declared event 9개, monitor `events_received: false`, trust `unknown` 확인
 - historical public `0.2.0` registry metadata: `Apache-2.0`, bin mapping, shasum/exact SRI/signature 확인
@@ -272,4 +276,4 @@ README는 exact-version global install과 `npx`를 public npm 사용법으로 �
 - this-device public exact `0.2.1`: global reinstall/copied marketplace ↔ registry tarball 21 files byte-identical, CLI `0.2.1`, plugin installed/enabled, hook wiring 9종, 실제 session 자동 수신과 probe subagent running → stopped/UI 완료 반영
 - official app `0.2.1`: parent 3개·subagent 3개 자동 표시, 실제 hook 8종과 `PermissionRequest` waiting 확인; 실제 `SessionEnd` 미관찰
 
-Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.0`의 npm artifact/tag/release evidence는 historical record로 보존한다. `0.2.1`은 source/tarball QA, public registry publish, tag/release/source match, clean-cache exact `npx --version`, this-device exact artifact reinstall/copy comparison, 실제 공식 앱 핵심 E2E와 `PermissionRequest` waiting까지 확인했다. 과거 event 0건의 원인은 단정하지 않으며, 실제 `SessionEnd`는 아직 완료로 주장하지 않는다. Universal Directory listing은 별도 external operation이다. 선택적인 npm provenance attestation 완료도 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.
+Captured-evidence 기반 schema, bounded in-memory core, loopback runtime, read-only UI, explicit install/remove CLI, package/skill wiring은 구현됐다. `0.2.0`/`0.2.1`의 npm artifact/tag/release evidence는 historical/public record로 보존한다. `0.3.0` source에서는 app-native snapshot과 실제 `SessionEnd`까지 확인했지만, publish/tag/GitHub Release와 exact artifact의 this-device reinstall E2E는 아직 완료로 주장하지 않는다. Universal Directory listing은 별도 external operation이다. 선택적인 npm provenance attestation 완료도 주장하지 않는다. 어느 항목도 SQLite/영구 history가 필요한 blocker를 뜻하지 않는다.
