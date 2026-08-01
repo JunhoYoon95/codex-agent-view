@@ -17,6 +17,8 @@ function positiveInteger(value, name) {
 function createSession(event) {
   return {
     session_id: event.session_id,
+    workspace_label: null,
+    workspace_label_observed_at_ms: null,
     first_seen_at_ms: event.received_at_ms,
     last_seen_at_ms: event.received_at_ms,
     agents: new Map(),
@@ -38,6 +40,20 @@ function createSession(event) {
     permission: { status: "idle" },
     recent_activities: [],
   };
+}
+
+function applyWorkspaceLabel(session, event) {
+  if (!("workspace_label" in event)) {
+    return;
+  }
+  if (
+    session.workspace_label_observed_at_ms !== null &&
+    event.received_at_ms < session.workspace_label_observed_at_ms
+  ) {
+    return;
+  }
+  session.workspace_label = event.workspace_label;
+  session.workspace_label_observed_at_ms = event.received_at_ms;
 }
 
 function deriveSessionStatus(session) {
@@ -312,6 +328,7 @@ function applyEvent(session, event, limits) {
 function snapshotSession(session) {
   return {
     session_id: session.session_id,
+    workspace_label: session.workspace_label,
     status: deriveSessionStatus(session),
     first_seen_at_ms: session.first_seen_at_ms,
     last_seen_at_ms: session.last_seen_at_ms,
@@ -390,6 +407,8 @@ export function createMonitorStore(options = {}) {
       addDiagnostic(diagnostic);
       return { status, event, diagnostic };
     }
+
+    applyWorkspaceLabel(session, event);
 
     session.first_seen_at_ms = Math.min(
       session.first_seen_at_ms,

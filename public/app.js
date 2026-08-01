@@ -167,6 +167,7 @@ function normalizeSession(value, index) {
 
   return {
     sessionId: safeString(session.session_id, `unknown-session-${index + 1}`),
+    workspaceLabel: safeString(session.workspace_label, ""),
     status: deriveSessionStatus(session, agents, recentActivities),
     lastActivityAtMs: safeTimestamp(session.last_seen_at_ms),
     agents,
@@ -369,11 +370,12 @@ function createSessionCard(session) {
   identity.className = "session-identity";
   const eyebrow = document.createElement("span");
   eyebrow.className = "session-kind";
-  eyebrow.textContent = "PARENT TASK";
-  const title = document.createElement("h3");
+  eyebrow.append("PARENT TASK · ");
   const id = document.createElement("code");
   id.textContent = session.sessionId;
-  title.append(id);
+  eyebrow.append(id);
+  const title = document.createElement("h3");
+  title.textContent = session.workspaceLabel || "프로젝트 정보 없음";
   identity.append(eyebrow, title);
 
   const sessionState = document.createElement("div");
@@ -435,6 +437,7 @@ function sessionMatchesQuery(session, query) {
 
   const searchableValues = [
     session.sessionId,
+    session.workspaceLabel,
     session.status,
     ...session.agents.flatMap((agent) => [agent.agentId, agent.agentType, agent.status]),
     ...session.recentActivities.flatMap((activity) => [

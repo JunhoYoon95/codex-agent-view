@@ -116,6 +116,43 @@ test("does not copy sensitive or unknown payload fields", () => {
   }
 });
 
+test("accepts a bounded workspace label without retaining cwd", () => {
+  const result = normalizeHookPayload(
+    {
+      ...common,
+      hook_event_name: "UserPromptSubmit",
+      workspace_label: "  acme-project  ",
+      cwd: "/private/customer/acme-project",
+    },
+    { receivedAtMs: 123 },
+  );
+
+  assert.equal(result.status, "accepted");
+  assert.equal(result.event.workspace_label, "acme-project");
+  assert(!JSON.stringify(result).includes("/private/customer/acme-project"));
+});
+
+test("omits malformed optional workspace labels without dropping lifecycle events", () => {
+  for (const workspaceLabel of [
+    null,
+    {},
+    "",
+    "bad\nlabel",
+    "x".repeat(121),
+  ]) {
+    const result = normalizeHookPayload(
+      {
+        ...common,
+        hook_event_name: "UserPromptSubmit",
+        workspace_label: workspaceLabel,
+      },
+      { receivedAtMs: 124 },
+    );
+    assert.equal(result.status, "accepted");
+    assert(!("workspace_label" in result.event));
+  }
+});
+
 test("returns diagnostics for malformed, missing, and invalid fields", () => {
   for (const payload of [null, [], "not-an-object"]) {
     const result = normalizeHookPayload(payload, { receivedAtMs: 10 });

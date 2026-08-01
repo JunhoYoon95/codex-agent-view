@@ -152,6 +152,48 @@ for (const event of expectedEvents) {
 await access(captureScriptUrl, constants.R_OK);
 await access(senderScriptUrl, constants.R_OK);
 await access(skillUrl, constants.R_OK);
+const skillText = await readFile(skillUrl, "utf8");
+for (const requiredText of [
+  "codex_app__list_threads",
+  "codex_app__read_thread",
+  "includeOutputs: false",
+  "maxOutputCharsPerItem: 600",
+  "subAgentActivity",
+  "hasUnreadTurn",
+  "완료/확인 대기",
+  "`turns` in `newest_first` order",
+  "select the last",
+  "first observation for each",
+  "unidentified agent #N",
+  "workspace directory basename",
+  "Codex in-app Browser",
+]) {
+  assert(
+    skillText.includes(requiredText),
+    `Codex app-first skill contract must include ${requiredText}`,
+  );
+}
+for (const forbiddenDisplay of [
+  "Do not display or paraphrase previews",
+  "user prompts",
+  "tool inputs",
+  "tool outputs",
+]) {
+  assert(
+    skillText.includes(forbiddenDisplay),
+    `skill privacy contract must address ${forbiddenDisplay}`,
+  );
+}
+assert(
+  skillText.indexOf("codex_app__list_threads") < skillText.indexOf("codex-agent-view status --json"),
+  "Codex app thread discovery must precede the CLI fallback",
+);
+assert(
+  Array.isArray(manifest.interface?.defaultPrompt) &&
+    manifest.interface.defaultPrompt.some((prompt) => prompt.includes("active Codex tasks")) &&
+    manifest.interface.defaultPrompt.some((prompt) => prompt.includes("built-in Browser")),
+  "manifest default prompts must advertise the app snapshot and in-app live view",
+);
 for (const field of ["composerIcon", "logo", "logoDark"]) {
   const value = manifest.interface?.[field];
   assert(

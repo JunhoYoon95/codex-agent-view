@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 
+import { basename } from "node:path";
+
 import { minimizePayload } from "./capture-hook.mjs";
 import { readRuntimeInfo } from "../src/runtime/config.mjs";
 
 const MAX_STDIN_BYTES = 2 * 1024 * 1024;
 const SEND_TIMEOUT_MS = 750;
+const MAX_WORKSPACE_LABEL_LENGTH = 120;
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/g;
 
 async function readStdin() {
   const chunks = [];
@@ -29,6 +33,28 @@ function debug(code) {
   }
 }
 
+function deriveWorkspaceLabel(cwd) {
+  if (typeof cwd !== "string" || cwd.length === 0) {
+    return null;
+  }
+
+  const label = basename(cwd)
+    .replace(CONTROL_CHARACTERS, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_WORKSPACE_LABEL_LENGTH)
+    .trim();
+  return label || null;
+}
+
+function monitorEnvelope(payload) {
+  const minimized = minimizePayload(payload);
+  const workspaceLabel = deriveWorkspaceLabel(payload.cwd);
+  return workspaceLabel
+    ? { ...minimized, workspace_label: workspaceLabel }
+    : minimized;
+}
+
 async function send(payload) {
   const runtime = await readRuntimeInfo();
   const response = await fetch(
@@ -39,7 +65,7 @@ async function send(payload) {
         authorization: `Bearer ${runtime.token}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify(minimizePayload(payload)),
+      body: JSON.stringify(monitorEnvelope(payload)),
       signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
     },
   );

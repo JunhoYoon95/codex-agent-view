@@ -1,7 +1,7 @@
 {
   "name": "codex-agent-view",
-  "version": "0.2.1",
-  "description": "Local read-only companion monitor for Codex parent tasks and subagents.",
+  "version": "0.3.0",
+  "description": "Read-only Codex app task view with an optional local live monitor.",
   "type": "module",
   "main": "./src/core/index.mjs",
   "exports": "./src/core/index.mjs",

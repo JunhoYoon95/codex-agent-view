@@ -143,6 +143,52 @@ test("tracks parent session and turn lifecycle from hooks", () => {
   assert.equal(session.recent_activities[0].type, "session_started");
 });
 
+test("keeps the latest observed workspace label without retaining a full path", () => {
+  const store = createMonitorStore();
+  store.ingest(
+    {
+      session_id: "session-1",
+      hook_event_name: "SessionStart",
+      workspace_label: "new-project",
+      cwd: "/private/new-project",
+    },
+    { receivedAtMs: 200 },
+  );
+  store.ingest(
+    {
+      ...toolPayload("PreToolUse"),
+      workspace_label: "old-project",
+      cwd: "/private/old-project",
+    },
+    { receivedAtMs: 100 },
+  );
+
+  let snapshot = store.getSnapshot();
+  assert.equal(snapshot.sessions[0].workspace_label, "new-project");
+  assert(!JSON.stringify(snapshot).includes("/private/"));
+
+  store.ingest(
+    {
+      ...toolPayload("PostToolUse"),
+      workspace_label: "latest-project",
+      prompt: "private prompt",
+      tool_input: { command: "private command" },
+      tool_response: "private output",
+    },
+    { receivedAtMs: 300 },
+  );
+  snapshot = store.getSnapshot();
+  assert.equal(snapshot.sessions[0].workspace_label, "latest-project");
+  const serialized = JSON.stringify(snapshot);
+  for (const privateValue of [
+    "private prompt",
+    "private command",
+    "private output",
+  ]) {
+    assert(!serialized.includes(privateValue));
+  }
+});
+
 test("treats repeated lifecycle and tool hooks as duplicates", () => {
   const store = createMonitorStore();
   const start = subagentPayload("SubagentStart");

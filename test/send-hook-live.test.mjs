@@ -98,6 +98,7 @@ test("delivers a minimized hook event to a live server", async (t) => {
 
   assert.deepEqual(result, { code: 0, stderr: "", stdout: "{}\n" });
   const snapshot = monitor.store.getSnapshot();
+  assert.equal(snapshot.sessions[0].workspace_label, "workspace");
   assert.equal(snapshot.sessions[0].recent_activities[0].status, "completed_without_start");
   const serialized = JSON.stringify(snapshot);
   for (const privateValue of [
@@ -109,4 +110,45 @@ test("delivers a minimized hook event to a live server", async (t) => {
   ]) {
     assert(!serialized.includes(privateValue));
   }
+});
+
+test("derives only a bounded sanitized workspace basename", async (t) => {
+  const { env } = await temporaryRuntime(t);
+  const monitor = await startMonitorServer({
+    host: "127.0.0.1",
+    port: 0,
+    env,
+    token: "w".repeat(43),
+    now: () => 600,
+  });
+  t.after(async () => monitor.close().catch(() => {}));
+
+  const fixtures = [
+    ["session-project", "/private/customer/acme-project", "acme-project"],
+    ["session-root", "/", null],
+    ["session-empty", "", null],
+    ["session-control", "/private/bad\u0000\nname", "bad name"],
+    ["session-long", `/private/${"x".repeat(200)}`, "x".repeat(120)],
+  ];
+
+  for (const [sessionId, cwd, expectedLabel] of fixtures) {
+    const result = await runSender(
+      {
+        session_id: sessionId,
+        hook_event_name: "SessionStart",
+        cwd,
+      },
+      env,
+    );
+    assert.deepEqual(result, { code: 0, stderr: "", stdout: "{}\n" });
+    const session = monitor.store
+      .getSnapshot()
+      .sessions.find(({ session_id: id }) => id === sessionId);
+    assert.equal(session.workspace_label, expectedLabel);
+  }
+
+  const serialized = JSON.stringify(monitor.store.getSnapshot());
+  assert(!serialized.includes("/private/customer/acme-project"));
+  assert(!serialized.includes("/private/bad"));
+  assert(!serialized.includes(`/private/${"x".repeat(200)}`));
 });

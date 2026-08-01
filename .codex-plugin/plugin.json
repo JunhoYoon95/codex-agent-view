@@ -1,7 +1,7 @@
 {
   "name": "codex-agent-view",
-  "version": "0.2.1",
-  "description": "Read-only local monitor for Codex parent-task and subagent lifecycle events.",
+  "version": "0.3.0",
+  "description": "Read-only Codex app task snapshots with an optional local live monitor.",
   "author": {
     "name": "Junho Yoon",
     "url": "https://github.com/JunhoYoon95"
@@ -12,8 +12,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Agent View",
-    "shortDescription": "Monitor Codex task activity.",
-    "longDescription": "A read-only companion monitor for the official Codex app. View privacy-minimized task, subagent, tool, and permission lifecycle state in a local dashboard.",
+    "shortDescription": "View active Codex tasks.",
+    "longDescription": "View privacy-minimized active task and subagent snapshots inside the official Codex app, with an optional localhost live monitor in the built-in Browser.",
     "developerName": "Junho Yoon",
     "category": "Productivity",
     "brandColor": "#123F35",
@@ -27,8 +27,8 @@
     "privacyPolicyURL": "https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/privacy.md",
     "termsOfServiceURL": "https://github.com/JunhoYoon95/codex-agent-view/blob/main/docs/terms.md",
     "defaultPrompt": [
-      "Show the current Codex task and subagent status.",
-      "Diagnose why Codex Agent View is not receiving events."
+      "Show the active Codex tasks and subagents in this app.",
+      "Open the live Codex Agent View in the built-in Browser."
     ]
   }
 }

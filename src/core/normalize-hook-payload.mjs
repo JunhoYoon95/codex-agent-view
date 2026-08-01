@@ -14,6 +14,8 @@ const SESSION_EVENT_TYPES = new Set(["session_started", "session_ended"]);
 
 const MAX_IDENTIFIER_LENGTH = 512;
 const MAX_LABEL_LENGTH = 256;
+const MAX_WORKSPACE_LABEL_LENGTH = 120;
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/;
 
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -69,6 +71,21 @@ function commonEvent(payload, type, receivedAtMs) {
   };
 }
 
+function optionalWorkspaceLabel(payload) {
+  if (typeof payload.workspace_label !== "string") {
+    return null;
+  }
+  const label = payload.workspace_label.trim();
+  if (
+    label.length === 0 ||
+    label.length > MAX_WORKSPACE_LABEL_LENGTH ||
+    CONTROL_CHARACTERS.test(label)
+  ) {
+    return null;
+  }
+  return label;
+}
+
 /**
  * Validate an untrusted Codex hook payload and retain only monitor-safe fields.
  * Raw prompts, tool input/output, paths, and assistant messages are never copied.
@@ -105,6 +122,10 @@ export function normalizeHookPayload(payload, options = {}) {
   }
 
   const event = commonEvent(payload, type, receivedAtMs);
+  const workspaceLabel = optionalWorkspaceLabel(payload);
+  if (workspaceLabel) {
+    event.workspace_label = workspaceLabel;
+  }
 
   if (type === "subagent_started" || type === "subagent_stopped") {
     for (const [field, maxLength] of [

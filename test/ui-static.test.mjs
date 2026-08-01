@@ -74,6 +74,17 @@ test("does not infer parent task completion from completed subagents", () => {
   assert.doesNotMatch(app, /agents\.every\(/);
 });
 
+test("renders workspace labels as the primary identity and keeps session IDs secondary", () => {
+  assert.match(app, /workspaceLabel:\s*safeString\(session\.workspace_label, ""\)/);
+  assert.match(app, /eyebrow\.append\("PARENT TASK · "\)/);
+  assert.match(app, /id\.textContent = session\.sessionId[\s\S]*?eyebrow\.append\(id\)/);
+  assert.match(app, /title\.textContent = session\.workspaceLabel \|\| "프로젝트 정보 없음"/);
+  assert.match(
+    app,
+    /const searchableValues = \[[\s\S]*?session\.sessionId,[\s\S]*?session\.workspaceLabel,/,
+  );
+});
+
 test("explains an empty hook observation window without inferring Codex task state", () => {
   assert.match(app, /diagnostics:\s*value\.diagnostics\.map\(normalizeDiagnostic\)/);
   assert.match(app, /const diagnosticCounts = new Map\(\)/);
