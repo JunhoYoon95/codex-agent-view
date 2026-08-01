@@ -32,6 +32,100 @@ function loadStableAgentOrdinalHelper() {
   )();
 }
 
+function extractNamedFunction(name) {
+  const start = app.indexOf(`async function ${name}(`);
+  assert.notEqual(start, -1);
+  const bodyStart = app.indexOf("{", start);
+  assert.notEqual(bodyStart, -1);
+
+  let depth = 0;
+  for (let index = bodyStart; index < app.length; index += 1) {
+    if (app[index] === "{") depth += 1;
+    if (app[index] === "}") depth -= 1;
+    if (depth === 0) return app.slice(start, index + 1);
+  }
+  assert.fail(`could not extract ${name}`);
+}
+
+function createRefreshStateHarness(responses) {
+  const calls = [];
+  const connectionStates = [];
+  let renderCount = 0;
+  const queue = [...responses];
+  const refreshStateSource = extractNamedFunction("refreshState");
+  const buildHarness = Function(
+    "fetchImpl",
+    "normalizeState",
+    "renderImpl",
+    "setConnectionStatusImpl",
+    "accessToken",
+    "API_STATE_URL",
+    `
+      "use strict";
+      const fetch = fetchImpl;
+      const render = renderImpl;
+      const setConnectionStatus = setConnectionStatusImpl;
+      const viewState = {
+        updatedAtMs: null,
+        sessions: [],
+        diagnostics: [],
+        hasLoaded: false,
+        errorMessage: "",
+        canRetry: true,
+        authenticationFailed: false,
+        requestInFlight: false,
+      };
+      ${refreshStateSource}
+      return { refreshState, viewState };
+    `,
+  );
+  const harness = buildHarness(
+    async (...args) => {
+      calls.push(args);
+      const next = queue.shift();
+      if (next instanceof Error) throw next;
+      return next;
+    },
+    (value) => value,
+    () => {
+      renderCount += 1;
+    },
+    (...args) => {
+      connectionStates.push(args);
+    },
+    "v".repeat(43),
+    "/api/state",
+  );
+  return {
+    ...harness,
+    calls,
+    connectionStates,
+    get renderCount() {
+      return renderCount;
+    },
+  };
+}
+
+function stateResponse(state) {
+  return {
+    body: { cancel: async () => {} },
+    json: async () => state,
+    ok: true,
+    status: 200,
+  };
+}
+
+function errorResponse(status, onCancel = () => {}) {
+  return {
+    body: { cancel: async () => onCancel() },
+    json: async () => {
+      throw new Error("error response body must not be read");
+    },
+    ok: false,
+    status,
+  };
+}
+
 test("uses external scripts and styles for a CSP-friendly static shell", () => {
   assert.match(html, /<link\s+rel="stylesheet"\s+href="\/assets\/styles\.css">/);
   assert.match(html, /<script\s+src="\/assets\/app\.js"\s+defer><\/script>/);
@@ -104,6 +198,88 @@ test("treats rejected live-view credentials as non-retryable without clearing th
     /response\.status === 401[\s\S]*?viewState\.sessions\s*=\s*\[\]/,
   );
 });
+
+test("recovers the same viewer session after transient network and server failures", async () => {
+  const firstSnapshot = {
+    updatedAtMs: 100,
+    sessions: [{ sessionId: "session-1" }],
+    diagnostics: [],
+  };
+  const recoveredSnapshot = {
+    updatedAtMs: 200,
+    sessions: [{ sessionId: "session-1" }, { sessionId: "session-2" }],
+    diagnostics: [],
+  };
+  const harness = createRefreshStateHarness([
+    stateResponse(firstSnapshot),
+    new TypeError("fetch failed"),
+    errorResponse(502),
+    stateResponse(recoveredSnapshot),
+  ]);
+
+  await harness.refreshState();
+  assert.deepEqual(harness.viewState.sessions, firstSnapshot.sessions);
+  assert.equal(harness.viewState.authenticationFailed, false);
+
+  await harness.refreshState();
+  assert.deepEqual(harness.viewState.sessions, firstSnapshot.sessions);
+  assert.equal(harness.viewState.canRetry, true);
+  assert.equal(harness.viewState.authenticationFailed, false);
+  assert.equal(harness.viewState.errorMessage, "fetch failed");
+  assert.deepEqual(harness.connectionStates.at(-1), ["error"]);
+
+  await harness.refreshState();
+  assert.deepEqual(harness.viewState.sessions, firstSnapshot.sessions);
+  assert.equal(harness.viewState.canRetry, true);
+  assert.equal(harness.viewState.authenticationFailed, false);
+  assert.equal(harness.viewState.errorMessage, "상태 요청 실패 (502)");
+  assert.deepEqual(harness.connectionStates.at(-1), ["error"]);
+
+  await harness.refreshState();
+  assert.deepEqual(harness.viewState.sessions, recoveredSnapshot.sessions);
+  assert.equal(harness.viewState.canRetry, true);
+  assert.equal(harness.viewState.authenticationFailed, false);
+  assert.equal(harness.viewState.errorMessage, "");
+  assert.deepEqual(harness.connectionStates.at(-1), ["connected"]);
+  assert.equal(harness.calls.length, 4);
+  for (const [url, options] of harness.calls) {
+    assert.equal(url, "/api/state");
+    assert.equal(options.credentials, "same-origin");
+    assert.equal(options.headers.Authorization, `Bearer ${"v".repeat(43)}`);
+  }
+});
+
+for (const status of [401, 403]) {
+  test(`makes HTTP ${status} terminal without reading or exposing auth details`, async () => {
+    let cancelCount = 0;
+    const harness = createRefreshStateHarness([
+      stateResponse({
+        updatedAtMs: 100,
+        sessions: [{ sessionId: "last-good" }],
+        diagnostics: [],
+      }),
+      errorResponse(status, () => {
+        cancelCount += 1;
+      }),
+      stateResponse({ updatedAtMs: 200, sessions: [], diagnostics: [] }),
+    ]);
+
+    await harness.refreshState();
+    await harness.refreshState();
+    assert.equal(cancelCount, 1);
+    assert.equal(harness.viewState.authenticationFailed, true);
+    assert.equal(harness.viewState.canRetry, false);
+    assert.deepEqual(harness.viewState.sessions, [{ sessionId: "last-good" }]);
+    assert.equal(
+      harness.viewState.errorMessage,
+      "이 실시간 화면의 인증이 더 이상 유효하지 않습니다. Codex 앱에서 Codex Agent View의 실시간 화면 열기를 다시 요청하세요.",
+    );
+    assert.deepEqual(harness.connectionStates.at(-1), ["error", "실시간 화면 인증 필요"]);
+
+    await harness.refreshState();
+    assert.equal(harness.calls.length, 2, "terminal auth failure must stop polling retries");
+  });
+}
 
 test("defines status treatments, responsive layouts, and reduced-motion behavior", () => {
   for (const status of ["running", "waiting", "completed", "unknown"]) {

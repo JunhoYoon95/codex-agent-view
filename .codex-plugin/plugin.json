@@ -1,6 +1,6 @@
 {
   "name": "codex-agent-view",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Read-only Codex app task snapshots with a trusted-hook auto-prepared local live backend.",
   "author": {
     "name": "Junho Yoon",

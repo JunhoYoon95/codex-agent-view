@@ -19,8 +19,11 @@ import { fileURLToPath } from "node:url";
 import {
   LOOPBACK_HOST,
   RUNTIME_SCHEMA_VERSION,
+  ensureViewerToken,
   readRuntimeInfo,
+  readViewerToken,
   runtimeFile,
+  viewerCredentialFile,
   writeRuntimeInfo,
 } from "../src/runtime/config.mjs";
 import { startMonitorServer } from "../src/runtime/server.mjs";
@@ -51,7 +54,7 @@ if (args.join(" ") === "plugin marketplace list --json") {
   process.stdout.write(JSON.stringify({ installed: [{
     pluginId: "codex-agent-view@codex-agent-view",
     enabled: process.env.FAKE_PLUGIN_DISABLED !== "1",
-    version: "0.4.2",
+    version: "0.4.3",
     source: { source: "local", path: sourcePath }
   }] }) + "\\n");
 } else {
@@ -244,6 +247,43 @@ test("refuses to replace or uninstall an unmanaged marketplace directory", async
   assert.deepEqual(await readCalls(setup.log), []);
 });
 
+test("install preserves an existing viewer credential without exposing it", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const viewerToken = await ensureViewerToken(env);
+
+  const first = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(first.code, 0, first.stderr);
+  assert.equal(await readViewerToken(env), viewerToken);
+  assert(!`${first.stdout}${first.stderr}`.includes(viewerToken));
+
+  const second = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(second.code, 0, second.stderr);
+  assert.equal(await readViewerToken(env), viewerToken);
+  assert(!`${second.stdout}${second.stderr}`.includes(viewerToken));
+});
+
+test("install seeds a missing viewer credential from a legacy runtime token", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const legacy = await writeStaleRuntime(runtimeRoot, "l".repeat(43));
+
+  const result = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(await readViewerToken(env), legacy.token);
+  assert(!`${result.stdout}${result.stderr}`.includes(legacy.token));
+});
+
 test("refuses a symbolic-link runtime root without touching its target", async (t) => {
   if (process.platform === "win32") {
     t.skip("symbolic-link and fake executable fixture is POSIX-specific");
@@ -296,7 +336,12 @@ test("normal uninstall stops a healthy owned monitor instead of leaving an orpha
   const install = await runCli(setup, runtimeRoot, ["install"]);
   assert.equal(install.code, 0, install.stderr);
   const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
-  const monitor = await startMonitorServer({ env, port: 0 });
+  const installedViewerToken = await readViewerToken(env);
+  const monitor = await startMonitorServer({
+    env,
+    port: 0,
+    viewerToken: installedViewerToken,
+  });
   t.after(async () => monitor.close());
 
   const result = await runCli(setup, runtimeRoot, ["uninstall"]);
@@ -304,7 +349,52 @@ test("normal uninstall stops a healthy owned monitor instead of leaving an orpha
   assert.match(result.stdout, /Stopped the owned monitor/);
   assert.equal(monitor.server.address(), null);
   await assertMissing(runtimeFile(env));
+  await assertMissing(viewerCredentialFile(env));
   await assertMissing(join(runtimeRoot, "marketplace"));
+
+  const reinstall = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(reinstall.code, 0, reinstall.stderr);
+  const replacementViewerToken = await readViewerToken(env);
+  assert.notEqual(replacementViewerToken, installedViewerToken);
+  assert(!`${reinstall.stdout}${reinstall.stderr}`.includes(replacementViewerToken));
+});
+
+test("normal uninstall and purge preserve malformed and symbolic-link viewer credentials", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("symbolic-link and fake executable fixture is POSIX-specific");
+    return;
+  }
+  const setup = await fixture(t);
+
+  for (const kind of ["malformed", "symlink"]) {
+    for (const purge of [false, true]) {
+      const mode = purge ? "purge" : "normal";
+      const runtimeRoot = join(setup.root, `${kind}-${mode}-viewer-runtime`);
+      const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+      const install = await runCli(setup, runtimeRoot, ["install"]);
+      assert.equal(install.code, 0, install.stderr);
+      const credentialPath = viewerCredentialFile(env);
+      await rm(credentialPath);
+
+      if (kind === "malformed") {
+        await writeFile(credentialPath, "user-owned\n");
+      } else {
+        const target = join(setup.root, `${mode}-user-viewer-target.json`);
+        await writeFile(target, "user-owned\n");
+        await symlink(target, credentialPath);
+      }
+
+      const uninstall = await runCli(
+        setup,
+        runtimeRoot,
+        purge ? ["uninstall", "--purge"] : ["uninstall"],
+      );
+      assert.equal(uninstall.code, 0, uninstall.stderr);
+      assert.match(uninstall.stdout, /viewer credential was preserved/);
+      assert.equal(await readFile(credentialPath, "utf8"), "user-owned\n");
+      await assertMissing(join(runtimeRoot, "marketplace"));
+    }
+  }
 });
 
 test("uninstall rejects unknown, duplicate, and positional arguments before changing plugin or runtime state", async (t) => {
@@ -501,7 +591,9 @@ test("start rejects a live runtime without orphaning it and replaces a valid sta
   assert.equal((await readRuntimeInfo(liveEnv)).token, monitor.runtimeInfo.token);
 
   const staleRoot = join(setup.root, "stale-runtime");
+  const staleEnv = { CODEX_AGENT_VIEW_RUNTIME_DIR: staleRoot };
   const stale = await writeStaleRuntime(staleRoot);
+  const viewerToken = await ensureViewerToken(staleEnv);
   const child = spawnCli(setup, staleRoot, ["start", "--port", "0", "--no-open"]);
   let stdout = "";
   child.stdout.setEncoding("utf8");
@@ -529,13 +621,13 @@ test("start rejects a live runtime without orphaning it and replaces a valid sta
     });
   });
   await started;
-  const replacement = await readRuntimeInfo({
-    CODEX_AGENT_VIEW_RUNTIME_DIR: staleRoot,
-  });
+  const replacement = await readRuntimeInfo(staleEnv);
   assert.notEqual(replacement.token, stale.token);
+  assert.equal(replacement.viewer_token, viewerToken);
+  assert.equal(await readViewerToken(staleEnv), viewerToken);
   const stopped = await stopMonitorChild(child);
   assert.equal(stopped.code, 0);
-  await assertMissing(runtimeFile({ CODEX_AGENT_VIEW_RUNTIME_DIR: staleRoot }));
+  await assertMissing(runtimeFile(staleEnv));
 });
 
 test("start opens an external browser only when --open is explicit", async (t) => {
@@ -653,7 +745,7 @@ test("doctor distinguishes valid registration from unobservable hook trust and n
     enabled: true,
     installed: true,
     source_path: join(runtimeRoot, "marketplace"),
-    version: "0.4.2",
+    version: "0.4.3",
   });
   assert.equal(report.hook.wiring_ok, true);
   assert.equal(report.hook.trust, "unknown");

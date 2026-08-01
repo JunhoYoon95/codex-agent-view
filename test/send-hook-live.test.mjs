@@ -7,7 +7,11 @@ import { spawn } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { readRuntimeInfo, runtimeFile } from "../src/runtime/config.mjs";
+import {
+  readRuntimeInfo,
+  readViewerToken,
+  runtimeFile,
+} from "../src/runtime/config.mjs";
 import { startMonitorServer } from "../src/runtime/server.mjs";
 
 const senderPath = fileURLToPath(new URL("../scripts/send-hook.mjs", import.meta.url));
@@ -87,7 +91,9 @@ async function fetchSnapshot(runtime) {
   const response = await fetch(
     `http://${runtime.host}:${runtime.port}/api/state`,
     {
-      headers: { authorization: `Bearer ${runtime.token}` },
+      headers: {
+        authorization: `Bearer ${runtime.viewer_token || runtime.token}`,
+      },
       signal: AbortSignal.timeout(500),
     },
   );
@@ -128,6 +134,8 @@ test("auto-starts a detached monitor and reuses it for later hooks", async (t) =
   const runtime = await readRuntimeInfo(env);
   assert.equal(runtime.port, port);
   assert.notEqual(runtime.pid, process.pid);
+  assert.equal(runtime.viewer_token, await readViewerToken(env));
+  assert(!`${result.stdout}${result.stderr}`.includes(runtime.viewer_token));
   const snapshot = await fetchSnapshot(runtime);
   assert.equal(snapshot.sessions[0].session_id, "session-1");
   assert.equal(snapshot.sessions[0].agents[0].agent_id, "agent-1");

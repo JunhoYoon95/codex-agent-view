@@ -17,10 +17,14 @@ import { fileURLToPath } from "node:url";
 import { startMonitorServer } from "../src/runtime/server.mjs";
 import {
   DEFAULT_PORT,
+  ensureViewerToken,
   readRuntimeInfo,
+  readViewerToken,
   removeRuntimeInfo,
+  removeViewerToken,
   runtimeDirectory,
   runtimeFile,
+  viewerCredentialFile,
 } from "../src/runtime/config.mjs";
 
 const PACKAGE_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
@@ -167,7 +171,11 @@ async function start(args) {
     throw new Error("a Codex Agent View monitor is already running; stop it before starting another");
   }
 
-  const monitor = await startMonitorServer({ port: options.port });
+  const viewerToken = await ensureViewerToken();
+  const monitor = await startMonitorServer({
+    port: options.port,
+    viewerToken,
+  });
   let stopping = false;
   const stop = async () => {
     if (stopping) return;
@@ -442,6 +450,39 @@ async function inspectRuntime() {
   }
 }
 
+async function inspectViewerCredential() {
+  const path = viewerCredentialFile();
+  const stats = await pathExists(path);
+  if (!stats) {
+    return { kind: "absent", path };
+  }
+  if (!stats.isFile() || stats.isSymbolicLink()) {
+    return { kind: "unknown", path };
+  }
+  try {
+    return { kind: "valid", path, token: await readViewerToken() };
+  } catch {
+    return { kind: "unknown", path };
+  }
+}
+
+async function revokeViewerCredential(preflight) {
+  if (preflight.kind === "absent") {
+    return { preserved: false, removed: false };
+  }
+  if (preflight.kind === "unknown") {
+    return { preserved: true, removed: false };
+  }
+  if (await removeViewerToken(preflight.token)) {
+    return { preserved: false, removed: true };
+  }
+  const current = await inspectViewerCredential();
+  return {
+    preserved: current.kind !== "absent",
+    removed: current.kind === "absent",
+  };
+}
+
 async function runtimeEndpointState(runtime) {
   try {
     const response = await fetch(`http://${runtime.host}:${runtime.port}/api/state`, {
@@ -620,6 +661,15 @@ async function install() {
       `marketplace ${MARKETPLACE_NAME} already points to ${existing.root}; remove it explicitly before installing this npm bundle`,
     );
   }
+  const bundle = await inspectPluginBundle(destination);
+  if (bundle.kind === "unmanaged") {
+    throw unmanagedBundleError(destination);
+  }
+  const runtime = await inspectRuntime();
+  const seedToken = runtime.kind === "valid"
+    ? runtime.info.viewer_token || runtime.info.token
+    : undefined;
+  await ensureViewerToken(process.env, { seedToken });
   await copyPluginBundle(destination);
   if (!existing) {
     await run("codex", ["plugin", "marketplace", "add", destination, "--json"]);
@@ -739,6 +789,7 @@ async function uninstall(args) {
   }
 
   const runtimePreflight = await inspectRuntime();
+  const viewerPreflight = await inspectViewerCredential();
   const stoppedMonitor = await stopRunningRuntime(runtimePreflight);
 
   await run("codex", ["plugin", "remove", PLUGIN_ID, "--json"], { allowFailure: true });
@@ -746,6 +797,7 @@ async function uninstall(args) {
     allowFailure: true,
   });
   await removeManagedPluginBundle(bundle);
+  const viewerCredential = await revokeViewerCredential(viewerPreflight);
   if (purge) {
     const preservedRuntimeFile = await purgeStaleRuntime(runtimePreflight);
     const removedRoot = await removeRuntimeRootIfEmpty(root);
@@ -761,12 +813,22 @@ async function uninstall(args) {
         `The unrecognized runtime file at ${runtimeFile()} was preserved.\n`,
       );
     }
+    if (viewerCredential.preserved) {
+      process.stdout.write(
+        "The unrecognized or changed viewer credential was preserved for manual review.\n",
+      );
+    }
   } else {
     process.stdout.write(
       stoppedMonitor
         ? "Stopped the owned monitor and removed the plugin and marketplace bundle.\n"
         : "Removed plugin and marketplace bundle. Runtime data was preserved.\n",
     );
+    if (viewerCredential.preserved) {
+      process.stdout.write(
+        "The unrecognized or changed viewer credential was preserved for manual review.\n",
+      );
+    }
   }
 }
 

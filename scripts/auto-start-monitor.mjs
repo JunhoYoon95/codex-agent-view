@@ -4,7 +4,11 @@ import { access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import { startMonitorServer } from "../src/runtime/server.mjs";
-import { autoStartPort, readRuntimeInfo } from "../src/runtime/config.mjs";
+import {
+  autoStartPort,
+  ensureViewerToken,
+  readRuntimeInfo,
+} from "../src/runtime/config.mjs";
 
 const HEALTH_TIMEOUT_MS = 350;
 const OWNER_CHECK_INTERVAL_MS = 1_000;
@@ -57,7 +61,11 @@ async function main() {
   }
 
   try {
-    monitor = await startMonitorServer({ port: autoStartPort() });
+    const viewerToken = await ensureViewerToken();
+    monitor = await startMonitorServer({
+      port: autoStartPort(),
+      viewerToken,
+    });
   } catch (error) {
     process.off("SIGINT", stop);
     process.off("SIGTERM", stop);

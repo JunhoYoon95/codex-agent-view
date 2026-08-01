@@ -90,6 +90,7 @@ export async function startMonitorServer({
   env = process.env,
   store = createMonitorStore(),
   token = createRuntimeToken(),
+  viewerToken = createRuntimeToken(),
   now = Date.now,
 } = {}) {
   if (host !== LOOPBACK_HOST) {
@@ -109,13 +110,20 @@ export async function startMonitorServer({
         return;
       }
 
-      if (requestUrl.pathname.startsWith("/api/") && !hasToken(request, token)) {
-        sendJson(response, 401, { error: "authorization required" });
+      if (
+        request.method === "GET" &&
+        requestUrl.pathname === "/api/state"
+      ) {
+        if (!hasToken(request, token) && !hasToken(request, viewerToken)) {
+          sendJson(response, 401, { error: "authorization required" });
+          return;
+        }
+        sendJson(response, 200, store.getSnapshot());
         return;
       }
 
-      if (request.method === "GET" && requestUrl.pathname === "/api/state") {
-        sendJson(response, 200, store.getSnapshot());
+      if (requestUrl.pathname.startsWith("/api/") && !hasToken(request, token)) {
+        sendJson(response, 401, { error: "authorization required" });
         return;
       }
 
@@ -182,6 +190,7 @@ export async function startMonitorServer({
     host,
     port: address.port,
     token,
+    viewer_token: viewerToken,
     pid: process.pid,
     started_at_ms: now(),
   };
@@ -214,6 +223,6 @@ export async function startMonitorServer({
     runtimeInfo,
     server,
     store,
-    url: `http://${host}:${address.port}/#token=${encodeURIComponent(token)}`,
+    url: `http://${host}:${address.port}/#token=${encodeURIComponent(viewerToken)}`,
   };
 }
