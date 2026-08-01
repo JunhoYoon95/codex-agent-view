@@ -10,7 +10,7 @@ Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task�
 
 ### 빠른 시작: 설치 후에는 Codex 앱 안에서만 사용
 
-이 README는 `codex-agent-view@0.4.4` release candidate를 설명한다. `0.4.4`가 공개된 뒤 **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다. Publish, registry metadata, CI acceptance, tag와 GitHub Release는 아직 대기 중이며, 마지막으로 검증된 public release는 `0.4.3`이다.
+이 README는 `codex-agent-view@0.4.4` 사용법을 설명한다. **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다.
 
 ```bash
 npm install --global codex-agent-view@0.4.4
@@ -40,7 +40,7 @@ Live UI의 기본 언어는 영어이며 language selector에서 **English**, **
 
 ### 현재 상태
 
-이 repository는 `0.4.4` release candidate이며 public npm `latest`는 publish 전까지 별도로 검증된 `0.4.3`이다. Candidate에는 다음 구성이 포함되어 있다.
+`0.4.4`에는 다음 구성이 포함되어 있다.
 
 - 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
@@ -211,7 +211,7 @@ Plugin enable/trust와 앱 재시작 뒤 생성되거나 재개되는 task는 tr
 
 ### npm 설치 명령 참고
 
-아래 명령은 publish 완료 뒤 `0.4.4`를 exact version으로 설치한다. Candidate가 public registry에 등록되기 전에는 이 명령이 실패한다.
+아래 명령은 `0.4.4`를 exact version으로 설치한다.
 
 ```bash
 npm install --global codex-agent-view@0.4.4
@@ -222,7 +222,7 @@ codex-agent-view install
 
 `0.4.4` 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다. 이전의 유효한 설치에서 upgrade하면 installation-owned read-only viewer credential을 유지하며, `0.4.3`에서 검증한 legacy `0.4.2` migration 동작도 그대로 보존한다. Token과 private URL은 출력하지 않는다.
 
-`0.2.0`부터 public `0.4.3`까지의 npm/install/migration E2E, annotated tag, GitHub Release와 final main/tag CI evidence를 [docs/distribution.md](docs/distribution.md)에 보존한다. `0.4.4` candidate는 검증되지 않은 registry, tag, CI evidence를 만들지 않고 별도로 기록한다.
+Version별 npm, install, migration, CI, tag와 GitHub Release evidence는 [docs/distribution.md](docs/distribution.md)에 보존한다. 각 evidence는 실제 확인한 뒤에만 갱신한다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
