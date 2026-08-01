@@ -34,6 +34,8 @@ Unknown events and malformed payloads are ignored or reduced to bounded diagnost
 
 Operational event state exists only in the monitor process memory. It is bounded and is discarded when the monitor stops or restarts, beginning a new live observation window. This is the intentional completed design for a live companion, not an incomplete persistence feature or accidental data-loss mode. Codex Agent View is not a historical audit or replay product and does not persist an operational event history to a database or JSONL file.
 
+After installation, explicit hook trust, and a Codex app restart, the first trusted hook may start the local backend as a detached internal process and retry that same privacy-minimized event for a bounded period. Concurrent hooks converge on the fixed loopback listener. If startup or delivery cannot complete within the hook budget, the sender fails open so Codex work continues; it does not create a disk queue or persistent replay history.
+
 SQLite or persistent history is not a required next step. It would be considered only as a separate, explicit opt-in feature after demonstrated user need and a new review of retention, deletion, migration, access control, and privacy costs.
 
 The runtime directory defaults to `~/.codex-agent-view` and can be overridden with `CODEX_AGENT_VIEW_RUNTIME_DIR`. It can contain:
@@ -44,6 +46,8 @@ The runtime directory defaults to `~/.codex-agent-view` and can be overridden wi
 The runtime directory is created with user-only permissions (`0700`), and `runtime.json` with `0600`. On a graceful monitor shutdown, the matching runtime file is removed. A crash can leave a stale runtime file; `codex-agent-view doctor` reports this as a monitor problem.
 
 The Codex in-app Browser receives the token in the URL fragment, removes the fragment from the visible URL, and keeps the token in browser `sessionStorage` for that browser session. It does not use `localStorage`. Treat the local URL, runtime file, and token as sensitive because another local process or person with access to them could read monitor state or submit events. The CLI does not open an operating-system browser by default; `--open` is an explicit external-browser action.
+
+An already-open in-app live tab polls and reconnects after temporary disconnects while the same monitor observation window and session token remain valid. A monitor restart begins a new observation window, and a missing browser-session token requires the user to request the live view again inside the Codex app. The automatic hook path emits no URL, and the skill never sends the private tokenized URL to the conversation. The public plugin API also cannot create a sidebar, panel, or Browser tab without an explicit in-app user action.
 
 ## Optional diagnostic capture
 

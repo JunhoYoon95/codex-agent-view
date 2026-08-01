@@ -118,6 +118,13 @@ test("skill uses app task tools before the CLI and keeps sensitive content out o
   assert.match(skill, /Never tell the user to open a terminal, type a CLI command/);
   assert.match(skill, /user's entire interaction after installation remains inside the official\nCodex app/);
   assert.match(skill, /do not turn the commands below into instructions for the user/);
+  assert.match(skill, /first trusted hook normally prepares the local backend internally/);
+  assert.match(skill, /never registers a task\nID or runs `start`, `status`, or `doctor`/);
+  assert.match(skill, /cannot create a sidebar, panel, or Browser tab\nwithout a prompt at app startup/);
+  assert.match(skill, /first live view therefore requires one\nexplicit request in a Codex app task/);
+  assert.match(skill, /already-open in-app live tab refreshes and reconnects/);
+  assert.match(skill, /same monitor observation window and its\nsession token remain valid/);
+  assert.match(skill, /Do not claim that installation alone\nopens a screen/);
   assert.match(skill, /Codex in-app Browser capability/);
   assert.match(skill, /Do not use Chrome,\n\s+Safari/);
 

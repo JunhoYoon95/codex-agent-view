@@ -10,7 +10,7 @@
 
 해당 app process에는 plugin 설치 전 `hooks/list` 응답이 있었고 설치 뒤에도 process가 유지됐다. 이는 stale config/hook snapshot 가설과 일치하지만 인과관계를 확정하지는 않는다. 또한 `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않아 config snapshot과 untrusted hook skip을 자동 진단으로 분리할 수 없었다. 따라서 당시 실패 원인을 “재시작 부족”으로 단정하지 않는다.
 
-Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. 현재 source/package와 public npm `latest`는 `0.3.2`다. Historical `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했다. `0.3.0` E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 explicit `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환을 확인했으며, 후자는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Browser monitor에서는 실제 `SessionEnd` lifecycle 반영을 관찰했다. Public exact `0.3.0` 재설치 뒤 실제 hook, workspace label, permission/tool lifecycle과 subagent running → stopped를 추가 확인했다. Public `0.3.2` registry metadata/digest/signature, annotated tag/GitHub Release, main/tag CI, this-device exact global install과 registry/install artifact match를 확인했다. App-native thread snapshot은 worker activity 3개를 확인했지만, 재설치 전 앱 process의 follow-up subagent 3개 hook은 0건이어서 live hook E2E는 앱 restart/new-task 전까지 미완료다.
+Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. 현재 source/package는 미배포 `0.4.0` release candidate이고 public npm `latest`는 `0.3.2`다. Historical `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했다. `0.3.0` E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 explicit `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환을 확인했으며, 후자는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Browser monitor에서는 실제 `SessionEnd` lifecycle 반영을 관찰했다. Public exact `0.3.0` 재설치 뒤 실제 hook, workspace label, permission/tool lifecycle과 subagent running → stopped를 추가 확인했다. Public `0.3.2` registry metadata/digest/signature, annotated tag/GitHub Release, main/tag CI, this-device exact global install과 registry/install artifact match를 확인했다. App-native thread snapshot은 worker activity 3개를 확인했지만, 재설치 전 앱 process의 follow-up subagent 3개 hook은 0건이어서 live hook E2E는 앱 restart/new-task 전까지 미완료다. `0.4.0`의 trusted-hook backend 자동 준비는 source 구현이며 공식 앱 restart/new-task E2E와 publish는 아직 미완료다.
 
 ## 검증 환경
 
@@ -203,7 +203,9 @@ Phase 0 capture는 원본 payload를 영구 model로 복사하기 위한 것이 
 
 Reducer는 event identity가 완전히 보장된다고 가정하지 않는다. 관찰된 ID를 상관관계 key로 사용하되 duplicate, stop-before-start, post-before-pre, stale permission event를 명시적 상태로 처리한다. Session, agent, activity, diagnostic collection에 상한을 두고 monitor restart 뒤 이전 event를 복구하거나 parent completion을 추측하지 않는다.
 
-Runtime server는 `127.0.0.1` 외 bind를 거부하고, user-only runtime file에 저장한 random bearer token을 `/api/events`와 `/api/state`에 요구한다. Hook sender는 750ms timeout과 neutral `{}` response로 fail-open하며 monitor 장애가 Codex task를 막지 않게 한다. Browser는 URL fragment token을 `sessionStorage`로 옮기고 fragment를 제거하며 external asset/CDN을 사용하지 않는다.
+Runtime server는 `127.0.0.1` 외 bind를 거부하고, user-only runtime file에 저장한 random bearer token을 `/api/events`와 `/api/state`에 요구한다. Hook sender는 기존 backend 전달이 실패하면 fixed loopback port의 detached backend를 무출력으로 내부 준비하고, 500ms 전송 timeout과 최대 1.6초의 bounded wait 안에서 같은 최소화 event를 재시도한다. 동시 hook은 하나의 listener로 수렴하며 준비 실패는 neutral `{}` response로 fail-open해 Codex task를 막지 않는다. Event를 disk queue에 적재하거나 이후 replay하지 않는다. Browser는 URL fragment token을 `sessionStorage`로 옮기고 fragment를 제거하며 external asset/CDN을 사용하지 않는다.
+
+설치·hook trust·앱 재시작 뒤 첫 trusted hook이 backend를 자동 준비하므로 일반 사용자는 task ID를 등록하거나 terminal에서 `start`, `status`, `doctor`를 실행하지 않는다. 다만 공식 public plugin API에는 앱 시작 시 prompt 없이 sidebar, panel 또는 Browser tab을 생성하는 기능이 없다. 최초 live 화면은 Codex 앱 task에서 한 번 명시적으로 열어야 한다. 이미 열린 오른쪽 live tab은 같은 monitor 관찰 window와 session token이 유효한 동안 2초 polling으로 자동 갱신하고 일시 단절 뒤 재연결한다. Monitor restart는 새 관찰 window이며 token을 잃은 tab은 앱 안에서 live view를 다시 요청해야 한다.
 
 정상 hook wiring은 이제 JSONL capture script가 아니라 `scripts/send-hook.mjs`를 실행한다. `scripts/capture-hook.mjs`와 `CODEX_AGENT_VIEW_CAPTURE_FULL=1`은 명시적 Phase 0 diagnostic opt-in으로만 남아 있으며 production state source가 아니다.
 
@@ -215,10 +217,10 @@ Runtime server는 `127.0.0.1` 외 bind를 거부하고, user-only runtime file�
 
 1. plugin source와 `hooks/hooks.json`, 실행 script를 검토한다.
 2. 공식 앱/CLI의 plugin browser에서 plugin이 설치·활성화됐는지 확인한다.
-3. 새 task/session을 시작한다.
+3. 공식 앱을 완전히 재시작하고 새 task/session을 시작한다.
 4. hook browser에서 새 hook 정의와 command를 확인하고 현재 exact hash를 명시적으로 trust한다. CLI에서는 `/hooks`를 사용한다.
-5. monitor를 실행한 뒤 subagent start/stop, 지원 tool pre/post, 실제 승인이 필요한 동작을 순서대로 발생시킨다.
-6. `codex-agent-view status --json`과 local UI에서 minimized state와 diagnostic을 확인한다. 필요할 때만 별도 redacted capture로 wire payload key/type을 검증한다.
+5. 별도 monitor를 시작하지 않은 상태에서 trusted hook을 발생시켜 backend 자동 준비와 최초 event 전달을 확인한 뒤 subagent start/stop, 지원 tool pre/post, 실제 승인이 필요한 동작을 순서대로 발생시킨다.
+6. Codex 앱 task에서 live view를 한 번 열고 내장 Browser UI의 minimized state와 자동 갱신/재연결을 확인한다. CLI `status`/`doctor`는 maintainer diagnostic일 때만 사용하고, 필요할 때만 별도 redacted capture로 wire payload key/type을 검증한다.
 
 제거 시에는 다음 세 범위를 각각 확인한다.
 

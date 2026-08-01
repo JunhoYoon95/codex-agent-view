@@ -1,6 +1,6 @@
 # Codex Agent View
 
-Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task와 subagent를 privacy-minimized snapshot으로 보여주고, 필요할 때만 hook 기반 local live monitor를 여는 read-only companion plugin이다. Codex를 대체하거나 task를 제어하지 않는다.
+Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task와 subagent를 privacy-minimized snapshot으로 보여주는 read-only companion plugin이다. Trusted hook이 local live backend를 자동 준비하고, 사용자가 요청할 때 Codex 내장 Browser에서 live 화면을 연다. Codex를 대체하거나 task를 제어하지 않는다.
 
 > 비공식 커뮤니티 프로젝트이며 OpenAI의 공식 제품, 제휴 제품, 공식 지원 프로젝트가 아니다.
 
@@ -8,10 +8,10 @@ Codex Agent View는 공식 Codex 앱 안에서 여러 workspace의 active task�
 
 ### 빠른 시작: 설치 후에는 Codex 앱 안에서만 사용
 
-이 README와 package의 버전은 `codex-agent-view@0.3.2`다. Universal Plugins Directory 검색 등록은 아직 완료되지 않았으므로 **최초 설치만** 일반 터미널에서 진행한다.
+이 README의 source release candidate와 package 버전은 `codex-agent-view@0.4.0`이다. 아직 npm에 publish되지 않았으며 현재 public npm `latest`는 `0.3.2`다. `0.4.0`이 publish된 뒤에는 **최초 설치만** 일반 터미널에서 다음 exact-version 명령으로 진행한다.
 
 ```bash
-npm install --global codex-agent-view@0.3.2
+npm install --global codex-agent-view@0.4.0
 codex-agent-view install
 ```
 
@@ -31,19 +31,22 @@ codex-agent-view install
 
    > Codex Agent View live 화면을 앱 안에서 열어줘.
 
-Plugin은 live 화면 요청 시 healthy local monitor를 내부적으로 재사용하거나 필요할 때 시작하고, 결과를 **Codex 내장 Browser**에서 연다. 일반 사용자는 `start`, `status`, `doctor`를 실행하거나 localhost 주소와 token을 복사할 필요가 없다. 외부 browser도 정상 사용 흐름에 포함되지 않는다.
+Trust된 첫 hook이 도착하면 plugin sender가 로컬 backend를 내부적으로 준비하고 같은 event 전달을 재시도한다. 사용자는 task ID를 등록하거나 `start`, `status`, `doctor`를 실행할 필요가 없다. Live 화면 요청은 healthy backend를 재사용하고 결과를 **Codex 내장 Browser**에서 연다. Tokenized localhost URL은 대화에 노출하지 않으며 외부 browser도 정상 사용 흐름에 포함되지 않는다.
+
+공개 Codex plugin API에는 prompt 없이 앱 시작과 동시에 sidebar, panel 또는 Browser tab을 생성하는 기능이 없다. 따라서 live 화면을 **처음 여는 동작만** Codex 앱 task에서 한 번 요청해야 한다. 이미 오른쪽에 열린 live tab은 같은 monitor 관찰 window 동안 2초마다 자동 갱신하고 일시 연결 단절 뒤에도 기존 token으로 재연결한다.
 
 요약하면 설치는 터미널에서 한 번, 조회·상태 확인·live 화면 열기와 이후 사용은 Codex 앱 안에서 수행한다.
 
 ### 현재 상태
 
-이 package version은 `0.3.2`다. 다음 구성이 package에 포함되어 있다.
+이 source candidate의 package version은 `0.4.0`이다. 다음 구성이 package에 포함되어 있다.
 
 - 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
 - 부모 task용 `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`과 subagent/tool/permission hook wiring
 - privacy-minimized hook sender와 bounded in-memory reducer
 - `127.0.0.1` 전용 token-authenticated local HTTP runtime
+- 첫 trusted hook에서 backend를 내부 준비하고 최초 event 전달을 재시도하는 fail-open sender
 - 부모 task/session, subagent, 최근 활동, permission wait 상태를 표시하는 local UI
 - `start`, `status`, `doctor`, `install`, `uninstall` CLI
 - 명시적 설치·hook trust·제거 경로
@@ -72,6 +75,7 @@ Codex Agent View는 historical audit이나 session replay 제품이 아니라 �
 
 - 앱 안의 현재 task snapshot은 공식 Codex 앱이 제공하는 내장 thread tools의 explicit status와 `subAgentActivity`를 우선 사용한다.
 - Hook event는 local monitor의 세부 lifecycle 상태에 대한 source of truth다. Monitor state는 bounded memory에만 있고 재시작하면 새 관찰 window가 시작된다.
+- 설치·trust·앱 재시작 뒤 첫 trusted hook이 backend를 자동 준비한다. 이는 monitor process 준비이며 Codex 화면이나 tab을 몰래 생성하는 기능이 아니다.
 - 외부 telemetry, 원격 server, account, 필수 SQLite/영구 event store가 없다.
 - prompt, transcript path, 전체 tool input/output, assistant message를 monitor 상태나 UI에 저장·표시하지 않는다.
 - task/subagent 중지·재시작, message 전송, permission 자동 승인·거절 기능이 없다.
@@ -84,6 +88,7 @@ Codex Agent View는 historical audit이나 session replay 제품이 아니라 �
 - 공식 Codex 앱에서 plugin에게 `Show active tasks`라고 요청하는 것이 `0.3.0`의 primary UX다. 별도 monitor 실행이나 task ID 등록이 필요 없다.
 - npm은 plugin bundle, 내부 hook sender/runtime과 static UI를 사용자 machine에 배포하는 최초 설치 경로다.
 - Live view는 사용자가 앱 안에서 명시적으로 요청했을 때만 Codex 내장 Browser에 열린다. 외부 website나 telemetry dashboard가 아니다.
+- 공개 plugin API는 앱 시작 시 no-prompt sidebar/panel/Browser tab 생성을 제공하지 않는다. 최초 live view 열기에는 앱 안 사용자 요청이 한 번 필요하고, 열린 tab은 같은 관찰 window에서 자동 갱신·재연결한다.
 - Universal Plugins Directory는 npm의 대체재가 아니다. 공개 directory의 in-app custom UI 경로는 public HTTPS MCP server와 domain verification이 필요해 local-only/no-external-server 원칙과 충돌한다. 현재는 별도의 listing/skills 제출 가능성만 검토하며, 심사·publish 전에는 Codex plugin 검색으로 설치할 수 있다고 안내하지 않는다.
 
 Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`, `stopped_without_start`, 빈 상태는 그대로 해석해야 한다. 빈 session 목록은 “이 monitor가 event를 관찰하지 못함”이며 “실행 중인 task가 없음”의 증거가 아니다.
@@ -98,7 +103,7 @@ Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`,
 4. Workspace basename, 표시용 title, explicit status, 최신 explicit agent commentary와 `subAgentActivity`만 간결하게 보여준다.
 5. Prompt, preview, tool input/output, full workspace path와 internal thread ID는 기본 표시하지 않는다.
 
-Live hook detail이 필요할 때만 앱 안에서 “Open the live Codex Agent View in the built-in Browser”라고 요청한다. Plugin은 healthy monitor를 내부적으로 재사용하거나 시작하며 tokenized localhost URL을 대화에 노출하지 않는다.
+Live hook detail이 필요할 때만 앱 안에서 “Open the live Codex Agent View in the built-in Browser”라고 요청한다. 이것이 첫 화면을 여는 한 번의 앱 내 동작이다. Plugin은 trusted hook이 자동 준비한 healthy backend를 재사용하고, 아직 준비되지 않았다면 내부적으로 시작하며 tokenized localhost URL을 대화에 노출하지 않는다. 이미 열린 오른쪽 tab은 같은 관찰 window에서 자동 갱신하고 일시 단절 뒤 재연결한다.
 
 ### 요구사항과 검증 범위
 
@@ -185,30 +190,30 @@ node bin/codex-agent-view.mjs doctor --json
 - `doctor`의 hook trust는 `unknown`일 수 있다. `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않으므로 interactive Codex CLI의 `/hooks`에서 직접 확인한다.
 - `Ctrl+C`는 monitor를 종료하며 in-memory state와 정상 종료된 runtime file을 정리한다.
 
-Monitor가 꺼져 있어도 hook sender는 fail-open으로 끝나 Codex task를 막지 않는다. Monitor를 나중에 켜면 꺼져 있던 동안의 event가 복구되지는 않는다.
+Backend가 없으면 trusted hook sender가 외부 browser 없이 detached backend를 내부 준비하고 같은 최소화 event 전달을 짧게 재시도한다. 제한 시간 안에 준비할 수 없으면 sender는 fail-open으로 끝나 Codex task를 막지 않는다. 실패한 event를 disk에 적재하거나 영구 복구하지 않는다.
 
-Monitor가 실행 중이고 plugin enable/trust가 끝난 뒤 생성되거나 재개되는 task는 hook이 도착하면 task ID를 미리 등록하지 않아도 자동으로 목록에 나타난다. UI 검색은 이렇게 자동 수신된 목록을 거르는 선택적 filter일 뿐이며, task 추적을 시작하거나 ID를 등록하는 기능이 아니다. Plugin 설치·trust 전이나 monitor downtime에 이미 지나간 event는 재생되지 않는다.
+Plugin enable/trust와 앱 재시작 뒤 생성되거나 재개되는 task는 trusted hook이 backend를 준비하므로 task ID를 미리 등록하거나 terminal에서 monitor를 시작할 필요가 없다. UI 검색은 자동 수신된 목록을 거르는 선택적 filter일 뿐이며 추적을 시작하거나 ID를 등록하는 기능이 아니다. Plugin 설치·trust 전이나 로컬 수집 중단 중에 이미 지나간 event는 재생되지 않는다.
 
 ### npm 설치 명령 참고
 
-아래 명령은 이 package version인 exact `0.3.2`를 지정하는 설치 명령이다.
+아래 명령은 publish 뒤 이 source candidate와 일치하는 exact `0.4.0`을 지정하는 설치 명령이다. 현재 public npm `latest`는 `0.3.2`이며 `0.4.0` publish 완료 전에는 아래 명령이 성공한다고 주장하지 않는다.
 
 ```bash
-npm install --global codex-agent-view@0.3.2
+npm install --global codex-agent-view@0.4.0
 codex-agent-view install
 ```
 
-이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화를 확인한 다음, 새 task에서 `@codex-agent-view`를 선택한다. Monitor 시작과 상태 조회는 plugin이 앱 안의 요청에 맞춰 처리하므로 사용자가 CLI를 실행하지 않는다.
+이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화와 hook trust를 확인한 다음 새 task를 만든다. 첫 trusted hook이 backend 준비와 event 전달을 내부 처리하므로 사용자가 monitor CLI를 실행하지 않는다. 화면을 처음 열 때만 새 task에서 `@codex-agent-view`를 선택해 live view를 앱 안에서 요청한다.
 
 Global install 없이 exact version을 일회성으로 실행할 수도 있다.
 
 ```bash
-npx --yes codex-agent-view@0.3.2 install
+npx --yes codex-agent-view@0.4.0 install
 ```
 
 `npx` 경로도 explicit `install`을 실행하는 최초 설치 방법일 뿐이다. 이후 사용은 동일하게 Codex 앱 안에서 진행한다.
 
-`0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` release evidence는 보존한다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
+`0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` release evidence는 보존한다. `0.4.0`은 source candidate이며 아직 public release evidence가 없다. Registry evidence와 검증 경계는 [docs/distribution.md](docs/distribution.md)에 기록한다.
 
 npm install 자체는 Codex 설정을 자동 변경하지 않는다. `install` command는 사용자가 명시적으로 실행하며 hook trust도 사용자 검토로 남긴다. npm publish와 Universal Plugins Directory 제출은 서로 별도 절차다. 자세한 배포 경계는 [docs/distribution.md](docs/distribution.md), directory 제출 상태는 [docs/plugin-submission.md](docs/plugin-submission.md)를 참고한다.
 
@@ -289,12 +294,12 @@ Codex Agent View is a read-only companion plugin that shows privacy-minimized ac
 
 ### Quick start: install once, then stay inside the Codex app
 
-This README and package are version `codex-agent-view@0.3.2`.
+This README's source release candidate and package are version `codex-agent-view@0.4.0`. It is not published yet; the current public npm `latest` remains `0.3.2`. After `0.4.0` is published, use this exact-version command for the one-time terminal installation.
 
 Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
 ```bash
-npm install --global codex-agent-view@0.3.2
+npm install --global codex-agent-view@0.4.0
 codex-agent-view install
 ```
 
@@ -314,13 +319,15 @@ After installation:
 
    > Open the Codex Agent View live view inside the app.
 
-For a live-view request, the plugin internally reuses a healthy local monitor or starts one when needed, then opens it in the **Codex built-in Browser**. Normal users do not run `start`, `status`, or `doctor`, copy localhost URLs or tokens, or manage an external browser.
+When the first trusted hook arrives, the plugin sender internally prepares the local backend and retries delivery of that same event. Users do not register task IDs or run `start`, `status`, or `doctor`. A live-view request reuses the healthy backend and opens it in the **Codex built-in Browser** without exposing a tokenized localhost URL or using an external browser.
+
+The public Codex plugin API does not provide no-prompt app-start creation of a sidebar, panel, or Browser tab. Opening the live view therefore requires one explicit action in a Codex app task. Once the right-side live tab is open, it refreshes every two seconds and reconnects after temporary disconnects while the same monitor observation window and token remain valid.
 
 In short: install once in a terminal; perform snapshot queries, status checks, live-view opening, and all routine use inside the Codex app.
 
 ### Status
 
-This package version is `0.3.2`. The package includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, plus privacy-minimized hooks, a bounded in-memory reducer, an optional token-authenticated `127.0.0.1` dashboard, and lifecycle CLI commands.
+This source candidate is version `0.4.0`. It includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, privacy-minimized hooks, a bounded in-memory reducer, a trusted-hook auto-prepared token-authenticated `127.0.0.1` live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -345,7 +352,8 @@ Public `0.3.2`: npm version/`latest` at release time `0.3.2`, `gitHead` `4f4f92d
 Codex Agent View is a live companion, not a historical audit or session-replay product. Bounded in-memory state and reset-on-restart semantics are intentional: they keep privacy and failure boundaries small. SQLite or persistent history is not a missing requirement. Consider it only as a separate explicit opt-in feature if demonstrated user demand justifies retention, migration, deletion, and privacy costs.
 
 - The app-native current-task snapshot prioritizes explicit status and `subAgentActivity` from the official Codex app's built-in thread tools.
-- Hooks remain the source of truth for detailed lifecycle state in the optional local monitor. Its operational state exists only in bounded process memory; restart begins a new observation window.
+- Hooks remain the source of truth for detailed lifecycle state in the trusted-hook auto-prepared local live backend. Its operational state exists only in bounded process memory; restart begins a new observation window.
+- After installation, hook trust, and an app restart, the first trusted hook automatically prepares the backend. This prepares a local process; it does not create app UI without a user action.
 - There is no external telemetry, remote server, account, required SQLite/persistent event store, or remote control.
 - Prompt text, transcript paths, full tool input/output, and assistant messages are not retained or displayed by the monitor.
 - The product cannot stop or restart tasks/subagents, send messages, or approve/deny permissions.
@@ -358,6 +366,7 @@ A separately launched Codex `0.146` App Server `thread/list` fallback was also t
 - Asking the plugin `Show active tasks` inside the official Codex app is the primary `0.3.0` UX; it does not require starting a monitor or registering task IDs.
 - npm is the initial installation path that distributes the plugin bundle, its internal hook sender/runtime, and static UI to the user's machine.
 - The live view opens in the Codex built-in Browser only after an explicit in-app request; it is not an external website or telemetry dashboard.
+- The public plugin API cannot create a sidebar, panel, or Browser tab without a prompt at app startup. The first live view needs one in-app request; an already-open tab refreshes and reconnects within the same observation window.
 - The Universal Plugins Directory does not replace npm. A public in-app custom UI path requires a public HTTPS MCP server and domain verification, which conflicts with this project's local-only, no-external-server boundary. Only a separate listing/skills submission remains under consideration; do not expect Directory search installation until review and publication actually finish.
 
 ### Use in the official Codex app — recommended
@@ -370,7 +379,7 @@ Use this flow in a **new task** after completing installation and enablement in 
 4. It displays only workspace basename, display-only title, explicit status, latest explicit agent commentary, and a small `subAgentActivity` tree.
 5. Prompts, previews, tool input/output, full workspace paths, and internal thread IDs remain hidden by default.
 
-Ask `Open the live Codex Agent View in the built-in Browser` inside the app only when you want hook-level live detail. The plugin internally reuses or starts a healthy monitor and never exposes its tokenized localhost URL in chat.
+Ask `Open the live Codex Agent View in the built-in Browser` inside the app only when you want hook-level live detail. This is the one explicit in-app action that opens the first view. The plugin reuses the backend prepared by trusted hooks, or starts it internally when still absent, and never exposes its tokenized localhost URL in chat. An already-open right-side tab refreshes and reconnects automatically within the same observation window.
 
 ### Requirements and tested versions
 
@@ -423,28 +432,28 @@ node bin/codex-agent-view.mjs doctor --json
 
 An empty session list means that this monitor observed no events. It does not prove that Codex has no running task. Stopping or restarting the monitor discards its in-memory state, and downtime events are not replayed.
 
-Once the monitor is running and plugin enablement/trust is complete, hooks from newly created or resumed tasks appear automatically without pre-registering a task ID. Search is only an optional filter over that automatically received list; it does not start tracking or register a task. Events that occurred before installation/trust or while the monitor was down are not replayed.
+After plugin enablement/trust and an app restart, the first trusted hook internally prepares the backend and retries that event. Newly created or resumed tasks therefore appear without pre-registering a task ID or asking the user to start a monitor. Search is only an optional filter over the automatically received list. If automatic preparation cannot complete within its bounded hook budget, delivery fails open and that event is not persisted for replay.
 
 ### Install from npm
 
-The commands below target this exact package version, `0.3.2`.
+After publication, the commands below target this source candidate's exact package version, `0.4.0`. The current public npm `latest` is still `0.3.2`; these commands are not claimed to work until the `0.4.0` publish completes.
 
 ```bash
-npm install --global codex-agent-view@0.3.2
+npm install --global codex-agent-view@0.4.0
 codex-agent-view install
 ```
 
-After these two commands, fully reopen the Codex app, verify installation and enablement in Plugins, create a new task, and select `@codex-agent-view`. The plugin handles monitor startup and status checks in response to in-app requests; users do not run those CLI commands.
+After these two commands, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. To open the first screen, select `@codex-agent-view` in that task and request the live view inside the app.
 
 Or run the exact version without a global install:
 
 ```bash
-npx --yes codex-agent-view@0.3.2 install
+npx --yes codex-agent-view@0.4.0 install
 ```
 
 The `npx` form is also an initial explicit-install path only. Routine use remains inside the Codex app afterward.
 
-The `0.2.0`, `0.2.1`, `0.3.0`, `0.3.1`, and `0.3.2` release evidence is preserved. See [Distribution](docs/distribution.md).
+The `0.2.0`, `0.2.1`, `0.3.0`, `0.3.1`, and `0.3.2` release evidence is preserved. `0.4.0` is a source candidate and has no public release evidence yet. See [Distribution](docs/distribution.md).
 
 npm installation does not modify Codex settings automatically. The explicit `install` command performs local plugin registration and leaves hook trust to the user. npm publication and Universal Plugins Directory submission are separate. See [Distribution](docs/distribution.md) and [Plugin submission](docs/plugin-submission.md).
 

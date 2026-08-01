@@ -109,6 +109,13 @@ means that monitor process observed no hook events; it does not prove that the
 Codex app has no tasks. Restarting the in-memory monitor begins a new bounded
 observation window.
 
+After explicit installation, hook review/trust, and a Codex app restart, the
+first trusted hook normally prepares the local backend internally and retries
+delivery of that same privacy-minimized event. The user never registers a task
+ID or runs `start`, `status`, or `doctor` as part of ordinary use. A bounded
+auto-start failure remains fail-open and does not create a persistent replay
+queue.
+
 ## Open the live view only on request
 
 Only when the user explicitly asks to open, show, or start the live view:
@@ -117,7 +124,15 @@ The plugin agent performs the health check and any required start internally.
 The user's entire interaction after installation remains inside the official
 Codex app; do not turn the commands below into instructions for the user.
 
-1. Check monitor health with the packaged CLI.
+The public Codex plugin API cannot create a sidebar, panel, or Browser tab
+without a prompt at app startup. The first live view therefore requires one
+explicit request in a Codex app task. Do not claim that installation alone
+opens a screen. An already-open in-app live tab refreshes and reconnects after
+temporary disconnects while the same monitor observation window and its
+session token remain valid.
+
+1. Check monitor health with the packaged CLI. A trusted hook may already have
+   prepared it automatically.
 2. If it is not running, start it with `codex-agent-view start --no-open` so the
    CLI never launches the operating system's external browser.
 3. Keep the returned tokenized localhost URL private. Never quote it, place it
@@ -132,6 +147,10 @@ Codex app; do not turn the commands below into instructions for the user.
 Do not restart or replace a healthy monitor merely to recover its URL because
 that would discard its in-memory observation window. Reuse an existing in-app
 monitor tab when possible. Do not close user-owned browser tabs.
+
+If an existing tab has lost its session token or the monitor restarted, do not
+promise automatic recovery across observation windows. Reopen the live view
+through the same explicit in-app workflow without exposing the private URL.
 
 ## Lifecycle and safety
 

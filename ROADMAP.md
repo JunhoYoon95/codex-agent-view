@@ -1,12 +1,12 @@
 # Codex Agent View Roadmap
 
-현재 source/package와 public npm `latest`는 `0.3.2`다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. `0.2.0`/`0.2.1`/`0.3.0`/`0.3.1`/`0.3.2` release evidence를 보존한다.
+현재 source/package는 미배포 `0.4.0` release candidate이고 public npm `latest`는 `0.3.2`다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. 기존 public release evidence를 보존한다.
 
 ## 제품 원칙
 
 - 공식 Codex 앱을 대체하지 않는 read-only companion plugin이다.
 - 앱 안의 current-task snapshot은 공식 앱 내장 thread tools의 explicit status와 `subAgentActivity`를 우선 사용한다.
-- Hook event는 optional local monitor의 세부 lifecycle source of truth다.
+- Hook event는 trusted hook이 자동 준비하는 local live backend의 세부 lifecycle source of truth다.
 - 별도 App Server는 앱 내장 thread tools와 다른 process이며 공식 앱의 live source로 가정하지 않는다.
 - local-only, bounded in-memory, no external telemetry가 완성된 기본 architecture다.
 - 전체 prompt와 tool input/output을 기본 저장·표시하지 않는다.
@@ -78,6 +78,19 @@
 - [x] 공식 Codex 앱의 app-native thread snapshot에서 worker activity 3개를 확인한다.
 - [ ] 앱을 완전히 재시작하고 새 task에서 public exact `0.3.2` live hook E2E를 확인한다. 재설치 전 앱 process의 follow-up subagent 3개는 내장 Browser monitor에 hook event를 0건 전달했다.
 - [x] Annotated `v0.3.2` tag와 public GitHub Release, main/tag CI 통과와 registry/tagged-source artifact 일치를 확인한다.
+
+## `0.4.0` app-internal automatic live backend candidate
+
+- [x] Plugin 설치·hook trust·앱 재시작 뒤 첫 trusted hook이 fixed loopback backend를 내부적으로 준비하고 같은 최소화 event 전달을 bounded retry한다.
+- [x] 사용자가 task ID를 등록하거나 `start`, `status`, `doctor`, localhost URL을 정상 사용 절차에서 관리하지 않게 한다.
+- [x] 동시 hook의 중복 start가 고정 포트의 단일 listener로 수렴하고 hook sender는 제한 시간 뒤 fail-open하도록 한다.
+- [x] 이미 열린 Codex 오른쪽 live tab이 같은 monitor 관찰 window에서 자동 갱신하고 일시 단절 뒤 재연결하도록 한다.
+- [x] 공개 plugin API에는 no-prompt 앱 시작 sidebar/panel/Browser-tab 생성 기능이 없으므로 최초 live view 열기는 앱 안 사용자 요청 1회가 필요함을 명시한다.
+- [x] CLI `start`/`status`/`doctor`를 maintainer diagnostics로만 유지하고 tokenized URL과 외부 browser를 일반 사용자 흐름에서 금지한다.
+- [x] Package, plugin manifest와 test fixture version contract를 `0.4.0`으로 일치시키고 candidate 문서를 current public `0.3.2` evidence와 분리한다.
+- [ ] `0.4.0` candidate의 full test/plugin/package validation과 tarball QA를 완료한다.
+- [ ] 공식 Codex 앱을 완전히 재시작한 새 task에서 첫 trusted hook → backend 자동 준비 → 최초 event → 기존/신규 in-app live tab E2E를 팀장이 확인한다.
+- [ ] `0.4.0`을 npm publish하고 registry/version/tag/GitHub Release, exact install과 artifact match를 확인한다.
 
 ## 외부 npm distribution operation
 
