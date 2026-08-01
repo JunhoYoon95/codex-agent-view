@@ -69,6 +69,7 @@ const viewState = {
   hasLoaded: false,
   errorMessage: "",
   canRetry: true,
+  authenticationFailed: false,
   requestInFlight: false,
 };
 
@@ -647,13 +648,14 @@ function setConnectionStatus(status, labelOverride = "") {
 }
 
 async function refreshState() {
-  if (viewState.requestInFlight) {
+  if (viewState.requestInFlight || viewState.authenticationFailed) {
     return;
   }
 
   if (!accessToken) {
     viewState.hasLoaded = true;
     viewState.canRetry = false;
+    viewState.authenticationFailed = true;
     viewState.errorMessage = "이 탭에는 접근 token이 없습니다. Codex 앱에서 Codex Agent View에 live view 열기를 다시 요청하세요.";
     setConnectionStatus("error", "live view 인증 필요");
     render();
@@ -675,6 +677,16 @@ async function refreshState() {
       },
     });
 
+    if (response.status === 401 || response.status === 403) {
+      await response.body?.cancel();
+      viewState.hasLoaded = true;
+      viewState.canRetry = false;
+      viewState.authenticationFailed = true;
+      viewState.errorMessage = "이 live view의 인증이 더 이상 유효하지 않습니다. Codex 앱에서 Codex Agent View에 live view 열기를 다시 요청하세요.";
+      setConnectionStatus("error", "live view 인증 필요");
+      return;
+    }
+
     if (!response.ok) {
       throw new Error(`상태 요청 실패 (${response.status})`);
     }
@@ -689,6 +701,7 @@ async function refreshState() {
     setConnectionStatus("connected");
   } catch (error) {
     viewState.hasLoaded = true;
+    viewState.canRetry = true;
     viewState.errorMessage = error instanceof Error
       ? error.message
       : "알 수 없는 연결 오류가 발생했습니다.";
@@ -706,6 +719,10 @@ elements.toolbar.addEventListener("submit", (event) => {
 });
 window.addEventListener("online", refreshState);
 window.addEventListener("offline", () => {
+  if (viewState.authenticationFailed) {
+    return;
+  }
+  viewState.canRetry = true;
   viewState.errorMessage = "이 기기가 오프라인입니다.";
   setConnectionStatus("error");
   render();

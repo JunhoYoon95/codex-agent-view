@@ -705,7 +705,28 @@ async function removeRuntimeRootIfEmpty(root) {
   }
 }
 
+function parseUninstallArgs(args) {
+  let purge = false;
+
+  for (const argument of args) {
+    if (argument === "--purge") {
+      if (purge) {
+        throw new Error("--purge may only be specified once");
+      }
+      purge = true;
+      continue;
+    }
+    if (argument.startsWith("-")) {
+      throw new Error(`unknown uninstall option: ${argument}`);
+    }
+    throw new Error(`unexpected uninstall argument: ${argument}`);
+  }
+
+  return { purge };
+}
+
 async function uninstall(args) {
+  const { purge } = parseUninstallArgs(args);
   const root = runtimeDirectory();
   const bundle = join(root, "marketplace");
   if (dirname(bundle) !== root || bundle === root) {
@@ -717,7 +738,6 @@ async function uninstall(args) {
     throw unmanagedBundleError(bundle);
   }
 
-  const purge = args.includes("--purge");
   const runtimePreflight = await inspectRuntime();
   const stoppedMonitor = await stopRunningRuntime(runtimePreflight);
 

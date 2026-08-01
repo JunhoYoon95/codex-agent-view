@@ -307,6 +307,47 @@ test("normal uninstall stops a healthy owned monitor instead of leaving an orpha
   await assertMissing(join(runtimeRoot, "marketplace"));
 });
 
+test("uninstall rejects unknown, duplicate, and positional arguments before changing plugin or runtime state", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const monitor = await startMonitorServer({ env, port: 0 });
+  t.after(async () => monitor.close());
+  await writeFile(setup.log, "");
+
+  const invalidCases = [
+    {
+      args: ["uninstall", "--unknown"],
+      message: /unknown uninstall option: --unknown/,
+    },
+    {
+      args: ["uninstall", "--purge", "--purge"],
+      message: /--purge may only be specified once/,
+    },
+    {
+      args: ["uninstall", "unexpected"],
+      message: /unexpected uninstall argument: unexpected/,
+    },
+  ];
+
+  for (const invalidCase of invalidCases) {
+    const result = await runCli(setup, runtimeRoot, invalidCase.args);
+    assert.equal(result.code, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, invalidCase.message);
+    assert.equal(monitor.server.listening, true);
+    assert.equal((await readRuntimeInfo(env)).token, monitor.runtimeInfo.token);
+    await access(join(runtimeRoot, "marketplace"));
+    assert.deepEqual(await readCalls(setup.log), []);
+  }
+});
+
 test("purge stops a foreground start process without sending it a signal", async (t) => {
   if (process.platform === "win32") {
     t.skip("foreground process fixture uses a POSIX shebang");

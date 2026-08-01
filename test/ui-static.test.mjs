@@ -69,6 +69,22 @@ test("automatically reconnects with the existing token and preserves the last go
   assert.match(app, /Codex 앱에서 Codex Agent View에 live view 열기를 다시 요청하세요\./);
 });
 
+test("treats rejected live-view credentials as non-retryable without clearing the snapshot", () => {
+  assert.match(app, /response\.status === 401 \|\| response\.status === 403/);
+  assert.match(
+    app,
+    /response\.status === 401[\s\S]*?viewState\.canRetry = false;[\s\S]*?viewState\.authenticationFailed = true;/,
+  );
+  assert.match(app, /이 live view의 인증이 더 이상 유효하지 않습니다\./);
+  assert.match(app, /setConnectionStatus\("error", "live view 인증 필요"\)/);
+  assert.match(app, /viewState\.requestInFlight \|\| viewState\.authenticationFailed/);
+  assert.match(app, /catch \(error\) \{[\s\S]*?viewState\.canRetry = true;/);
+  assert.doesNotMatch(
+    app,
+    /response\.status === 401[\s\S]*?viewState\.sessions\s*=\s*\[\]/,
+  );
+});
+
 test("defines status treatments, responsive layouts, and reduced-motion behavior", () => {
   for (const status of ["running", "waiting", "completed", "unknown"]) {
     assert.match(app, new RegExp(`${status}:`));
