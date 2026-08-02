@@ -2,4 +2,6 @@ node_modules/
 *.tgz
 .codex-agent-view/
 captures/
+/AGENTS.md
+/.codex/
 .DS_Store
