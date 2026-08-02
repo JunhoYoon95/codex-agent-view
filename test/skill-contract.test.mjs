@@ -275,7 +275,7 @@ test("distribution docs keep plugin selection separate from explicit skill dispa
   assert.match(docs, /English, Korean, Spanish selector/);
   assert.match(docs, /2초 polling/);
   assert.match(docs, /dedicated assignment description은 없다/);
-  assert.match(docs, /`0\.4\.5` release candidate/);
+  assert.match(docs, /Public `0\.4\.5` release evidence/);
   assert.match(docs, /bounded\/redacted one-line `task_summary`/);
   assert.match(docs, /실제 `\$show-agents` skill/);
   assert.match(distribution, /### Public `0\.4\.4` release evidence/);
@@ -287,10 +287,10 @@ test("distribution docs keep plugin selection separate from explicit skill dispa
     distribution,
     /Plugin 선택은 action text를 붙이지 않고 사용법만 설명/,
   );
-  assert.match(submission, /## Public `0\.4\.4` package에 준비된 제출 자료/);
+  assert.match(submission, /## Public `0\.4\.5` package에 준비된 제출 자료/);
   assert.match(
     submission,
-    /Public `0\.4\.4` manifest에는 starter\/default prompt가 없다/,
+    /Public `0\.4\.5` manifest에는 starter\/default prompt가 없다/,
   );
   assert.match(submission, /실제 bundled `\$show-agents` skill을 명시적으로 선택하거나 호출/);
 });

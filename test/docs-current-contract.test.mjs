@@ -67,7 +67,7 @@ test("documents the current live-view UX and evidence boundary", async () => {
   assert.match(privacy, /page cannot mint, discover, or replace/);
 });
 
-test("separates the 0.4.5 release candidate from historical public 0.4.4", async () => {
+test("records 0.4.5 as the current public release while preserving historical 0.4.4", async () => {
   const [packageText, manifestText, english, korean, distribution, submission] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -85,11 +85,11 @@ test("separates the 0.4.5 release candidate from historical public 0.4.4", async
   assert.match(korean, /npm install --global codex-agent-view@0\.4\.5/);
   assert.doesNotMatch(english, /release candidate|public npm `latest`[^\n]*0\.4\.4/i);
   assert.doesNotMatch(korean, /release candidate|public npm `latest`[^\n]*0\.4\.4/i);
-  assert.match(distribution, /`0\.4\.5` release candidate/);
-  assert.match(submission, /`0\.4\.5` release candidate/);
+  assert.match(distribution, /Public `0\.4\.5` release evidence/);
+  assert.match(submission, /Public `0\.4\.5` release evidence/);
   for (const document of [distribution, submission]) {
-    assert.match(document, /public npm `latest`(?:\/version)?(?:은|은 아직|는|는 아직| is still)?.*`0\.4\.4`/i);
-    assert.doesNotMatch(document, /public npm `latest`(?:\/version)?.{0,40}(?:은|is) `0\.4\.5`/i);
+    assert.match(document, /public npm `latest`\/version.*`0\.4\.5`/i);
+    assert.doesNotMatch(document, /`?0\.4\.5`? release candidate/i);
   }
 });
 
@@ -117,7 +117,10 @@ test("records verified public 0.4.4 acceptance without stale candidate state", a
   ]);
 
   for (const document of [distribution, findings, submission]) {
-    assert.match(document, /public npm `latest`\/version.*`0\.4\.4`/i);
+    assert.match(
+      document,
+      /(?:public npm `latest`\/version|npm `latest` \/ version \|).*`0\.4\.4`/i,
+    );
     assert.match(document, /482520d471b3ef04204f026b52237ac77407a99f/);
     assert.match(
       document,
@@ -138,5 +141,60 @@ test("records verified public 0.4.4 acceptance without stale candidate state", a
       /https:\/\/github\.com\/JunhoYoon95\/codex-agent-view\/releases\/tag\/v0\.4\.4/,
     );
     assert.doesNotMatch(document, /`?0\.4\.4`? release candidate/i);
+  }
+});
+
+test("records verified public 0.4.5 acceptance and keeps external publication boundaries explicit", async () => {
+  const [distribution, findings, submission] = await Promise.all([
+    readProjectFile("docs/distribution.md"),
+    readProjectFile("docs/phase-0-findings.md"),
+    readProjectFile("docs/plugin-submission.md"),
+  ]);
+
+  for (const document of [distribution, findings, submission]) {
+    assert.match(document, /public npm `latest`\/version.*`0\.4\.5`/i);
+    assert.match(document, /d5c1f593ae7e48e226e396d02579cd7f9ef8d01e/);
+    assert.match(
+      document,
+      /sha512-LeegHcrzmCgRjNP\/T\+8OPXzFT\/RYBp33UfKG1nPmBPnZHYQJdFTY2GGY3rK9\/lQfS3PEo9oL7MG3wBY5A5LFaw==/,
+    );
+    assert.match(document, /registry signature/);
+    assert.match(document, /25 files/);
+    assert.match(document, /74\.5 kB/);
+    assert.match(document, /263\.0 kB/);
+    assert.match(document, /byte-identical/);
+    assert.match(document, /public exact reinstall/i);
+    assert.match(document, /CLI\/plugin `0\.4\.5`/);
+    assert.match(document, /installed\/enabled/);
+    assert.match(document, /hook wiring 9종/);
+    assert.match(document, /events_received: true/);
+    assert.match(document, /sessions 9개/);
+    assert.match(
+      document,
+      /unit\/sender integration tests.*credential·email·link·absolute path redaction/,
+    );
+    assert.match(
+      document,
+      /placeholder로 정제된 bounded safe work summary 표시/,
+    );
+    assert.doesNotMatch(
+      document,
+      /Official Codex in-app E2E[^\n]*credential·email·link·absolute(?:-| )path.*(?:redaction|제거)/,
+    );
+    assert.doesNotMatch(document, /Official Codex in-app E2E[^\n]*raw sensitive sample/);
+    assert.match(document, /session ID (?:비노출|non-primary)|session-ID/);
+    assert.match(document, /current viewer task 제외/);
+    assert.match(document, /en\/ko\/es/);
+    assert.match(document, /auth missing\/rejected recovery button/);
+    assert.match(document, /30732189017/);
+    assert.match(document, /30744341373/);
+    assert.match(document, /1df8f0b/);
+    assert.match(
+      document,
+      /https:\/\/github\.com\/JunhoYoon95\/codex-agent-view\/releases\/tag\/v0\.4\.5/,
+    );
+    assert.doesNotMatch(document, /`?0\.4\.5`? release candidate/i);
+    assert.match(document, /Universal (?:Plugins )?Directory.*(?:별도|separate|아직)/i);
+    assert.match(document, /npm provenance.*(?:완료도 주장하지|뜻하지|선택)/i);
   }
 });
