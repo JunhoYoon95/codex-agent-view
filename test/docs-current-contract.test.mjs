@@ -34,10 +34,11 @@ test("documents explicit skill selection instead of claiming starter text dispat
 });
 
 test("documents the current live-view UX and evidence boundary", async () => {
-  const [english, korean, findings] = await Promise.all([
+  const [english, korean, findings, privacy] = await Promise.all([
     readProjectFile("README.md"),
     readProjectFile("README.ko.md"),
     readProjectFile("docs/phase-0-findings.md"),
+    readProjectFile("docs/privacy.md"),
   ]);
 
   for (const document of [english, korean, findings]) {
@@ -49,9 +50,47 @@ test("documents the current live-view UX and evidence boundary", async () => {
     assert.match(document, /agent_type/);
   }
 
-  assert.match(english, /does not display or infer an agent's assigned task/);
-  assert.match(korean, /agent 할당 작업을 추론하거나 표시하지 않는다/);
+  assert.match(english, /short request summary derived from `UserPromptSubmit`/);
+  assert.match(english, /bounds it to 180 characters/);
+  assert.match(english, /does not invent an agent-specific assignment/);
+  assert.match(english, /Session IDs are not shown/);
+  assert.match(english, /button to check the current tab again/);
+  assert.match(korean, /한 줄·최대 180자로 제한/);
+  assert.match(korean, /에이전트별 할당 내용을 추측하지 않는다/);
+  assert.match(korean, /Session ID는 표시하지/);
+  assert.match(korean, /현재 tab의 인증을 다시 확인하는 버튼/);
   assert.match(findings, /전용 field가 실제 payload에서 관찰되기 전까지/);
+  assert.match(findings, /첫 유효 작업 개요|`task_summary`/);
+  assert.match(privacy, /first 4,096 characters/);
+  assert.match(privacy, /limits the result to 180 Unicode characters/);
+  assert.match(privacy, /not a guarantee that arbitrary sensitive text can never appear/);
+  assert.match(privacy, /page cannot mint, discover, or replace/);
+});
+
+test("separates the 0.4.5 release candidate from historical public 0.4.4", async () => {
+  const [packageText, manifestText, english, korean, distribution, submission] = await Promise.all([
+    readProjectFile("package.json"),
+    readProjectFile(".codex-plugin/plugin.json"),
+    readProjectFile("README.md"),
+    readProjectFile("README.ko.md"),
+    readProjectFile("docs/distribution.md"),
+    readProjectFile("docs/plugin-submission.md"),
+  ]);
+  const packageMetadata = JSON.parse(packageText);
+  const manifest = JSON.parse(manifestText);
+
+  assert.equal(packageMetadata.version, "0.4.5");
+  assert.equal(manifest.version, "0.4.5");
+  assert.match(english, /npm install --global codex-agent-view@0\.4\.5/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.4\.5/);
+  assert.doesNotMatch(english, /release candidate|public npm `latest`[^\n]*0\.4\.4/i);
+  assert.doesNotMatch(korean, /release candidate|public npm `latest`[^\n]*0\.4\.4/i);
+  assert.match(distribution, /`0\.4\.5` release candidate/);
+  assert.match(submission, /`0\.4\.5` release candidate/);
+  for (const document of [distribution, submission]) {
+    assert.match(document, /public npm `latest`(?:\/version)?(?:은|은 아직|는|는 아직| is still)?.*`0\.4\.4`/i);
+    assert.doesNotMatch(document, /public npm `latest`(?:\/version)?.{0,40}(?:은|is) `0\.4\.5`/i);
+  }
 });
 
 test("keeps README local links resolvable and the root guide free of Korean copy", async () => {
@@ -98,13 +137,6 @@ test("records verified public 0.4.4 acceptance without stale candidate state", a
       document,
       /https:\/\/github\.com\/JunhoYoon95\/codex-agent-view\/releases\/tag\/v0\.4\.4/,
     );
-    assert.doesNotMatch(
-      document,
-      /0\.4\.4.{0,100}(?:release candidate|acceptance pending|대기 중|미완료|아직 미확인)/is,
-    );
-    assert.doesNotMatch(
-      document,
-      /(?:release candidate|acceptance pending|대기 중|미완료|아직 미확인).{0,100}0\.4\.4/is,
-    );
+    assert.doesNotMatch(document, /`?0\.4\.4`? release candidate/i);
   }
 });

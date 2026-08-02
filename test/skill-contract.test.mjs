@@ -112,6 +112,8 @@ test("skill uses app task tools before the CLI and keeps sensitive content out o
   assert.match(skill, /`includeOutputs: false`/);
   assert.match(skill, /`maxOutputCharsPerItem: 600`/);
   assert.match(skill, /workspace directory basename/);
+  assert.match(skill, /Prefer a compact table for work items/);
+  assert.doesNotMatch(skill, /compact table for parent tasks/);
   assert.match(skill, /`subAgentActivity` entry's `agentPath` and `kind`/);
   assert.match(skill, /`turns` in `newest_first` order/);
   assert.match(skill, /select the last\n\s+`agentMessage` whose `phase` is `commentary`/);
@@ -132,8 +134,8 @@ test("skill uses app task tools before the CLI and keeps sensitive content out o
   assert.match(skill, /plain text that merely resembles a skill name/);
   assert.match(skill, /validates the\ninherited `CODEX_THREAD_ID`/);
   assert.match(skill, /defaults to English and provides an\nEnglish, Korean, and Spanish language selector/);
-  assert.match(skill, /metadata remain visible without refresh-sensitive disclosure toggles/);
-  assert.match(skill, /two-second polling interval continues unchanged/);
+  assert.match(skill, /keeps activity visible without\nrefresh-sensitive disclosure toggles/);
+  assert.match(skill, /continues the two-second polling interval/);
   assert.match(skill, /`SubagentStart` payloads provide `agent_id` and `agent_type`/);
   assert.match(skill, /no dedicated assignment description/);
   assert.match(skill, /Do not invent an assigned task/);
@@ -147,10 +149,12 @@ test("skill uses app task tools before the CLI and keeps sensitive content out o
   assert.doesNotMatch(skill, /Ctrl\+C/);
 
   assert.equal(manifest.version, packageMetadata.version);
-  assert.equal(manifest.interface.shortDescription, "View active Codex tasks.");
+  assert.equal(manifest.interface.shortDescription, "See work and agent progress.");
   assert.equal(Object.hasOwn(manifest.interface, "defaultPrompt"), false);
   assert.match(manifest.interface.longDescription, /explicitly invoke the bundled \$show-agents skill/);
   assert.match(manifest.interface.longDescription, /does not append or auto-run action text/);
+  assert.match(manifest.interface.longDescription, /privacy-minimized request summary/);
+  assert.match(manifest.interface.longDescription, /participating agents/);
 });
 
 test("explicit show-agents skill opens the private live view inside Codex", async () => {
@@ -271,6 +275,9 @@ test("distribution docs keep plugin selection separate from explicit skill dispa
   assert.match(docs, /English, Korean, Spanish selector/);
   assert.match(docs, /2초 polling/);
   assert.match(docs, /dedicated assignment description은 없다/);
+  assert.match(docs, /`0\.4\.5` release candidate/);
+  assert.match(docs, /bounded\/redacted one-line `task_summary`/);
+  assert.match(docs, /실제 `\$show-agents` skill/);
   assert.match(distribution, /### Public `0\.4\.4` release evidence/);
   assert.match(
     distribution,

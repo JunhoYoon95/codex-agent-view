@@ -1,6 +1,6 @@
 # Privacy
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 Codex Agent View is an unofficial, read-only companion plugin for Codex. Its primary app-native snapshot uses the official Codex app's built-in thread tools; its optional hook monitor is local-only and communicates over IPv4 loopback (`127.0.0.1`). It has no external telemetry, hosted service, cloud account, analytics SDK, remote database, or SQLite event store.
 
@@ -16,7 +16,9 @@ These app tools are capabilities of the current official Codex app. They are not
 
 ### Optional hook monitor
 
-Codex invokes the installed hook with a Codex event payload. The hook process necessarily receives that payload locally, then minimizes it before sending anything to the monitor. Non-allowlisted values are replaced with summaries such as value type, object keys, or string/array length. Known content fields such as full prompt text, transcript paths, tool input, tool output, assistant messages, and full `cwd` paths are not sent to the monitor as content by default. The sender derives only a sanitized basename `workspace_label`: control characters are removed, whitespace is normalized, and the result is limited to 120 characters.
+Codex invokes the installed hook with a Codex event payload. The hook process necessarily receives that payload locally, then minimizes it before sending anything to the monitor. Non-allowlisted values are replaced with summaries such as value type, object keys, or string/array length. Known content fields such as full prompt text, transcript paths, tool input, tool output, assistant messages, and full `cwd` paths are not sent to the monitor as content by default. The sender derives a sanitized basename `workspace_label`: control characters are removed, whitespace is normalized, and the result is limited to 120 characters.
+
+For `UserPromptSubmit` only, the sender also derives a display-only `task_summary`. It inspects at most the first 4,096 characters of the local prompt, removes control characters, replaces common credential forms, private-key blocks, bearer/JWT/prefixed secrets, email addresses, links, and absolute paths (including Windows UNC paths) with placeholders, collapses whitespace to one line, and limits the result to 180 Unicode characters. A result containing only redaction placeholders is discarded. The monitor retains only the first valid summary for one observed session, so later follow-ups do not replace the original work context. The raw prompt is not copied into the transport envelope, reducer, API state, or UI and is discarded with the short-lived hook process. This redaction reduces exposure; it is not a guarantee that arbitrary sensitive text can never appear in the summary, so users should still avoid putting secrets in prompts.
 
 The local sender's metadata allowlist can include:
 
@@ -26,7 +28,7 @@ The local sender's metadata allowlist can include:
 
 Allowlisted metadata is accepted from Codex as untrusted input. Do not place credentials or secrets in metadata, and report any upstream payload that embeds sensitive content in an allowlisted field so the allowlist can be tightened.
 
-The monitor validates the minimized payload again and retains a smaller set in memory: normalized event type, session and turn IDs, agent ID and type, tool name and tool-use ID, the bounded `workspace_label`, local receipt timestamps, derived status, and bounded diagnostics. The full `cwd` is neither retained nor returned. Fields that are not needed for the read-only state view are discarded. The UI and `status` output do not display prompt or tool input/output content.
+The monitor validates the minimized payload again and retains a smaller set in memory: normalized event type, session and turn IDs, agent ID and type, tool name and tool-use ID, the bounded `workspace_label`, the bounded/redacted `task_summary` when one was derived, local receipt timestamps, derived status, and bounded diagnostics. The full `cwd` is neither retained nor returned. Fields that are not needed for the read-only state view are discarded. The live UI can display the `task_summary`, but it does not display the full prompt or tool input/output. A verified `SubagentStart` does not include a dedicated assignment description, so the work-level summary is not represented as an individual agent's assignment and no such assignment is inferred from prompt or tool data.
 
 Unknown events and malformed payloads are ignored or reduced to bounded diagnostics. The hook sender is fail-open: an unavailable monitor should not block the Codex task.
 
@@ -41,13 +43,14 @@ SQLite or persistent history is not a required next step. It would be considered
 The runtime directory defaults to `~/.codex-agent-view` and can be overridden with `CODEX_AGENT_VIEW_RUNTIME_DIR`. It can contain:
 
 - a copied local plugin marketplace used by `codex-agent-view install`; and
-- `runtime.json`, containing the loopback host and port, process ID, start time, schema version, and a random bearer token.
+- `runtime.json`, containing the loopback host and port, process ID, start time, schema version, the process-scoped runtime/control token, and the installation-owned viewer token needed by the current skill workflow; and
+- `viewer-auth.json`, containing only the schema version and installation-owned read-only viewer token used for reconnect continuity.
 
-The runtime directory is created with user-only permissions (`0700`), and `runtime.json` with `0600`. On a graceful monitor shutdown, the matching runtime file is removed. A crash can leave a stale runtime file; `codex-agent-view doctor` reports this as a monitor problem.
+The runtime directory is created with user-only permissions (`0700`), and both credential-bearing JSON files with `0600`. On a graceful monitor shutdown, the matching runtime file is removed; the viewer credential remains for the installation's reconnect continuity. A crash can leave a stale runtime file; `codex-agent-view doctor` reports this as a monitor problem.
 
-The Codex in-app Browser receives the token in the URL fragment, removes the fragment from the visible URL, and keeps the token in browser `sessionStorage` for that browser session. It does not use `localStorage`. Treat the local URL, runtime file, and token as sensitive because another local process or person with access to them could read monitor state or submit events. The CLI does not open an operating-system browser by default; `--open` is an explicit external-browser action.
+The Codex in-app Browser receives only the read-only viewer token in the URL fragment, removes the fragment from the visible URL, and keeps that token in browser `sessionStorage` for that browser session. It does not use `localStorage`. Treat the local URL, runtime files, and tokens as sensitive. The viewer token can read `/api/state` but cannot ingest hook events or request shutdown; the separate process-scoped runtime/control token can access those privileged local endpoints. The CLI does not open an operating-system browser by default; `--open` is an explicit external-browser action.
 
-An already-open in-app live tab polls and reconnects after temporary disconnects while the same monitor observation window and session token remain valid. A monitor restart begins a new observation window, and a missing browser-session token requires the user to request the live view again inside the Codex app. The automatic hook path emits no URL, and the skill never sends the private tokenized URL to the conversation. The public plugin API also cannot create a sidebar, panel, or Browser tab without an explicit in-app user action.
+An already-open in-app live tab polls and reconnects after temporary disconnects while the same installation-owned viewer credential remains valid. A monitor restart begins a new observation window. Transient request failures expose a local retry button. Authentication failures expose an in-app recovery explanation and a button that checks the current tab's stored credential again; the page cannot mint, discover, or replace a missing/rejected credential. If that check cannot authenticate, the user must explicitly invoke the actual `$show-agents` skill in the Codex app to open a newly authenticated view. The automatic hook path emits no URL, and the skill never sends the private tokenized URL to the conversation. Recovery does not require a terminal command, private URL copy, or external browser. The public plugin API also cannot create a sidebar, panel, or Browser tab without an explicit in-app user action.
 
 ## Optional diagnostic capture
 

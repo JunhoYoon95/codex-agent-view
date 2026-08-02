@@ -10,38 +10,38 @@ const CANONICAL_SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 
 const MESSAGES = Object.freeze({
   en: Object.freeze({
-    metaDescription: "Read-only local status for Codex tasks and subagents.",
+    metaDescription: "A clear, live view of Codex work and the agents moving it forward.",
     skipToContent: "Skip to content",
     brandHome: "Codex Agent View home",
-    brandSubtitle: "Local read-only monitor",
+    brandSubtitle: "Live work overview",
     languageLabel: "Language",
     connectionConnecting: "Connecting to local status",
     connectionConnected: "Local monitor connected",
     connectionRetrying: "Disconnected · retrying",
     authenticationRequired: "Live view authentication required",
-    heroEyebrow: "LOCAL · READ ONLY",
+    heroEyebrow: "LIVE CODEX WORK",
     heroTitle: "See active work at a glance",
-    heroCopy: "Keep using the official Codex app while viewing the current status of parent tasks and subagents locally.",
+    heroCopy: "See what Codex is working on, which agents are involved, and how each part is progressing—all in one place.",
     freshnessAria: "Refresh information",
     lastUpdatedLabel: "Last updated",
     notYet: "Not yet",
     refreshIntervalLabel: "Refresh interval",
     twoSeconds: "2 seconds",
     metricsAria: "Task status summary",
-    parentTasks: "Parent tasks",
+    parentTasks: "Work items",
     currentlyObserved: "Currently observed",
-    runningAgents: "Running subagents",
+    runningAgents: "Active agents",
     workingNow: "Working now",
     waitingStatus: "Waiting",
     waitingExplanation: "Waiting for input or the next step",
-    completedAgents: "Completed subagents",
+    completedAgents: "Completed agents",
     currentView: "In the current view",
     liveWork: "LIVE WORK",
-    sessionsHeading: "Parent tasks and subagents",
+    sessionsHeading: "Work and participating agents",
     loadingState: "Loading status.",
-    toolbarAria: "Filter automatically observed parent tasks and subagents",
+    toolbarAria: "Filter automatically observed work and participating agents",
     searchLabel: "Filter list (optional)",
-    searchPlaceholder: "Find a parent task or subagent",
+    searchPlaceholder: "Find work or an agent",
     statusFilterLabel: "Status filter (optional)",
     statusAll: "All statuses",
     statusRunning: "Running",
@@ -49,42 +49,48 @@ const MESSAGES = Object.freeze({
     statusCompleted: "Completed",
     statusUnknown: "Unknown",
     connectingCopy: "Connecting to the Codex app's local status.",
-    sessionListAria: "Codex parent task list",
-    privacyPrompt: "This view does not display user requests or tool inputs.",
+    sessionListAria: "Codex work list",
+    privacyPrompt: "This view shows only a shortened request summary; it never displays the full request or tool inputs.",
     privacyLocal: "Data is read only from the local monitor on this device.",
     timeUnknown: "Time unavailable",
     startedUnknown: "Start time unavailable",
     noReceivedActivity: "No activity received",
-    parentTask: "PARENT TASK",
+    parentTask: "WORK",
     projectUnknown: "Project unavailable",
+    taskSummary: "Request",
+    taskSummaryUnavailable: "A short request summary is not available yet.",
     recentActivity: "Recent activity",
     recent: "Recent",
-    subagentsCount: "Subagents · {count}",
-    subagentName: "Subagent {ordinal}",
+    subagentsCount: "Participating agents · {count}",
+    subagentName: "Agent {ordinal}",
     agentProfile: "Role/profile · {profile}",
-    agentProfileNote: "Verified hooks do not expose assignment descriptions. Role/profile is shown when available.",
-    noSubagents: "No subagents have been observed for this parent task.",
+    agentProfileNote: "Codex currently provides each agent's role, but not its full assignment description.",
+    noSubagents: "No participating agents have been observed for this work item.",
     noRecentActivity: "No recent activity to display.",
     technicalInfo: "Technical information",
-    sessionId: "Session ID",
     agentId: "Agent ID",
     rawProfile: "Raw role/profile",
     rawEvent: "Raw event",
     rawTool: "Raw tool",
-    retry: "Reconnect",
+    retry: "Retry connection",
+    retryAuthentication: "Try this tab again",
+    checkAuthentication: "Check authentication again",
+    recoveryTitle: "Open a newly authenticated view",
+    recoveryStep: "In the Codex app, select @codex-agent-view in the composer, then choose the actual $show-agents skill from the skill picker.",
+    recoveryNote: "The skill opens a new live view with fresh authentication. No terminal command or external browser is needed.",
     resultsFiltered: "Showing {visible} of {total}",
-    resultsTotal: "{count} parent tasks",
+    resultsTotal: "{count} work items",
     searchEmptyTitle: "No matching results.",
     searchEmptyCopy: "Try changing the search term or status filter.",
-    emptyWithDiagnosticsTitle: "No parent tasks can be displayed.",
-    emptyWithDiagnosticsCopy: "The local monitor received {count} activity records but could not apply them to displayable parent tasks.",
+    emptyWithDiagnosticsTitle: "No work can be displayed.",
+    emptyWithDiagnosticsCopy: "The local monitor received {count} activity records but could not apply them to displayable work items.",
     emptyTitle: "No task activity has been received in this observation window.",
-    emptyCopy: "The local monitor is connected. This result alone does not mean that Codex has no running parent tasks or subagents.",
+    emptyCopy: "The local monitor is connected. This result alone does not mean that Codex has no active work or participating agents.",
     emptyGuidanceTitle: "If work does not appear",
     automaticTracking: "You do not need to enter or register task IDs. Activity from trusted hooks is added automatically.",
     emptyStep1: "After installing the plugin, fully restart the official Codex app.",
     emptyStep2: "In a new task, review and explicitly trust the Codex Agent View hook command.",
-    emptyStep3: "After trusting it, start a new task and run subagents. New activity is added automatically.",
+    emptyStep3: "After trusting it, start new work and run agents. New activity is added automatically.",
     observationBoundary: "Observation starts with the first trusted hook event. Earlier activity and activity missed while local collection was stopped cannot be replayed; restarting collection opens a new observation window.",
     diagnosticsCount: "Validation information · {count}",
     diagnosticOccurrences: "{count} occurrences",
@@ -92,8 +98,8 @@ const MESSAGES = Object.freeze({
     authTitle: "This live view cannot be authenticated.",
     retryWithState: "Reconnecting automatically every 2 seconds while keeping the last good state visible.",
     retryWithoutState: "Reconnecting automatically every 2 seconds. You can leave this view open in the Codex app.",
-    missingToken: "This tab has no access token. Ask Codex Agent View to open the live view again in the Codex app.",
-    expiredToken: "This live view credential is no longer valid. Ask Codex Agent View to open the live view again in the Codex app.",
+    missingToken: "This tab does not have the authentication needed to display live work.",
+    expiredToken: "This tab's live-view authentication was rejected or is no longer valid.",
     requestFailed: "Status request failed ({status})",
     unknownConnectionError: "An unknown connection error occurred.",
     offline: "This device is offline.",
@@ -107,25 +113,25 @@ const MESSAGES = Object.freeze({
     nameUnknown: "Unknown name",
     activityUnknown: "Unknown",
     approvalRequest: "{tool} approval requested",
-    agentStarted: "Subagent {ordinal} started",
-    agentStopped: "Subagent {ordinal} completed",
+    agentStarted: "Agent {ordinal} started",
+    agentStopped: "Agent {ordinal} completed",
     activitySessionStarted: "Observation started",
     activitySessionEnded: "Observation ended",
-    activityTurnStarted: "Parent task started",
-    activityTurnStopped: "Parent task response completed",
-    activitySubagentStarted: "Subagent started",
-    activitySubagentStopped: "Subagent completed",
+    activityTurnStarted: "Work started",
+    activityTurnStopped: "Work response completed",
+    activitySubagentStarted: "Agent started",
+    activitySubagentStopped: "Agent completed",
     activityToolStarted: "Tool activity",
     activityToolCompleted: "Tool activity",
     activityPermissionRequested: "User approval requested",
     toolApplyPatch: "File edit",
     toolBash: "Terminal activity",
-    toolFollowup: "Subagent follow-up requested",
-    toolInterrupt: "Subagent interruption requested",
-    toolList: "Subagent status checked",
-    toolMessage: "Message sent to subagent",
-    toolSpawn: "Subagent started",
-    toolWaitAgent: "Waiting for subagent",
+    toolFollowup: "Agent follow-up requested",
+    toolInterrupt: "Agent interruption requested",
+    toolList: "Agent status checked",
+    toolMessage: "Message sent to agent",
+    toolSpawn: "Agent started",
+    toolWaitAgent: "Waiting for agent",
     toolExec: "Terminal activity",
     toolUserInput: "User input requested",
     toolWait: "Waiting for completion",
@@ -137,25 +143,25 @@ const MESSAGES = Object.freeze({
     roleUnknown: "Not reported",
   }),
   ko: Object.freeze({
-    metaDescription: "공식 Codex 앱의 부모 작업과 작업 에이전트 상태를 로컬에서 읽기 전용으로 확인합니다.",
+    metaDescription: "Codex가 수행 중인 작업과 참여 에이전트의 진행 상황을 한눈에 확인합니다.",
     skipToContent: "본문으로 건너뛰기",
     brandHome: "Codex Agent View 홈",
-    brandSubtitle: "로컬 읽기 전용 모니터",
+    brandSubtitle: "실시간 작업 현황",
     languageLabel: "언어",
     connectionConnecting: "로컬 상태 연결 중",
     connectionConnected: "로컬 모니터 연결됨",
     connectionRetrying: "연결 끊김 · 재시도 중",
     authenticationRequired: "실시간 화면 인증 필요",
-    heroEyebrow: "로컬 · 읽기 전용",
+    heroEyebrow: "CODEX 작업 현황",
     heroTitle: "작업 흐름을 한눈에",
-    heroCopy: "공식 Codex 앱은 그대로 두고, 부모 작업과 작업 에이전트의 현재 상태만 로컬에서 확인합니다.",
+    heroCopy: "Codex가 어떤 요청을 처리하고 있는지, 어떤 에이전트가 참여하는지, 각 단계가 어디까지 왔는지 한 화면에서 확인하세요.",
     freshnessAria: "상태 갱신 정보",
     lastUpdatedLabel: "마지막 갱신",
     notYet: "아직 없음",
     refreshIntervalLabel: "갱신 주기",
     twoSeconds: "2초",
     metricsAria: "작업 상태 요약",
-    parentTasks: "부모 작업",
+    parentTasks: "작업",
     currentlyObserved: "현재 관찰 중",
     runningAgents: "실행 중 에이전트",
     workingNow: "작업 수행 중",
@@ -164,11 +170,11 @@ const MESSAGES = Object.freeze({
     completedAgents: "완료 에이전트",
     currentView: "현재 화면 기준",
     liveWork: "실시간 작업",
-    sessionsHeading: "부모 작업과 작업 에이전트",
+    sessionsHeading: "작업과 참여 에이전트",
     loadingState: "상태를 불러오는 중입니다.",
-    toolbarAria: "자동 수신된 부모 작업과 작업 에이전트 목록 필터",
+    toolbarAria: "자동 수신된 작업과 참여 에이전트 목록 필터",
     searchLabel: "목록 필터 (선택)",
-    searchPlaceholder: "부모 작업·작업 에이전트 목록에서 찾기",
+    searchPlaceholder: "작업 또는 에이전트 찾기",
     statusFilterLabel: "상태 필터 (선택)",
     statusAll: "모든 상태",
     statusRunning: "실행 중",
@@ -176,42 +182,48 @@ const MESSAGES = Object.freeze({
     statusCompleted: "완료",
     statusUnknown: "알 수 없음",
     connectingCopy: "Codex 앱의 로컬 상태에 연결하고 있습니다.",
-    sessionListAria: "Codex 부모 작업 목록",
-    privacyPrompt: "이 화면은 사용자 요청 내용과 도구 입력 내용을 표시하지 않습니다.",
+    sessionListAria: "Codex 작업 목록",
+    privacyPrompt: "이 화면은 짧게 줄인 요청 요약만 표시하며, 전체 요청이나 도구 입력은 표시하지 않습니다.",
     privacyLocal: "데이터는 이 기기의 로컬 모니터에서만 읽습니다.",
     timeUnknown: "시간 정보 없음",
     startedUnknown: "시작 시간 없음",
     noReceivedActivity: "수신된 활동 없음",
-    parentTask: "부모 작업",
+    parentTask: "작업",
     projectUnknown: "프로젝트 정보 없음",
+    taskSummary: "요청 내용",
+    taskSummaryUnavailable: "요청 내용을 요약할 수 있는 정보가 아직 없습니다.",
     recentActivity: "최근 활동",
     recent: "최근",
-    subagentsCount: "작업 에이전트 · {count}",
-    subagentName: "작업 에이전트 {ordinal}",
+    subagentsCount: "참여 에이전트 · {count}",
+    subagentName: "에이전트 {ordinal}",
     agentProfile: "역할/프로필 · {profile}",
-    agentProfileNote: "검증된 hook은 할당 작업 설명을 제공하지 않습니다. 확인 가능한 역할/프로필만 표시합니다.",
-    noSubagents: "이 부모 작업에서 관찰된 작업 에이전트가 없습니다.",
+    agentProfileNote: "Codex는 현재 각 에이전트의 역할을 제공하지만, 구체적인 할당 내용 전체는 제공하지 않습니다.",
+    noSubagents: "이 작업에 참여한 에이전트가 아직 관찰되지 않았습니다.",
     noRecentActivity: "표시할 최근 활동이 없습니다.",
     technicalInfo: "기술 정보",
-    sessionId: "세션 ID",
     agentId: "에이전트 ID",
     rawProfile: "원본 역할/프로필",
     rawEvent: "원본 이벤트",
     rawTool: "원본 도구",
-    retry: "다시 연결",
+    retry: "연결 다시 시도",
+    retryAuthentication: "이 탭에서 다시 시도",
+    checkAuthentication: "인증 정보 다시 확인",
+    recoveryTitle: "새 인증 화면 열기",
+    recoveryStep: "Codex 앱 입력창에서 @codex-agent-view를 선택한 다음, 스킬 선택기에서 실제 $show-agents 스킬을 선택하세요.",
+    recoveryNote: "새 인증이 적용된 실시간 화면이 열립니다. 터미널 명령이나 외부 브라우저는 필요하지 않습니다.",
     resultsFiltered: "전체 {total}개 중 {visible}개 표시",
-    resultsTotal: "{count}개 부모 작업",
+    resultsTotal: "작업 {count}개",
     searchEmptyTitle: "검색 결과가 없습니다.",
     searchEmptyCopy: "검색어나 상태 필터를 바꿔 보세요.",
-    emptyWithDiagnosticsTitle: "표시 가능한 부모 작업이 없습니다.",
-    emptyWithDiagnosticsCopy: "로컬 모니터가 활동 정보 {count}건을 받았지만 표시 가능한 부모 작업으로 적용하지 못했습니다.",
+    emptyWithDiagnosticsTitle: "표시 가능한 작업이 없습니다.",
+    emptyWithDiagnosticsCopy: "로컬 모니터가 활동 정보 {count}건을 받았지만 표시 가능한 작업으로 적용하지 못했습니다.",
     emptyTitle: "이 관찰 화면에서 수신된 작업 활동이 없습니다.",
-    emptyCopy: "로컬 모니터 연결은 정상입니다. 이 결과만으로 Codex에 실행 중인 부모 작업이나 작업 에이전트가 없다고 판단할 수 없습니다.",
+    emptyCopy: "로컬 모니터 연결은 정상입니다. 이 결과만으로 Codex에 진행 중인 작업이나 참여 에이전트가 없다고 판단할 수 없습니다.",
     emptyGuidanceTitle: "표시되지 않을 때 확인 순서",
     automaticTracking: "작업 ID를 입력하거나 작업별로 등록할 필요가 없습니다. 신뢰한 hook의 작업 활동이 이 목록에 자동으로 추가됩니다.",
     emptyStep1: "플러그인을 설치한 뒤 공식 Codex 앱을 완전히 재시작했는지 확인합니다.",
     emptyStep2: "새 작업에서 표시되는 Codex Agent View hook 명령을 검토하고 직접 신뢰합니다.",
-    emptyStep3: "신뢰 설정 후 새 작업을 시작해 작업 에이전트를 실행합니다. 새 활동은 이 목록에 자동으로 추가됩니다.",
+    emptyStep3: "신뢰 설정 후 새 작업을 시작해 에이전트를 실행합니다. 새 활동은 이 목록에 자동으로 추가됩니다.",
     observationBoundary: "관찰 화면은 첫 번째로 신뢰한 hook을 받은 시점부터 시작합니다. 그 전에 이미 지나간 활동과 로컬 상태 수집이 중단된 동안의 활동은 재생되지 않으며, 수집이 다시 시작되면 새 관찰 화면이 열립니다.",
     diagnosticsCount: "검증 정보 · {count}건",
     diagnosticOccurrences: "{count}건",
@@ -219,8 +231,8 @@ const MESSAGES = Object.freeze({
     authTitle: "이 실시간 화면을 인증할 수 없습니다.",
     retryWithState: "2초마다 자동으로 다시 연결합니다. 마지막 정상 상태를 계속 표시합니다.",
     retryWithoutState: "2초마다 자동으로 다시 연결합니다. Codex 앱에서 이 화면을 그대로 두어도 됩니다.",
-    missingToken: "이 탭에는 접근 토큰이 없습니다. Codex 앱에서 Codex Agent View의 실시간 화면 열기를 다시 요청하세요.",
-    expiredToken: "이 실시간 화면의 인증이 더 이상 유효하지 않습니다. Codex 앱에서 Codex Agent View의 실시간 화면 열기를 다시 요청하세요.",
+    missingToken: "이 탭에는 실시간 작업을 표시하는 데 필요한 인증 정보가 없습니다.",
+    expiredToken: "이 탭의 실시간 화면 인증이 거부되었거나 더 이상 유효하지 않습니다.",
     requestFailed: "상태 요청 실패 ({status})",
     unknownConnectionError: "알 수 없는 연결 오류가 발생했습니다.",
     offline: "이 기기가 오프라인입니다.",
@@ -234,14 +246,14 @@ const MESSAGES = Object.freeze({
     nameUnknown: "이름 미상",
     activityUnknown: "알 수 없음",
     approvalRequest: "{tool} 승인 요청",
-    agentStarted: "작업 에이전트 {ordinal} 시작",
-    agentStopped: "작업 에이전트 {ordinal} 완료",
+    agentStarted: "에이전트 {ordinal} 시작",
+    agentStopped: "에이전트 {ordinal} 완료",
     activitySessionStarted: "관찰 시작",
     activitySessionEnded: "관찰 종료",
-    activityTurnStarted: "부모 작업 시작",
-    activityTurnStopped: "부모 작업 응답 완료",
-    activitySubagentStarted: "작업 에이전트 시작",
-    activitySubagentStopped: "작업 에이전트 완료",
+    activityTurnStarted: "작업 시작",
+    activityTurnStopped: "작업 응답 완료",
+    activitySubagentStarted: "에이전트 시작",
+    activitySubagentStopped: "에이전트 완료",
     activityToolStarted: "도구 작업",
     activityToolCompleted: "도구 작업",
     activityPermissionRequested: "사용자 승인 요청",
@@ -251,7 +263,7 @@ const MESSAGES = Object.freeze({
     toolInterrupt: "에이전트 작업 중단 요청",
     toolList: "에이전트 상태 확인",
     toolMessage: "에이전트에게 메시지 전달",
-    toolSpawn: "작업 에이전트 시작",
+    toolSpawn: "에이전트 시작",
     toolWaitAgent: "에이전트 응답 대기",
     toolExec: "터미널 작업",
     toolUserInput: "사용자 입력 요청",
@@ -264,38 +276,38 @@ const MESSAGES = Object.freeze({
     roleUnknown: "보고되지 않음",
   }),
   es: Object.freeze({
-    metaDescription: "Estado local y de solo lectura de tareas y subagentes de Codex.",
+    metaDescription: "Una vista clara del trabajo de Codex y de los agentes que lo hacen avanzar.",
     skipToContent: "Saltar al contenido",
     brandHome: "Inicio de Codex Agent View",
-    brandSubtitle: "Monitor local de solo lectura",
+    brandSubtitle: "Resumen del trabajo en vivo",
     languageLabel: "Idioma",
     connectionConnecting: "Conectando al estado local",
     connectionConnected: "Monitor local conectado",
     connectionRetrying: "Desconectado · reintentando",
     authenticationRequired: "Se requiere autenticar la vista",
-    heroEyebrow: "LOCAL · SOLO LECTURA",
+    heroEyebrow: "TRABAJO ACTIVO EN CODEX",
     heroTitle: "Observa el trabajo activo de un vistazo",
-    heroCopy: "Sigue usando la aplicación oficial de Codex mientras consultas localmente el estado de las tareas principales y los subagentes.",
+    heroCopy: "Consulta qué está haciendo Codex, qué agentes participan y cómo avanza cada parte, todo en un solo lugar.",
     freshnessAria: "Información de actualización",
     lastUpdatedLabel: "Última actualización",
     notYet: "Aún no",
     refreshIntervalLabel: "Intervalo de actualización",
     twoSeconds: "2 segundos",
     metricsAria: "Resumen del estado de las tareas",
-    parentTasks: "Tareas principales",
+    parentTasks: "Trabajos",
     currentlyObserved: "En observación",
-    runningAgents: "Subagentes activos",
+    runningAgents: "Agentes activos",
     workingNow: "Trabajando ahora",
     waitingStatus: "En espera",
     waitingExplanation: "Esperando una respuesta o el siguiente paso",
-    completedAgents: "Subagentes completados",
+    completedAgents: "Agentes que terminaron",
     currentView: "En la vista actual",
     liveWork: "TRABAJO EN VIVO",
-    sessionsHeading: "Tareas principales y subagentes",
+    sessionsHeading: "Trabajos y agentes participantes",
     loadingState: "Cargando el estado.",
-    toolbarAria: "Filtrar tareas principales y subagentes observados automáticamente",
+    toolbarAria: "Filtrar trabajos y agentes participantes observados automáticamente",
     searchLabel: "Filtrar lista (opcional)",
-    searchPlaceholder: "Buscar una tarea principal o un subagente",
+    searchPlaceholder: "Buscar un trabajo o agente",
     statusFilterLabel: "Filtrar por estado (opcional)",
     statusAll: "Todos los estados",
     statusRunning: "En ejecución",
@@ -303,42 +315,48 @@ const MESSAGES = Object.freeze({
     statusCompleted: "Completado",
     statusUnknown: "Desconocido",
     connectingCopy: "Conectando al estado local de la aplicación Codex.",
-    sessionListAria: "Lista de tareas principales de Codex",
-    privacyPrompt: "Esta vista no muestra solicitudes del usuario ni entradas de herramientas.",
+    sessionListAria: "Lista de trabajos de Codex",
+    privacyPrompt: "Esta vista solo muestra un resumen abreviado de la solicitud; nunca muestra la solicitud completa ni las entradas de herramientas.",
     privacyLocal: "Los datos se leen únicamente del monitor local de este dispositivo.",
     timeUnknown: "Hora no disponible",
     startedUnknown: "Hora de inicio no disponible",
     noReceivedActivity: "No se recibió actividad",
-    parentTask: "TAREA PRINCIPAL",
+    parentTask: "TRABAJO",
     projectUnknown: "Proyecto no disponible",
+    taskSummary: "Solicitud",
+    taskSummaryUnavailable: "Todavía no hay información para resumir esta solicitud.",
     recentActivity: "Actividad reciente",
     recent: "Reciente",
-    subagentsCount: "Subagentes · {count}",
-    subagentName: "Subagente {ordinal}",
+    subagentsCount: "Agentes participantes · {count}",
+    subagentName: "Agente {ordinal}",
     agentProfile: "Rol/perfil · {profile}",
-    agentProfileNote: "Los hooks verificados no proporcionan descripciones de la tarea asignada. Se muestra el rol/perfil cuando está disponible.",
-    noSubagents: "No se observaron subagentes para esta tarea principal.",
+    agentProfileNote: "Codex proporciona el rol de cada agente, pero no la descripción completa de su asignación.",
+    noSubagents: "Todavía no se observaron agentes participantes en este trabajo.",
     noRecentActivity: "No hay actividad reciente que mostrar.",
     technicalInfo: "Información técnica",
-    sessionId: "ID de sesión",
     agentId: "ID del agente",
     rawProfile: "Rol/perfil original",
     rawEvent: "Evento original",
     rawTool: "Herramienta original",
-    retry: "Reconectar",
+    retry: "Reintentar conexión",
+    retryAuthentication: "Reintentar en esta pestaña",
+    checkAuthentication: "Volver a comprobar la autenticación",
+    recoveryTitle: "Abrir una vista con autenticación nueva",
+    recoveryStep: "En el cuadro de texto de Codex, selecciona @codex-agent-view y luego elige la skill real $show-agents en el selector de skills.",
+    recoveryNote: "La skill abre una vista en vivo nueva con autenticación actualizada. No necesitas la terminal ni un navegador externo.",
     resultsFiltered: "Mostrando {visible} de {total}",
-    resultsTotal: "{count} tareas principales",
+    resultsTotal: "{count} trabajos",
     searchEmptyTitle: "No hay resultados.",
     searchEmptyCopy: "Prueba otra búsqueda o filtro de estado.",
-    emptyWithDiagnosticsTitle: "No hay tareas principales que mostrar.",
-    emptyWithDiagnosticsCopy: "El monitor local recibió {count} registros de actividad, pero no pudo aplicarlos a tareas visibles.",
+    emptyWithDiagnosticsTitle: "No hay trabajos que mostrar.",
+    emptyWithDiagnosticsCopy: "El monitor local recibió {count} registros de actividad, pero no pudo aplicarlos a trabajos visibles.",
     emptyTitle: "No se recibió actividad en esta ventana de observación.",
-    emptyCopy: "El monitor local está conectado. Este resultado no implica por sí solo que Codex no tenga tareas o subagentes activos.",
+    emptyCopy: "El monitor local está conectado. Este resultado no implica por sí solo que Codex no tenga trabajos o agentes activos.",
     emptyGuidanceTitle: "Si el trabajo no aparece",
     automaticTracking: "No es necesario introducir ni registrar IDs de tareas. La actividad de hooks confiables se añade automáticamente.",
     emptyStep1: "Tras instalar el plugin, reinicia por completo la aplicación oficial de Codex.",
     emptyStep2: "En una tarea nueva, revisa y autoriza explícitamente el comando hook de Codex Agent View.",
-    emptyStep3: "Después, inicia una tarea nueva y ejecuta subagentes. La actividad se añadirá automáticamente.",
+    emptyStep3: "Después, inicia un trabajo nuevo y ejecuta agentes. La actividad se añadirá automáticamente.",
     observationBoundary: "La observación comienza con el primer evento de un hook autorizado. La actividad anterior o perdida mientras la recopilación local estuvo detenida no se puede reproducir; al reiniciarla se abre una ventana nueva.",
     diagnosticsCount: "Información de validación · {count}",
     diagnosticOccurrences: "{count} apariciones",
@@ -346,8 +364,8 @@ const MESSAGES = Object.freeze({
     authTitle: "No se puede autenticar esta vista en vivo.",
     retryWithState: "Se reconecta automáticamente cada 2 segundos y mantiene visible el último estado válido.",
     retryWithoutState: "Se reconecta automáticamente cada 2 segundos. Puedes dejar esta vista abierta en Codex.",
-    missingToken: "Esta pestaña no tiene un token de acceso. Pide a Codex Agent View que vuelva a abrir la vista en Codex.",
-    expiredToken: "La credencial de esta vista ya no es válida. Pide a Codex Agent View que vuelva a abrir la vista en Codex.",
+    missingToken: "Esta pestaña no tiene la autenticación necesaria para mostrar el trabajo en vivo.",
+    expiredToken: "La autenticación de esta pestaña fue rechazada o ya no es válida.",
     requestFailed: "Falló la solicitud de estado ({status})",
     unknownConnectionError: "Se produjo un error de conexión desconocido.",
     offline: "Este dispositivo está sin conexión.",
@@ -361,25 +379,25 @@ const MESSAGES = Object.freeze({
     nameUnknown: "Nombre desconocido",
     activityUnknown: "Desconocida",
     approvalRequest: "Se solicitó aprobación para {tool}",
-    agentStarted: "Subagente {ordinal} iniciado",
-    agentStopped: "Subagente {ordinal} completado",
+    agentStarted: "Agente {ordinal} iniciado",
+    agentStopped: "Agente {ordinal} completado",
     activitySessionStarted: "Observación iniciada",
     activitySessionEnded: "Observación finalizada",
-    activityTurnStarted: "Tarea principal iniciada",
-    activityTurnStopped: "Respuesta de la tarea completada",
-    activitySubagentStarted: "Subagente iniciado",
-    activitySubagentStopped: "Subagente completado",
+    activityTurnStarted: "Trabajo iniciado",
+    activityTurnStopped: "Respuesta del trabajo completada",
+    activitySubagentStarted: "Agente iniciado",
+    activitySubagentStopped: "Agente completado",
     activityToolStarted: "Actividad de herramienta",
     activityToolCompleted: "Actividad de herramienta",
     activityPermissionRequested: "Se solicitó aprobación",
     toolApplyPatch: "Edición de archivo",
     toolBash: "Actividad de terminal",
-    toolFollowup: "Seguimiento del subagente solicitado",
-    toolInterrupt: "Interrupción del subagente solicitada",
-    toolList: "Estado de subagentes consultado",
-    toolMessage: "Mensaje enviado al subagente",
-    toolSpawn: "Subagente iniciado",
-    toolWaitAgent: "Esperando al subagente",
+    toolFollowup: "Seguimiento del agente solicitado",
+    toolInterrupt: "Interrupción del agente solicitada",
+    toolList: "Estado de agentes consultado",
+    toolMessage: "Mensaje enviado al agente",
+    toolSpawn: "Agente iniciado",
+    toolWaitAgent: "Esperando al agente",
     toolExec: "Actividad de terminal",
     toolUserInput: "Se solicitó entrada del usuario",
     toolWait: "Esperando finalización",
@@ -522,7 +540,7 @@ function consumeLiveContext() {
   };
 }
 
-const { accessToken, excludedSessionId } = consumeLiveContext();
+let { accessToken, excludedSessionId } = consumeLiveContext();
 
 const elements = Object.freeze({
   connectionStatus: document.querySelector("#connection-status"),
@@ -801,6 +819,7 @@ function normalizeSession(value, index) {
   return {
     sessionId: safeString(session.session_id, `unknown-session-${index + 1}`),
     workspaceLabel: safeString(session.workspace_label, ""),
+    taskSummary: safeString(session.task_summary, ""),
     status: deriveSessionStatus(session, agents, recentActivities),
     lastActivityAtMs: safeTimestamp(session.last_seen_at_ms),
     agents,
@@ -1047,11 +1066,14 @@ function createSessionCard(session) {
   eyebrow.textContent = t("parentTask");
   const title = document.createElement("h3");
   title.textContent = session.workspaceLabel || t("projectUnknown");
-  identity.append(
-    eyebrow,
-    title,
-    createTechnicalInfo([[t("sessionId"), session.sessionId]]),
-  );
+  const taskSummary = document.createElement("p");
+  taskSummary.className = "task-summary";
+  const taskSummaryLabel = document.createElement("strong");
+  taskSummaryLabel.textContent = `${t("taskSummary")} · `;
+  const taskSummaryCopy = document.createElement("span");
+  taskSummaryCopy.textContent = session.taskSummary || t("taskSummaryUnavailable");
+  taskSummary.append(taskSummaryLabel, taskSummaryCopy);
+  identity.append(eyebrow, title, taskSummary);
 
   const sessionState = document.createElement("div");
   sessionState.className = "session-state";
@@ -1116,6 +1138,7 @@ function sessionMatchesQuery(session, query) {
   const searchableValues = [
     session.sessionId,
     session.workspaceLabel,
+    session.taskSummary,
     session.status,
     ...session.agents.flatMap((agent) => [
       agent.agentId,
@@ -1171,7 +1194,7 @@ function renderMetrics() {
     : formatDateTime(viewState.updatedAtMs);
 }
 
-function setStateMessage(kind, title, description, includeRetry = false) {
+function setStateMessage(kind, title, description, retryMode = "") {
   elements.stateMessage.className = `state-message state-${kind}`;
   elements.stateMessage.replaceChildren();
 
@@ -1181,14 +1204,59 @@ function setStateMessage(kind, title, description, includeRetry = false) {
   copy.textContent = description;
   elements.stateMessage.append(heading, copy);
 
-  if (includeRetry) {
+  if (retryMode === "authentication") {
+    const recovery = document.createElement("div");
+    recovery.className = "recovery-guidance";
+
+    const recoveryTitle = document.createElement("strong");
+    recoveryTitle.textContent = t("recoveryTitle");
+    const recoveryStep = document.createElement("p");
+    recoveryStep.textContent = t("recoveryStep");
+    const recoveryNote = document.createElement("p");
+    recoveryNote.className = "recovery-note";
+    recoveryNote.textContent = t("recoveryNote");
+    recovery.append(recoveryTitle, recoveryStep, recoveryNote);
+    elements.stateMessage.append(recovery);
+  }
+
+  if (retryMode) {
     const retry = document.createElement("button");
     retry.type = "button";
     retry.className = "retry-button";
-    retry.textContent = t("retry");
-    retry.addEventListener("click", refreshState);
+    retry.textContent = retryMode === "authentication"
+      ? (accessToken ? t("retryAuthentication") : t("checkAuthentication"))
+      : t("retry");
+    retry.addEventListener(
+      "click",
+      retryMode === "authentication" ? retryAuthentication : refreshState,
+    );
     elements.stateMessage.append(retry);
   }
+}
+
+function retryAuthentication() {
+  const refreshedContext = consumeLiveContext();
+  accessToken = refreshedContext.accessToken;
+  excludedSessionId = refreshedContext.excludedSessionId;
+
+  if (!accessToken) {
+    viewState.hasLoaded = true;
+    viewState.canRetry = false;
+    viewState.authenticationFailed = true;
+    viewState.errorKey = "missingToken";
+    viewState.errorMessage = t(viewState.errorKey);
+    setConnectionStatus("error", t("authenticationRequired"));
+    render();
+    return;
+  }
+
+  viewState.authenticationFailed = false;
+  viewState.canRetry = true;
+  viewState.errorKey = "";
+  viewState.errorMessage = "";
+  setConnectionStatus("connecting");
+  render();
+  void refreshState();
 }
 
 function setEmptyObservationMessage() {
@@ -1290,7 +1358,7 @@ function renderSessions() {
         ? t("disconnectedTitle")
         : t("authTitle"),
       description,
-      viewState.canRetry,
+      viewState.canRetry ? "connection" : "authentication",
     );
     return;
   }

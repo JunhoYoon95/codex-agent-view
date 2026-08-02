@@ -1,7 +1,7 @@
 {
   "name": "codex-agent-view",
-  "version": "0.4.4",
-  "description": "Read-only Codex app task snapshots with a trusted-hook auto-prepared local live backend.",
+  "version": "0.4.5",
+  "description": "Follow Codex work and participating agent progress in a clear, read-only live view inside the official Codex app.",
   "author": {
     "name": "Junho Yoon",
     "url": "https://github.com/JunhoYoon95"
@@ -12,8 +12,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Agent View",
-    "shortDescription": "View active Codex tasks.",
-    "longDescription": "View privacy-minimized active task and subagent snapshots inside the official Codex app. Select the plugin first, then explicitly invoke the bundled $show-agents skill when you want to open the live monitor; the plugin does not append or auto-run action text.",
+    "shortDescription": "See work and agent progress.",
+    "longDescription": "See active work, a privacy-minimized request summary, participating agents, and progress inside the official Codex app. Select the plugin first, then explicitly invoke the bundled $show-agents skill to open the live view; the plugin does not append or auto-run action text.",
     "developerName": "Junho Yoon",
     "category": "Productivity",
     "brandColor": "#123F35",

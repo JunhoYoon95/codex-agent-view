@@ -140,6 +140,18 @@ test("offers an accessible English, Korean, and Spanish language selector", () =
   assert.deepEqual(Object.keys(messages.es).sort(), englishKeys);
 });
 
+test("uses product-oriented work language instead of implementation hierarchy terms", () => {
+  assert.match(html, /See what Codex is working on, which agents are involved/);
+  assert.match(html, /LIVE CODEX WORK/);
+  assert.doesNotMatch(html, /parent tasks|subagents/i);
+  assert.match(app, /heroCopy: "Codex가 어떤 요청을 처리하고 있는지/);
+  assert.match(app, /heroEyebrow: "CODEX 작업 현황"/);
+  assert.match(app, /sessionsHeading: "작업과 참여 에이전트"/);
+  assert.match(app, /sessionsHeading: "Trabajos y agentes participantes"/);
+  assert.doesNotMatch(app, /heroCopy: .*부모 작업/);
+  assert.doesNotMatch(app, /sessionsHeading: .*subagent/i);
+});
+
 test("provides landmarks, form labels, live status, and keyboard navigation", () => {
   assert.match(html, /<header\s+class="topbar">/);
   assert.match(html, /<main\s+id="main-content"\s+tabindex="-1">/);
@@ -243,9 +255,66 @@ test("renders technical and diagnostic information inline without refresh-sensit
   assert.match(styles, /\.diagnostic-info ul/);
 });
 
+test("shows an optional safe request summary and does not expose the session ID as primary UI", () => {
+  assert.match(app, /taskSummary: safeString\(session\.task_summary, ""\)/);
+  assert.match(app, /taskSummaryCopy\.textContent = session\.taskSummary \|\| t\("taskSummaryUnavailable"\)/);
+  assert.match(app, /taskSummaryLabel\.textContent = `\$\{t\("taskSummary"\)\} · `/);
+  assert.match(app, /session\.taskSummary,/);
+  assert.doesNotMatch(app, /createTechnicalInfo\(\[\[t\("sessionId"\)/);
+  assert.doesNotMatch(app, /sessionId: "Session ID"|sessionId: "세션 ID"|sessionId: "ID de sesión"/);
+  assert.match(styles, /\.task-summary/);
+});
+
+test("provides honest authentication recovery guidance and a working credential retry", () => {
+  assert.match(app, /recoveryStep: "In the Codex app,[^"]*actual \$show-agents skill/);
+  assert.match(app, /recoveryStep: "Codex 앱 입력창에서[^"]*실제 \$show-agents 스킬/);
+  assert.match(app, /recoveryStep: "En el cuadro de texto de Codex,[^"]*\$show-agents/);
+  assert.match(app, /retryMode === "authentication" \? retryAuthentication : refreshState/);
+  assert.match(app, /retryMode === "authentication"[\s\S]*?recovery-guidance/);
+  assert.match(styles, /\.recovery-guidance/);
+
+  const source = extractFunction("retryAuthentication");
+  const createHarness = (context) => Function(
+    "consumeLiveContext",
+    `
+      "use strict";
+      let accessToken = "stale-token";
+      let excludedSessionId = "stale-session";
+      const viewState = {
+        hasLoaded: true, canRetry: false, authenticationFailed: true,
+        errorKey: "expiredToken", errorMessage: "Expired",
+      };
+      const connectionStates = [];
+      let renders = 0;
+      let refreshes = 0;
+      const t = (key) => key;
+      const setConnectionStatus = (...args) => connectionStates.push(args);
+      const render = () => { renders += 1; };
+      const refreshState = () => { refreshes += 1; };
+      ${source}
+      return {
+        retryAuthentication,
+        result: () => ({ accessToken, excludedSessionId, viewState, connectionStates, renders, refreshes }),
+      };
+    `,
+  )(() => context);
+
+  const restored = createHarness({ accessToken: "v".repeat(43), excludedSessionId: "new-session" });
+  restored.retryAuthentication();
+  assert.equal(restored.result().viewState.authenticationFailed, false);
+  assert.equal(restored.result().refreshes, 1);
+  assert.equal(restored.result().accessToken, "v".repeat(43));
+
+  const missing = createHarness({ accessToken: "", excludedSessionId: "" });
+  missing.retryAuthentication();
+  assert.equal(missing.result().viewState.authenticationFailed, true);
+  assert.equal(missing.result().viewState.errorKey, "missingToken");
+  assert.equal(missing.result().refreshes, 0);
+});
+
 test("labels verified agent_type as role/profile without claiming an assignment description", () => {
   assert.match(app, /agentProfile: "Role\/profile · \{profile\}"/);
-  assert.match(app, /Verified hooks do not expose assignment descriptions/);
+  assert.match(app, /Codex currently provides each agent's role, but not its full assignment description/);
   assert.match(app, /profileNote\.className = "agent-profile-note"/);
   assert.match(app, /technicalRows\.push\(\[t\("rawProfile"\), agent\.agentType\]\)/);
   assert.doesNotMatch(app, /taskDescription|assignmentDescription|agent\.prompt/i);

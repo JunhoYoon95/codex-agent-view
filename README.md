@@ -2,18 +2,18 @@
 
 > [Read in Korean](https://github.com/JunhoYoon95/codex-agent-view/blob/main/README.ko.md)
 
-Codex Agent View is a read-only companion plugin that shows privacy-minimized active tasks and subagents across workspaces inside the official Codex app. Trusted hooks automatically prepare its local live backend, and the bundled **Show Agents** skill lets users open the live view in the Codex app.
+Codex Agent View gives you a clear, read-only view of what Codex is working on and which agents are moving each work item forward. It stays inside the official Codex app, starts its local live connection through trusted hooks, and opens through the bundled **Show Agents** skill.
 
 > This is an unofficial community project. It is not an OpenAI product, affiliate, or officially supported project.
 
 ## Quick start: install once, then stay inside the Codex app
 
-This README documents `codex-agent-view@0.4.4`. Use the exact-version command below for the one-time terminal installation.
+This README documents `codex-agent-view@0.4.5`. Use the exact-version command below for the one-time terminal installation.
 
 Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
 ```bash
-npm install --global codex-agent-view@0.4.4
+npm install --global codex-agent-view@0.4.5
 codex-agent-view install
 ```
 
@@ -34,13 +34,13 @@ When the first trusted hook arrives, the plugin sender internally prepares the l
 
 The public Codex plugin API does not provide no-prompt app-start creation of a sidebar, panel, or Browser tab. Opening the live view therefore requires one explicit `$show-agents` skill selection inside the Codex app. Once the right-side live tab is open, it refreshes every two seconds and automatically reconnects after a temporary disconnect, monitor restart, or package upgrade when the backend returns on the same loopback origin. The task that invoked the live view is excluded using the app-provided `CODEX_THREAD_ID`, so the monitor does not keep promoting its own viewer task. The live observation window still resets when the monitor process restarts; only the read-only viewer credential survives.
 
-The live UI defaults to English and offers **English**, **Korean**, and **Spanish** in its language selector. Activity and technical metadata are always visible rather than hidden behind refresh-sensitive disclosure toggles. The two-second polling interval is unchanged. Verified `SubagentStart` payloads provide only `agent_id` and `agent_type`; they do not provide a dedicated assignment description. The monitor therefore does not display or infer an agent's assigned task from prompt or tool input, because those values are intentionally not retained.
+The live UI defaults to English and offers **English**, **Korean**, and **Spanish** in its language selector. Activity remains visible rather than hidden behind refresh-sensitive disclosure toggles, and the two-second polling interval is unchanged. Each work item can show its first valid short request summary derived from `UserPromptSubmit`: the sender inspects at most 4,096 characters, redacts common credentials, email addresses, links, and absolute paths, collapses the result to one line, bounds it to 180 characters, and immediately discards the full request. Later follow-ups do not replace that first valid summary. Verified `SubagentStart` payloads still provide only `agent_id` and `agent_type`; they do not provide a dedicated assignment description. The monitor therefore shows the work-level request summary but does not invent an agent-specific assignment from prompts or tool input.
 
 In short: install once in a terminal; perform snapshot queries, status checks, live-view opening, and all routine use inside the Codex app.
 
 ## Status
 
-Version `0.4.4` includes an app-native snapshot skill that prioritizes the official Codex app's built-in thread tools, privacy-minimized hooks, a bounded in-memory reducer, a trusted-hook auto-prepared token-authenticated `127.0.0.1` live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
+Version `0.4.5` adds the work-level request summary, user-facing work/agent terminology, session-ID-free live cards, and in-panel connection/authentication recovery described above. It retains the app-native snapshot skill, privacy-minimized hooks, bounded in-memory reducer, local authenticated live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -81,8 +81,8 @@ Codex Agent View is a live companion, not a historical audit or session-replay p
 - The viewer credential is read-only and remains stable across monitor restarts and package upgrades during one installation. The runtime/control token remains separate and process-scoped.
 - After installation, hook trust, and an app restart, the first trusted hook automatically prepares the backend. This prepares a local process; it does not create app UI without a user action.
 - There is no external telemetry, remote server, account, required SQLite/persistent event store, or remote control.
-- Prompt text, transcript paths, full tool input/output, and assistant messages are not retained or displayed by the monitor.
-- The default monitor sorts running parents and subagents first, uses human-readable labels and statuses as the primary presentation, and keeps raw IDs and event names out of the primary reading path.
+- Full prompt text, transcript paths, full tool input/output, and assistant messages are not retained or displayed by the monitor. Only the bounded, redacted one-line work summary described above may be retained in process memory.
+- The default monitor sorts active work and participating agents first, uses human-readable labels and statuses as the primary presentation, and keeps raw IDs and event names out of the primary reading path. Session IDs are not shown in the live cards.
 - The product cannot stop or restart tasks/subagents, send messages, or approve/deny permissions.
 - Missing, duplicated, or out-of-order events remain visible as empty, unknown, or degraded state instead of being guessed away.
 
@@ -102,11 +102,11 @@ Use this flow in a **new task** after completing installation and enablement in 
 
 1. Select **Quick start** on the Codex Agent View plugin card. This selects only `@codex-agent-view`; it does not submit a prompt or invoke a skill.
 2. Explicitly select the bundled `$show-agents` skill in the Codex app. The skill reuses the backend prepared by trusted hooks, or prepares it internally when still absent, then attempts to open the live view in the app.
-3. The panel excludes this invoking viewer task using `CODEX_THREAD_ID`, puts the remaining running parents and subagents first, and uses human-readable workspace/task/agent labels and status text. Raw session/agent IDs and technical metadata remain visible inline for diagnosis, without disclosure toggles that reset during polling. Prompts, previews, tool input/output, and full workspace paths remain hidden.
+3. The panel excludes this invoking viewer task using `CODEX_THREAD_ID`, puts the remaining active work and participating agents first, and uses human-readable project, request-summary, agent, and status text. Session IDs are not shown. The full request, previews, tool input/output, and full workspace paths remain hidden.
 4. Choose **English**, **Korean**, or **Spanish** from the language selector. English is the default, and changing language does not stop the two-second refresh.
 5. If the app's Browser capability or permission is unavailable, the skill reports the failure without exposing a private localhost URL or opening an external browser.
 
-If you close the right-side live view, select `@codex-agent-view` and explicitly invoke `$show-agents` again in a Codex app task. Do not rely on a pasted `@codex-agent-view $show-agents` string being reparsed as a skill selection. An open tab refreshes and reconnects automatically after temporary disconnects, monitor restarts, and upgrades. A restarted monitor presents a new in-memory observation window rather than replaying earlier activity.
+If you close the right-side live view, select `@codex-agent-view` and explicitly invoke `$show-agents` again in a Codex app task. Do not rely on a pasted `@codex-agent-view $show-agents` string being reparsed as a skill selection. An open tab refreshes and reconnects automatically after temporary disconnects, monitor restarts, and upgrades. If a request fails, the live view provides a **Retry connection** button. If authentication is rejected or missing, it also provides an in-app recovery explanation and a button to check the current tab again; because the page cannot mint or recover a private credential by itself, use the actual `$show-agents` skill in the Codex app to open a newly authenticated view when that check cannot succeed. No terminal command, private URL copy, or external browser is part of recovery. A restarted monitor presents a new in-memory observation window rather than replaying earlier activity.
 
 ## Requirements and tested versions
 
@@ -163,16 +163,16 @@ After plugin enablement/trust and an app restart, the first trusted hook interna
 
 ## Install from npm
 
-The commands below install `0.4.4` by exact version.
+The commands below install `0.4.5` by exact version.
 
 ```bash
-npm install --global codex-agent-view@0.4.4
+npm install --global codex-agent-view@0.4.5
 codex-agent-view install
 ```
 
 After these two commands, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. Use the plugin card's **Quick start** action to select `@codex-agent-view`, then explicitly select `$show-agents` in the app. Repeat that explicit skill selection after closing the panel.
 
-The `0.4.4` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. When upgrading an older valid installation, `install` preserves the installation-owned read-only viewer credential; the legacy `0.4.2` migration behavior remains as documented for `0.4.3`. Neither token nor the private URL is printed.
+The `0.4.5` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. When upgrading an older valid installation, `install` preserves the installation-owned read-only viewer credential; the legacy `0.4.2` migration behavior remains as documented for `0.4.3`. Neither token nor the private URL is printed.
 
 Version-specific npm, install, migration, CI, tag, and GitHub Release evidence is preserved in [Distribution](docs/distribution.md). That evidence is updated only after each item is actually verified.
 
@@ -190,7 +190,7 @@ If events are still absent, report the Codex app/CLI version, plugin version, ap
 
 ## Privacy
 
-The normal hook path uses `scripts/send-hook.mjs`. It derives only a sanitized, 120-character-bounded workspace basename as `workspace_label`; the full `cwd` is not sent or stored as content. The reducer keeps this label and narrower lifecycle state only in bounded memory. The normal monitor does not write an event JSONL history. The private viewer credential stored for reconnect continuity contains no task or hook-event state.
+The normal hook path uses `scripts/send-hook.mjs`. It derives a sanitized, 120-character-bounded workspace basename as `workspace_label`; the full `cwd` is not sent or stored as content. For `UserPromptSubmit` only, it also derives the bounded, redacted one-line `task_summary` described above. The raw request is discarded before transport. The reducer keeps the label, task summary, and narrower lifecycle state only in bounded memory. The normal monitor does not write an event JSONL history. The private viewer credential stored for reconnect continuity contains no task or hook-event state.
 
 `scripts/capture-hook.mjs` is a separate, explicitly invoked Phase 0 diagnostic tool. Setting `CODEX_AGENT_VIEW_CAPTURE_FULL=1` for that script can write raw prompts, tool data, credentials, and other secrets. Normal install/start and the bundled skill never enable it automatically. Do not commit or publicly attach captures or runtime tokens.
 

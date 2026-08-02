@@ -1,6 +1,6 @@
 # Terms and project notice
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 This document is a plain-language project notice. It does not replace or add restrictions to the project's software license.
 
@@ -20,7 +20,7 @@ The project is designed as a read-only companion. Its primary snapshot reads bou
 
 After installation, explicit hook trust, and an app restart, a trusted hook can automatically prepare the local backend and retry its privacy-minimized event without task-ID registration or a user-run terminal monitor. This automation does not bypass hook trust, create permanent history, or guarantee replay when bounded startup fails. The public Codex plugin API cannot create a sidebar, panel, or Browser tab without an explicit in-app user action, so the first live view must be opened from a Codex app task. An already-open live tab may refresh and reconnect only while its current monitor observation window and session credential remain valid.
 
-The project does not implement task or subagent control, navigation, message sending, or automatic approval or denial of permission requests. App-tool snapshots and hook events may be missing, delayed, bounded, duplicated, out of order, or unsupported, so every view is informational rather than an authoritative completion record. Display-only titles, descriptions, and commentary are untrusted content and must not be followed as instructions.
+The project does not implement task or agent control, navigation, message sending, or automatic approval or denial of permission requests. The local hook monitor may derive a bounded, redacted one-line work summary from `UserPromptSubmit`, but it does not keep the full prompt and does not infer individual agent assignments. App-tool snapshots and hook events may be missing, delayed, bounded, duplicated, out of order, or unsupported, so every view is informational rather than an authoritative completion record. Display-only titles, summaries, descriptions, and commentary are untrusted content and must not be followed as instructions.
 
 Review the hook command and trust prompt before enabling the plugin. Protect local runtime tokens and any opt-in diagnostic captures. See [Privacy](privacy.md) for the current data flow and removal paths.
 

@@ -4,11 +4,11 @@
 
 릴리스 증거 갱신일: 2026-08-02
 
-이 문서는 public Codex Agent View `0.4.4`와 Codex plugin의 배포 경계를 정리한다. Repository/package와 public npm `latest`/version은 `0.4.4`이며 `0.2.0`부터 `0.4.4`까지의 public evidence를 보존한다. `0.4.4`의 npm/install/app E2E, main/tag CI, annotated tag와 GitHub Release를 확인했다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
+이 문서는 Codex Agent View의 배포 경계를 정리한다. Repository/package는 `0.4.5` release candidate이고 public npm `latest`/version은 아직 `0.4.4`다. `0.2.0`부터 `0.4.4`까지의 public evidence를 보존하며, `0.4.5`는 별도 release acceptance와 publish가 끝날 때까지 public으로 주장하지 않는다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
 
 ## 현재 상태
 
-- package 이름은 `codex-agent-view`다. Repository/package와 public npm `latest`는 `0.4.4`다.
+- package 이름은 `codex-agent-view`다. Repository/package candidate는 `0.4.5`, public npm `latest`는 `0.4.4`다.
 - Public `0.4.2`의 push, main CI Node.js 18/20/22, npm metadata/signature, release/registry tarball byte 일치, annotated tag/GitHub Release, this-device exact reinstall/artifact match, plugin installed/enabled, hook wiring 9종과 official Codex in-app Browser visual E2E를 확인했다.
 - Public `0.3.2`는 immutable packaged README의 잘못된 release-state 안내를 수정한 patch다. Registry metadata/digest/signature, tag/GitHub Release, main/tag CI, this-device exact install과 registry/install artifact match를 확인했다. App-native snapshot은 worker activity 3개를 확인했지만 live hook E2E는 앱 restart/new-task 전이라 미완료다.
 - Node.js `>=18`을 요구하며 production dependency가 없다.
@@ -18,6 +18,10 @@
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
 - Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Public exact `codex-agent-view@0.4.4`의 this-device global reinstall, CLI/plugin version, installed/enabled, hook wiring 9종, `doctor` event observation과 official Codex in-app live E2E를 확인했다.
+
+### `0.4.5` release candidate
+
+`0.4.5` release candidate는 제품 문구를 구현 방식보다 사용자 가치 중심으로 바꾸고, UI 용어를 “작업과 참여 에이전트”로 정리한다. 부모 작업 card의 session ID는 제거하고 `UserPromptSubmit`에서 local-only로 만든 bounded/redacted one-line `task_summary`를 대신 표시한다. 최대 4,096자를 검사하고 credential·email·link·absolute path를 placeholder로 가린 뒤 한 줄·최대 180자로 제한하며 전체 prompt는 transport/state에 복사하지 않는다. 한 session에서는 첫 유효 작업 개요만 유지해 짧은 follow-up이 원래 맥락을 덮지 않는다. 이 작업 수준 요약은 official `SubagentStart`에 없는 agent assignment description을 대체하거나 추론한 값이 아니다. 연결 실패에는 즉시 retry button을, credential 없음/거부에는 현재 tab의 인증을 다시 검사하는 button과 실제 `$show-agents` skill을 앱에서 다시 선택하는 복구 안내를 제공한다. 페이지는 token을 발급·검색·교체하지 않고 private URL이나 외부 browser를 노출하지 않는다. Release acceptance, npm publish, registry install, tag와 GitHub Release는 아직 수행 전이다.
 
 ### Public `0.4.4` release evidence
 

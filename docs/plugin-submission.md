@@ -2,7 +2,7 @@
 
 조사일: 2026-08-01
 
-이 문서는 public Codex Agent View `0.4.4` package의 Universal Plugins Directory 제출 경계와 준비 상태를 정리한다. Repository/package와 public npm `latest`/version은 `0.4.4`다. `0.2.0`부터 `0.4.4`까지의 public release evidence를 보존하며 actual Directory 제출·검색 노출은 주장하지 않는다.
+이 문서는 Codex Agent View의 Universal Plugins Directory 제출 경계와 준비 상태를 정리한다. Repository/package는 `0.4.5` release candidate이고 public npm `latest`/version은 아직 `0.4.4`다. `0.2.0`부터 `0.4.4`까지의 public release evidence를 보존하며 `0.4.5` publish나 actual Directory 제출·검색 노출은 주장하지 않는다.
 
 ## 핵심 결론
 
@@ -24,6 +24,12 @@ Public npm `latest`/version `0.4.4`, shasum `482520d471b3ef04204f026b52237ac7740
 This-device public exact reinstall 뒤 CLI/plugin `0.4.4`, plugin installed/enabled, hook wiring 9종을 확인했고 `doctor`는 events true, sessions 7개를 보고했다. Official Codex in-app Browser live E2E에서는 reload/reinstall 뒤 auth valid, visible URL fragment 제거, current viewer task 제외, disclosure 0과 en/ko/es 전환을 확인했고 English selection은 reload 뒤에도 유지됐다. Private token, URL과 task ID 값은 제출 자료나 이 문서에 남기지 않는다.
 
 Live UI는 English를 기본값으로 하고 English, Korean, Spanish selector를 제공한다. 2초 polling은 유지하고 refresh 때 닫히는 disclosure toggle 대신 activity와 technical metadata를 항상 표시한다. Validated private `CODEX_THREAD_ID`가 있으면 live view를 호출한 task를 결과에서 제외한다. Official `SubagentStart`에서 확인된 assignment 관련 field는 `agent_id`와 `agent_type`뿐이고 dedicated task description은 없다. Prompt와 tool input을 저장하거나 추론해 agent assignment를 발명하지 않는다.
+
+## `0.4.5` release candidate
+
+`0.4.5` release candidate는 non-developer-facing 용어를 “작업과 참여 에이전트”로 바꾸고 session ID 대신 작업 수준의 짧은 요청 요약을 표시한다. 이 값은 `UserPromptSubmit` 원문 최대 4,096자를 local sender에서 검사해 common credential, email, link와 absolute path를 가리고 한 줄·최대 180자로 제한한 `task_summary`다. 한 session에서는 첫 유효 작업 개요만 유지한다. 전체 prompt와 tool input은 저장하지 않고, official `SubagentStart`에 없는 개별 agent assignment 설명을 만들지도 않는다. 연결 실패에는 retry button이 있으며, credential 없음/거부에는 현재 tab 재검사 button과 Codex 앱에서 실제 `$show-agents` skill을 다시 명시 선택하는 복구 안내가 함께 나온다. Page는 credential을 발급·검색·교체하지 않으며 terminal/private URL/external browser 우회를 제안하지 않는다. Release acceptance 전까지 이 candidate를 public `0.4.4` artifact의 기능이나 public `0.4.5`로 주장하지 않는다.
+
+## Historical public live-view evidence
 
 `0.4.3`은 설치 수명 동안 private user-only file에 유지되는 read-only viewer credential을 runtime/control token과 분리한다. Viewer credential은 `/api/state`만 읽고 event ingest나 shutdown을 할 수 없으며, runtime/control token은 monitor process마다 교체된다. 이미 열린 Codex live tab은 같은 loopback origin과 viewer credential이 유지되면 temporary disconnect, monitor restart와 upgrade 뒤 자동 재연결한다. Live task/event state는 여전히 bounded process-local memory뿐이고 restart 뒤에는 새 관찰 window가 시작된다. Valid `0.4.2` upgrade에서 viewer credential이 없으면 legacy runtime token으로 seed하되 값을 노출하지 않는다. Normal uninstall과 `--purge`는 valid owned viewer credential을 폐기하고, malformed/changed/symbolic/unrecognized credential은 경고와 함께 보존한다.
 
@@ -107,7 +113,7 @@ Skill `quick_validate.py`와 plugin/package wiring validation은 통과했다. P
 
 Repository에는 `SUPPORT.md`, `SECURITY.md`, `docs/privacy.md`, `docs/terms.md`가 있다. 이 파일의 존재는 verified publisher identity, portal URL 승인, 법률 검토 완료를 뜻하지 않는다. Portal에 필요한 support URL shape와 publisher 승인 여부는 제출 전 확인한다.
 
-현재 local plugin validator 통과와 official final submission validation 통과는 다르다. 다만 이전 `shortDescription` 길이 gap은 해결했다. 현재 값 `Monitor Codex task activity.`는 28 characters이며 repository validator도 official final limit인 30 characters 이하를 계약으로 검사한다. Final portal validation은 여전히 별도 외부 단계다.
+현재 local plugin validator 통과와 official final submission validation 통과는 다르다. 다만 이전 `shortDescription` 길이 gap은 해결했다. `0.4.5` candidate의 현재 값 `See work and agent progress.`는 28 characters이며 repository validator도 official final limit인 30 characters 이하를 계약으로 검사한다. Final portal validation은 여전히 별도 외부 단계다.
 
 ### Screenshots validation 경계
 
@@ -169,7 +175,7 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 
 ### 해결된 packaging/listing readiness
 
-- [x] `shortDescription`을 `Monitor Codex task activity.` 28 characters로 줄였다.
+- [x] `shortDescription`을 사용자 가치 중심의 `See work and agent progress.` 28 characters로 유지했다.
 - [x] Repository plugin validator가 `shortDescription <= 30`을 검사한다.
 - [x] `codex-agent-view@0.2.0` 코드·tarball과 maintainer npm login을 준비했다.
 - [x] npm 2FA `auth-and-writes`, `pending:null`과 `0.2.0` public registry publish를 확인했다.

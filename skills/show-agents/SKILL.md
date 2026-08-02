@@ -1,6 +1,6 @@
 ---
 name: show-agents
-description: Open the Codex Agent View live task and subagent monitor in the official Codex app. Use only when the user explicitly invokes $show-agents.
+description: Open the Codex Agent View live work and participating-agent view in the official Codex app. Use only when the user explicitly invokes $show-agents.
 ---
 
 # Show Agents
@@ -91,6 +91,16 @@ may additionally appear as the browser target passed to
 `codex_app__open_in_codex`.
 
 ## Failure behavior
+
+Once opened, the live page handles ordinary network/server failures with a
+visible retry button. Missing or rejected authentication shows a recovery card
+and a separate button that rechecks the credential available to that tab and
+performs a real state fetch. The page cannot mint, discover, or replace the
+private viewer credential. If no valid credential exists, the safe recovery is
+another explicit invocation of the actual bundled `$show-agents` skill in the
+Codex app, which repeats the validated owned-runtime workflow above and opens a
+newly authenticated view. Do not offer a terminal command, tokenized URL, or
+external browser as recovery.
 
 If the official app cannot open a browser panel, Browser is unavailable, or
 site permission is denied, do not expose the private URL or suggest a terminal

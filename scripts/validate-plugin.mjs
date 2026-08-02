@@ -43,6 +43,10 @@ assert(!("hooks" in manifest), "default hooks/hooks.json discovery should not ne
 assert(packageMetadata.name === manifest.name, "package name must match the manifest");
 assert(packageMetadata.version === manifest.version, "package version must match the manifest");
 assert(
+  packageMetadata.description === manifest.description,
+  "package description must match the user-facing plugin description",
+);
+assert(
   typeof manifest.interface?.shortDescription === "string" &&
     manifest.interface.shortDescription.length <= 30,
   "manifest shortDescription must be 30 characters or fewer",
@@ -175,7 +179,13 @@ for (const requiredText of [
   "first observation for each",
   "unidentified agent #N",
   "workspace directory basename",
+  "work items and participating agents",
   "Codex in-app Browser",
+  "first valid work-level",
+  "at most 4,096 characters",
+  "limits the result to 180 characters",
+  "omits session IDs from work cards",
+  "The page cannot mint, discover, or replace a viewer credential",
 ]) {
   assert(
     skillText.includes(requiredText),
@@ -204,10 +214,12 @@ assert(
 assert(
   typeof manifest.interface?.longDescription === "string" &&
     manifest.interface.longDescription.includes("official Codex app") &&
+    manifest.interface.longDescription.includes("privacy-minimized request summary") &&
+    manifest.interface.longDescription.includes("participating agents") &&
     manifest.interface.longDescription.includes("explicitly invoke") &&
     manifest.interface.longDescription.includes("$show-agents") &&
     manifest.interface.longDescription.includes("does not append or auto-run action text"),
-  "plugin description must explain manual $show-agents use inside Codex without implying automatic dispatch",
+  "plugin description must explain the user-facing work view and manual $show-agents use without implying automatic dispatch",
 );
 for (const requiredText of [
   "Show Agents",
@@ -221,6 +233,9 @@ for (const requiredText of [
   "Never\n   reopen by `tabId` alone",
   "tokenized localhost URL",
   "site permission is denied",
+  "visible retry button",
+  "performs a real state fetch",
+  "another explicit invocation of the actual bundled `$show-agents` skill",
 ]) {
   assert(
     showAgentsSkillText.includes(requiredText),

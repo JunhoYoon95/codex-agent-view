@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark">
     <meta
       name="description"
-      content="Read-only local status for Codex tasks and subagents."
+      content="A clear, live view of Codex work and the agents moving it forward."
       id="meta-description"
     >
     <title>Codex Agent View</title>
@@ -22,7 +22,7 @@
           <span class="brand-mark" aria-hidden="true">CA</span>
           <span>
             <strong>Codex Agent View</strong>
-            <small data-i18n="brandSubtitle">Local read-only monitor</small>
+            <small data-i18n="brandSubtitle">Live work overview</small>
           </span>
         </a>
 
@@ -52,9 +52,9 @@
       <main id="main-content" tabindex="-1">
         <section class="hero" aria-labelledby="page-title">
           <div>
-            <p class="eyebrow" data-i18n="heroEyebrow">LOCAL · READ ONLY</p>
+            <p class="eyebrow" data-i18n="heroEyebrow">LIVE CODEX WORK</p>
             <h1 id="page-title" data-i18n="heroTitle">See active work at a glance</h1>
-            <p class="hero-copy" data-i18n="heroCopy">Keep using the official Codex app while viewing the current status of parent tasks and subagents locally.</p>
+            <p class="hero-copy" data-i18n="heroCopy">See what Codex is working on, which agents are involved, and how each part is progressing—all in one place.</p>
           </div>
 
           <dl class="freshness" aria-label="Refresh information" data-i18n-aria-label="freshnessAria">
@@ -71,12 +71,12 @@
 
         <section class="metrics" aria-label="Task status summary" data-i18n-aria-label="metricsAria">
           <article class="metric-card">
-            <p data-i18n="parentTasks">Parent tasks</p>
+            <p data-i18n="parentTasks">Work items</p>
             <strong id="metric-sessions">0</strong>
             <span data-i18n="currentlyObserved">Currently observed</span>
           </article>
           <article class="metric-card metric-running">
-            <p data-i18n="runningAgents">Running subagents</p>
+            <p data-i18n="runningAgents">Active agents</p>
             <strong id="metric-running">0</strong>
             <span data-i18n="workingNow">Working now</span>
           </article>
@@ -86,7 +86,7 @@
             <span data-i18n="waitingExplanation">Waiting for input or the next step</span>
           </article>
           <article class="metric-card metric-completed">
-            <p data-i18n="completedAgents">Completed subagents</p>
+            <p data-i18n="completedAgents">Completed agents</p>
             <strong id="metric-completed">0</strong>
             <span data-i18n="currentView">In the current view</span>
           </article>
@@ -96,7 +96,7 @@
           <div class="section-heading">
             <div>
               <p class="eyebrow" data-i18n="liveWork">LIVE WORK</p>
-              <h2 id="sessions-heading" data-i18n="sessionsHeading">Parent tasks and subagents</h2>
+              <h2 id="sessions-heading" data-i18n="sessionsHeading">Work and participating agents</h2>
             </div>
             <p id="results-summary" class="results-summary" role="status" aria-live="polite">
               <span data-i18n="loadingState">Loading status.</span>
@@ -106,7 +106,7 @@
           <form
             class="toolbar"
             role="search"
-            aria-label="Filter automatically observed parent tasks and subagents"
+            aria-label="Filter automatically observed work and participating agents"
             data-i18n-aria-label="toolbarAria"
             hidden
           >
@@ -116,7 +116,7 @@
                 id="session-search"
                 name="query"
                 type="search"
-                placeholder="Find a parent task or subagent"
+                placeholder="Find work or an agent"
                 data-i18n-placeholder="searchPlaceholder"
                 autocomplete="off"
                 spellcheck="false"
@@ -139,12 +139,12 @@
             <span data-i18n="connectingCopy">Connecting to the Codex app's local status.</span>
           </div>
 
-          <ul id="session-list" class="session-list" aria-label="Codex parent task list" data-i18n-aria-label="sessionListAria" hidden></ul>
+          <ul id="session-list" class="session-list" aria-label="Codex work list" data-i18n-aria-label="sessionListAria" hidden></ul>
         </section>
       </main>
 
       <footer>
-        <p data-i18n="privacyPrompt">This view does not display user requests or tool inputs.</p>
+        <p data-i18n="privacyPrompt">This view shows only a shortened request summary; it never displays the full request or tool inputs.</p>
         <p data-i18n="privacyLocal">Data is read only from the local monitor on this device.</p>
       </footer>
     </div>

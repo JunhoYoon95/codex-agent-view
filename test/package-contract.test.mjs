@@ -52,12 +52,13 @@ function npmPackEnvironment() {
   return env;
 }
 
-test("keeps the npm 0.4.4 executable and publish surface intact", async () => {
+test("keeps the npm 0.4.5 executable and publish surface intact", async () => {
   const packageMetadata = await readJson("package.json");
 
   assert.equal(packageMetadata.name, "codex-agent-view");
-  assert.equal(packageMetadata.version, "0.4.4");
-  assert.match(packageMetadata.description, /trusted-hook auto-prepared local live backend/);
+  assert.equal(packageMetadata.version, "0.4.5");
+  assert.match(packageMetadata.description, /participating agent progress/);
+  assert.match(packageMetadata.description, /official Codex app/);
   assert.deepEqual(packageMetadata.bin, {
     "codex-agent-view": "bin/codex-agent-view.mjs",
   });
@@ -168,13 +169,15 @@ test("has no postinstall side effects or production dependencies", async () => {
 
 test("keeps legal links secure and branding assets local", async () => {
   const manifest = await readJson(".codex-plugin/plugin.json");
-  assert.equal(manifest.version, "0.4.4");
+  assert.equal(manifest.version, "0.4.5");
   assert.equal(
     Object.hasOwn(manifest.interface ?? {}, "defaultPrompt"),
     false,
     "plugin selection must not inject plain-text action content",
   );
-  assert.match(manifest.description, /trusted-hook auto-prepared local live backend/);
+  assert.match(manifest.description, /participating agent progress/);
+  assert.match(manifest.interface.shortDescription, /work and agent progress/i);
+  assert.match(manifest.interface.longDescription, /privacy-minimized request summary/);
   assert.match(manifest.interface.longDescription, /explicitly invoke the bundled \$show-agents skill/);
   assert.match(manifest.interface.longDescription, /does not append or auto-run action text/);
 

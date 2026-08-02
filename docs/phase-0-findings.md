@@ -10,7 +10,7 @@
 
 해당 app process에는 plugin 설치 전 `hooks/list` 응답이 있었고 설치 뒤에도 process가 유지됐다. 이는 stale config/hook snapshot 가설과 일치하지만 인과관계를 확정하지는 않는다. 또한 `codex plugin list --json`은 persisted exact-hook trust를 노출하지 않아 config snapshot과 untrusted hook skip을 자동 진단으로 분리할 수 없었다. 따라서 당시 실패 원인을 “재시작 부족”으로 단정하지 않는다.
 
-Phase 0의 repository 조사와 구현 입력 정리는 완료됐고 repository/package와 public npm `latest`/version은 `0.4.4`다. Historical `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했다. `0.3.0` E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 explicit `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환을 확인했으며, 후자는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Browser monitor에서는 실제 `SessionEnd` lifecycle 반영을 관찰했다. Public exact `0.3.0` 재설치 뒤 실제 hook, workspace label, permission/tool lifecycle과 subagent running → stopped를 추가 확인했다. Historical public evidence는 아래에 보존하며 current public `0.4.4`의 registry/artifact, this-device reinstall, official in-app live E2E, main/tag CI, annotated tag와 GitHub Release도 확인했다.
+Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. Repository/package는 `0.4.5` release candidate이고 public npm `latest`/version은 아직 `0.4.4`다. Historical `0.2.1` 공식 앱 E2E에서는 task ID 등록 없이 parent 3개와 subagent 3개 자동 표시와 실제 hook 8종을 확인했다. `0.3.0` E2E에서는 공식 앱 내장 thread tools로 `kyurasi-next-supabase`의 explicit `inProgress` snapshot과 직후 `idle + hasUnreadTurn` 전환을 확인했으며, 후자는 별도 확인 대기 표시의 근거이지 완료·성공 추론의 근거가 아니다. Browser monitor에서는 실제 `SessionEnd` lifecycle 반영을 관찰했다. Historical public evidence는 아래에 보존하며 public `0.4.4`의 registry/artifact, this-device reinstall, official in-app live E2E, main/tag CI, annotated tag와 GitHub Release도 확인했다. `0.4.5`는 별도 release acceptance 전까지 public evidence로 기록하지 않는다.
 
 ## 검증 환경
 
@@ -200,8 +200,8 @@ App Server (선택)
 
 Phase 0 capture는 원본 payload를 영구 model로 복사하기 위한 것이 아니라 어떤 field를 버릴지 결정하는 근거로 사용했다. 이후 구현은 다음 두 단계로 관찰값을 좁혔다.
 
-1. `scripts/send-hook.mjs`는 Codex가 전달한 raw object를 local process에서 받고 `scripts/capture-hook.mjs`의 minimizer를 재사용한다. allowlisted metadata만 값을 보존하고 prompt, transcript path, tool input/output, assistant message 같은 나머지 field 값은 type/key/length summary로 바꾼 뒤 loopback으로 보낸다.
-2. `src/core/normalize-hook-payload.mjs`는 minimized payload도 다시 untrusted input으로 취급한다. 지원 event별 required field를 runtime validation하고 monitor state에 필요한 field만 새 object로 복사한다. Summary와 unknown field는 reducer에 전달하지 않는다.
+1. `scripts/send-hook.mjs`는 Codex가 전달한 raw object를 local process에서 받고 `scripts/capture-hook.mjs`의 minimizer를 재사용한다. allowlisted metadata만 값을 보존하고 prompt, transcript path, tool input/output, assistant message 같은 나머지 field 값은 type/key/length summary로 바꾼 뒤 loopback으로 보낸다. 단, `UserPromptSubmit`은 부모 작업을 사람이 구분할 수 있도록 원문 최대 4,096자를 local hook process 안에서만 검사해 credential·email·link·absolute path를 placeholder로 가리고, whitespace를 한 줄로 정리한 최대 180자 `task_summary`를 파생한다. 원문은 transport envelope에 복사하지 않는다.
+2. `src/core/normalize-hook-payload.mjs`는 minimized payload도 다시 untrusted input으로 취급한다. 지원 event별 required field를 runtime validation하고 monitor state에 필요한 field만 새 object로 복사한다. `task_summary`는 같은 redaction/bound를 다시 적용한 뒤 `UserPromptSubmit`에만 허용하고, 다른 summary와 unknown field는 reducer에 전달하지 않는다.
 
 현재 normalized contract는 다음과 같다.
 
@@ -209,14 +209,15 @@ Phase 0 capture는 원본 payload를 영구 model로 복사하기 위한 것이 
 | --- | --- | --- |
 | turn 공통 | `hook_event_name`, `session_id`, `turn_id`, local `received_at_ms` | normalized event type, session first/last seen |
 | `SessionStart` / `SessionEnd` | `hook_event_name`, `session_id`, local `received_at_ms` | session start/end observed, observed/completed, out-of-order flag |
-| `UserPromptSubmit` / `Stop` | turn 공통 field | root turn running/completed, out-of-order flag |
+| `UserPromptSubmit` | turn 공통 field, bounded/redacted one-line `task_summary`(있을 때) | root turn running, 작업 수준의 짧은 요청 요약, out-of-order flag |
+| `Stop` | turn 공통 field | root turn completed, out-of-order flag |
 | `SubagentStart` / `SubagentStop` | `agent_id`, `agent_type` | running, stopped, stopped-without-start, out-of-order flag |
 | `PreToolUse` / `PostToolUse` | `tool_name`, `tool_use_id` | running, completed, completed-without-start, out-of-order flag |
 | `PermissionRequest` | `tool_name` | waiting-for-user permission state |
 
 `PermissionRequest` row는 공식 event schema를 바탕으로 구현한 narrow input contract다. 실제 GUI dispatch와 waiting 반영은 확인했지만 raw payload 전체 field set을 확정한 것은 아니다. Missing/invalid field는 상태를 발명하지 않고 bounded diagnostic으로 남긴다.
 
-실제 확인한 `SubagentStart`에는 `agent_id`, `agent_type`만 있고 agent에게 할당된 작업을 설명하는 전용 field는 없었다. `SubagentStop`의 `last_assistant_message`도 작업 할당 설명이 아니며 정상 monitor의 allowlist에 포함하지 않는다. 따라서 현재 evidence만으로 agent assignment description을 안전하게 표시할 수 없다. Prompt나 collaboration tool input에서 설명을 추출하면 “전체 prompt/tool input은 기본 저장하지 않는다”는 privacy boundary를 깨고 추측을 UI contract로 고정하게 되므로 구현하지 않는다. 전용 field가 실제 payload에서 관찰되기 전까지 UI는 확인된 `agent_type`만 role metadata로 표시한다.
+실제 확인한 `SubagentStart`에는 `agent_id`, `agent_type`만 있고 agent에게 할당된 작업을 설명하는 전용 field는 없었다. `SubagentStop`의 `last_assistant_message`도 작업 할당 설명이 아니며 정상 monitor의 allowlist에 포함하지 않는다. 따라서 현재 evidence만으로 agent assignment description을 안전하게 표시할 수 없다. `UserPromptSubmit`의 `task_summary`는 부모 작업 전체를 식별하기 위한 display hint일 뿐 개별 agent의 할당 내용이 아니다. Collaboration tool input이나 prompt에서 agent별 설명을 추출하면 전체 tool input을 저장하지 않는 privacy boundary를 깨고 추측을 UI contract로 고정하게 되므로 구현하지 않는다. 전용 field가 실제 payload에서 관찰되기 전까지 UI는 확인된 `agent_type`만 role metadata로 표시한다.
 
 `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`은 `0.2.1`에서 parent task가 subagent를 만들기 전에도 관찰 window에 나타나도록 추가했다. 이 wiring과 reducer fixture 통과는 공식 GUI가 해당 command hook을 실제 dispatch했다는 증거가 아니다.
 
@@ -228,7 +229,7 @@ Runtime server는 `127.0.0.1` 외 bind를 거부한다. Process-scoped runtime/c
 
 Skill은 앱 process가 제공한 `CODEX_THREAD_ID`를 bounded validation한 뒤 viewer URL의 fragment로만 전달한다. UI는 credential과 함께 fragment를 `sessionStorage`로 이동하고 주소에서 제거한 뒤 해당 session을 client-side snapshot에서 제외한다. 이 값은 task content가 아니며 사용자가 입력한 prompt에서 가져오지 않는다. 결과적으로 live view를 호출한 viewer task 자신이 monitor 목록 위에서 계속 갱신되는 문제를 피한다. 환경변수가 없거나 validation에 실패하면 제외를 발명하지 않고 정상 snapshot을 표시한다.
 
-이미 열린 오른쪽 live panel은 2초 polling을 유지하며 동일 viewer credential과 loopback origin으로 backend가 복귀하면 restart/upgrade 뒤에도 자동 재연결한다. UI 기본 언어는 English이고 selector에서 English, 한국어, Español을 선택할 수 있다. 2초 rerender 때 열린 상태가 사라지는 문제를 없애기 위해 `<details>`/toggle을 사용하지 않고 task 활동과 기술 metadata를 inline으로 항상 표시한다. Monitor restart는 새 in-memory 관찰 window이고 downtime event는 재생되지 않는다.
+이미 열린 오른쪽 live panel은 2초 polling을 유지하며 동일 viewer credential과 loopback origin으로 backend가 복귀하면 restart/upgrade 뒤에도 자동 재연결한다. 일반 연결 실패에는 같은 tab에서 즉시 fetch를 다시 시도하는 button이 있다. Credential이 없거나 401/403으로 거부된 경우에는 인증 안내와 별도 button을 표시해 sessionStorage에 남은 credential을 다시 검사하고 실제 fetch를 재시도한다. 페이지 자체가 private credential을 발급·검색·교체할 수는 없으므로 이 재시도도 실패하면 Codex 앱에서 실제 `$show-agents` skill을 명시 선택해 새 인증 화면을 연다. Terminal, private URL 복사와 external browser는 복구 흐름이 아니다. UI 기본 언어는 English이고 selector에서 English, 한국어, Español을 선택할 수 있다. 2초 rerender 때 열린 상태가 사라지는 문제를 없애기 위해 `<details>`/toggle을 사용하지 않고 작업 활동을 inline으로 표시한다. 사람용 주 정보는 프로젝트, 작업 수준 요청 요약, 참여 agent와 상태이며 session ID는 card에서 제거했다. Monitor restart는 새 in-memory 관찰 window이고 downtime event는 재생되지 않는다.
 
 정상 hook wiring은 이제 JSONL capture script가 아니라 `scripts/send-hook.mjs`를 실행한다. `scripts/capture-hook.mjs`와 `CODEX_AGENT_VIEW_CAPTURE_FULL=1`은 명시적 Phase 0 diagnostic opt-in으로만 남아 있으며 production state source가 아니다.
 
@@ -243,7 +244,7 @@ Skill은 앱 process가 제공한 `CODEX_THREAD_ID`를 bounded validation한 뒤
 3. 공식 앱을 완전히 재시작하고 새 task/session을 시작한다.
 4. hook browser에서 새 hook 정의와 command를 확인하고 현재 exact hash를 명시적으로 trust한다. CLI에서는 `/hooks`를 사용한다.
 5. 별도 monitor를 시작하지 않은 상태에서 trusted hook을 발생시켜 backend 자동 준비와 최초 event 전달을 확인한 뒤 subagent start/stop, 지원 tool pre/post, 실제 승인이 필요한 동작을 순서대로 발생시킨다.
-6. Codex 앱의 plugin 카드에서 **지금 사용해보기**를 눌렀을 때 `@codex-agent-view` 뒤에 starter text가 붙지 않는지 확인한다. 이어 앱 skill UI에서 `$show-agents`를 명시 선택해 live panel을 열고, Browser capability/permission 부재 시 private URL이나 외부 browser 우회 없이 실패를 안내하는지도 확인한다. UI는 호출 task 자신을 제외하고 running 부모/subagent를 먼저 두며, 기본 English와 한국어/Español 전환, 2초 polling, toggle 없는 inline 활동/기술 정보를 검증한다. Prompt/tool input이나 검증되지 않은 agent assignment description을 표시하지 않아야 한다. CLI `status`/`doctor`는 maintainer diagnostic일 때만 사용하고, 필요할 때만 별도 redacted capture로 wire payload key/type을 검증한다.
+6. Codex 앱의 plugin 카드에서 **지금 사용해보기**를 눌렀을 때 `@codex-agent-view` 뒤에 starter text가 붙지 않는지 확인한다. 이어 앱 skill UI에서 `$show-agents`를 명시 선택해 live panel을 열고, Browser capability/permission 부재 시 private URL이나 외부 browser 우회 없이 실패를 안내하는지도 확인한다. UI는 호출 task 자신을 제외하고 진행 중 작업과 참여 agent를 먼저 두며, session ID 대신 bounded/redacted 요청 요약을 표시하고, 기본 English와 한국어/Español 전환, 2초 polling, toggle 없는 inline 활동을 검증한다. 전체 prompt/tool input이나 검증되지 않은 agent assignment description을 표시하지 않아야 한다. Credential 있음/없음/401·403 fixture에서 재시도 button과 앱 내 `$show-agents` 복구 안내를 각각 확인한다. CLI `status`/`doctor`는 maintainer diagnostic일 때만 사용하고, 필요할 때만 별도 redacted capture로 wire payload key/type을 검증한다.
 
 제거 시에는 다음 세 범위를 각각 확인한다.
 
