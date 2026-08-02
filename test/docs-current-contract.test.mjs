@@ -67,13 +67,14 @@ test("documents the current live-view UX and evidence boundary", async () => {
   assert.match(privacy, /page cannot mint, discover, or replace/);
 });
 
-test("records 0.4.7 as the current release candidate while preserving public 0.4.6 evidence", async () => {
-  const [packageText, manifestText, english, korean, distribution, submission] = await Promise.all([
+test("records public 0.4.7 acceptance while preserving the 0.4.6 post-release gap", async () => {
+  const [packageText, manifestText, english, korean, distribution, findings, submission] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
     readProjectFile("README.md"),
     readProjectFile("README.ko.md"),
     readProjectFile("docs/distribution.md"),
+    readProjectFile("docs/phase-0-findings.md"),
     readProjectFile("docs/plugin-submission.md"),
   ]);
   const packageMetadata = JSON.parse(packageText);
@@ -85,14 +86,37 @@ test("records 0.4.7 as the current release candidate while preserving public 0.4
   assert.match(korean, /npm install --global codex-agent-view@0\.4\.7/);
   assert.match(english, /Version `0\.4\.7` completes the lifecycle-correctness patch/);
   assert.match(korean, /`0\.4\.7`은 lifecycle 정확성 patch를 완성/);
-  assert.match(distribution, /Public `0\.4\.6` release evidence/);
-  assert.match(distribution, /public npm `latest` \/ version \| `0\.4\.6` \/ `0\.4\.6`/i);
-  assert.match(distribution, /Repository candidate는 `0\.4\.7`/);
-  assert.match(distribution, /recent `subagent_started` row가 `running`으로 남는 gap/);
-  assert.match(distribution, /Public `0\.4\.5` release evidence/);
-  assert.match(submission, /Public `0\.4\.5` release evidence/);
-  assert.doesNotMatch(distribution, /`?0\.4\.6`? release candidate/i);
-  assert.match(submission, /public npm `latest`\/version.*`0\.4\.5`/i);
+  for (const document of [distribution, findings, submission]) {
+    assert.match(
+      document,
+      /(?:public npm `latest`\/version|public npm `latest` \/ version \|).*`0\.4\.7`/i,
+    );
+    assert.match(document, /5fc4c73ba16fe1bef79c468f0a0be3d3850a7ce7/);
+    assert.match(document, /sha512-kdwpnKc21i7iW6kpIg2ogUmDsTp8QGMhIif0yIh3n\/mpmdiB\+AEsy6hjzzO56clLbCpgejkKhqJfDSG4txkN2g==/);
+    assert.match(document, /registry signature/);
+    assert.match(document, /25 files/);
+    assert.match(document, /78\.0 kB/);
+    assert.match(document, /278\.8 kB/);
+    assert.match(document, /d2ac82fde4b038aa301b776f78546d9f8a4136f7677090b2263a3aeb9081876c/);
+    assert.match(document, /byte-identical/);
+    assert.match(document, /public exact reinstall/i);
+    assert.match(document, /CLI\/plugin `0\.4\.7`/);
+    assert.match(document, /installed\/enabled/);
+    assert.match(document, /hook wiring 9종/);
+    assert.match(document, /126\/126/);
+    assert.match(document, /30763034343/);
+    assert.match(document, /30763153320/);
+    assert.match(document, /f001168/);
+    assert.match(document, /https:\/\/github\.com\/JunhoYoon95\/codex-agent-view\/releases\/tag\/v0\.4\.7/);
+    assert.match(document, /none observed/);
+    assert.match(document, /(?:완전히 다시 열고 새 task|완전 재실행\/new task)/);
+    assert.match(document, /recent .*row.*running/i);
+    assert.match(document, /installed public runtime E2E/i);
+    assert.match(document, /false running rows 0/i);
+    assert.match(document, /monitor restart 뒤 QA session 제거와 0 tasks/i);
+    assert.match(document, /prerelease: false/);
+    assert.doesNotMatch(document, /`?0\.4\.7`? release candidate/i);
+  }
 });
 
 test("keeps README local links resolvable and the root guide free of Korean copy", async () => {

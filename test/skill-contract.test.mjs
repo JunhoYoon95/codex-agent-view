@@ -301,10 +301,10 @@ test("distribution docs keep plugin selection separate from explicit skill dispa
     distribution,
     /Plugin 선택은 action text를 붙이지 않고 사용법만 설명/,
   );
-  assert.match(submission, /## Public `0\.4\.5` package에 준비된 제출 자료/);
+  assert.match(submission, /## Public `0\.4\.7` package에 준비된 제출 자료/);
   assert.match(
     submission,
-    /Public `0\.4\.5` manifest에는 starter\/default prompt가 없다/,
+    /Public `0\.4\.5`와 current public `0\.4\.7` manifest에는 starter\/default prompt가 없다/,
   );
   assert.match(submission, /실제 bundled `\$show-agents` skill을 명시적으로 선택하거나 호출/);
 });
