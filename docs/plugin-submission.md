@@ -31,9 +31,11 @@ Live UI는 English를 기본값으로 하고 English, Korean, Spanish selector�
 
 Public npm `latest`/version `0.4.7`, shasum `5fc4c73ba16fe1bef79c468f0a0be3d3850a7ce7`, integrity `sha512-kdwpnKc21i7iW6kpIg2ogUmDsTp8QGMhIif0yIh3n/mpmdiB+AEsy6hjzzO56clLbCpgejkKhqJfDSG4txkN2g==`, registry signature, 25 files, package `78.0 kB`와 unpacked `278.8 kB`를 확인했다. Release-source/registry tarball SHA-256은 `d2ac82fde4b038aa301b776f78546d9f8a4136f7677090b2263a3aeb9081876c`로 같고 `cmp`도 byte-identical이다. Source commit은 `f00116826a34389624a2815a043421855398f019`다.
 
-This-device public exact reinstall에서 registry extract와 global install diff는 0이고 CLI/plugin `0.4.7`, installed/enabled와 hook wiring 9종 valid를 확인했다. 그러나 package replacement와 clean monitor 뒤에도 계속 실행 중이던 공식 앱 process에서는 event가 none observed였고 `doctor`도 같은 상태를 보고했다. Public exact `0.4.7` post-reinstall official-app hook E2E 완료는 주장하지 않으며 앱을 완전히 다시 열고 새 task에서 재검증해야 한다.
+This-device public exact reinstall에서 registry extract와 global install diff는 0이고 CLI/plugin `0.4.7`, installed/enabled와 hook wiring 9종 valid를 확인했다. Package replacement와 clean monitor 직후에는 같은 공식 앱 process에서 initial none observed였지만 이후 later actual hooks 전달을 시작해 status에서 2 tasks/3 subagents를 관찰했다. Exact hot-reload timing은 미확인이다.
 
 별도의 installed public runtime E2E에서는 public exact monitor `/api/events`에 synthetic `SubagentStart`, `PreToolUse`, `Stop`, late `PostToolUse`, late `SubagentStop`을 순차 ingest했다. Session completed, agent stopped, tool completed, earlier agent start stopped, earlier tool start completed와 false running rows 0을 확인했고 monitor restart 뒤 QA session 제거와 0 tasks도 확인했다. 이는 installed reducer/runtime evidence이며 공식 앱 hook E2E 증거로 취급하지 않는다.
+
+최종 official-app E2E에서는 bounded worker `public_047_final_app_e2e`의 latest agent start+stop pair, agent stopped와 earlier start row stopped를 확인했다. Bad terminal agent start rows 0, bad terminal tool start rows 0이었다. Actual tool check도 `kyurasi-next-supabase` 48/48 및 `codex-agent-view` 42/42 start rows completed, false running 0이었다. 관찰 시작 전에 start가 없던 agent 2개는 `stopped_without_start`로 표시돼 누락된 start를 발명하지 않았다.
 
 Main CI `30763034343`은 Node.js 18/20/22에서 성공했고 tag CI `30763153320`도 성공했다. Annotated `v0.4.7` tag는 `f001168`을 가리키며 [GitHub Release v0.4.7](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.7)은 public, `draft: false`, `prerelease: false`다. 이 evidence는 Universal Directory 제출·승인·검색 노출이나 별도 npm provenance attestation 완료를 뜻하지 않는다.
 
@@ -227,7 +229,7 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [x] This-device public exact `0.4.7` registry/global diff 0, CLI/plugin installed/enabled와 hook wiring 9종 valid를 확인했다.
 - [x] `0.4.7` source candidate의 recent activity refinement regression tests, 전체 126/126, plugin/pack validation을 확인했다.
 - [x] `0.4.7` main/tag CI, annotated tag와 public non-draft GitHub Release를 확인했다.
-- [ ] Public exact `0.4.7` official-app hook E2E는 계속 실행 중이던 app process에서 event none observed였으므로 앱 완전 재실행/new task 뒤 확인한다.
+- [x] Public exact `0.4.7` official-app hook E2E는 initial none observed 뒤 same-process later actual hooks, 2 tasks/3 subagents, worker start/stop와 actual tool pair false-running 0으로 완료했다. Exact hot-reload timing은 미확인이다.
 
 별도 npm provenance attestation은 선택 사항이며 `0.2.0`에는 없다. Registry signature와 source/artifact 일치 검증을 attestation 완료로 표현하지 않는다.
 

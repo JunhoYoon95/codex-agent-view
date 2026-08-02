@@ -108,8 +108,15 @@ test("records public 0.4.7 acceptance while preserving the 0.4.6 post-release ga
     assert.match(document, /30763153320/);
     assert.match(document, /f001168/);
     assert.match(document, /https:\/\/github\.com\/JunhoYoon95\/codex-agent-view\/releases\/tag\/v0\.4\.7/);
-    assert.match(document, /none observed/);
-    assert.match(document, /(?:완전히 다시 열고 새 task|완전 재실행\/new task)/);
+    assert.match(document, /initial none observed/i);
+    assert.match(document, /later actual hooks/i);
+    assert.match(document, /2 tasks\/3 subagents/i);
+    assert.match(document, /public_047_final_app_e2e/);
+    assert.match(document, /bad terminal agent start rows 0/i);
+    assert.match(document, /bad terminal tool start rows 0/i);
+    assert.match(document, /48\/48/);
+    assert.match(document, /42\/42/);
+    assert.match(document, /exact hot-reload timing.*미확인/i);
     assert.match(document, /recent .*row.*running/i);
     assert.match(document, /installed public runtime E2E/i);
     assert.match(document, /false running rows 0/i);

@@ -17,15 +17,17 @@
 - `postinstall`과 다른 npm lifecycle installer는 없다. npm package를 받는 것만으로 Codex 설정을 바꾸지 않는다.
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
-- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Public exact `codex-agent-view@0.4.7`의 this-device global reinstall, registry-extracted artifact 일치, CLI/plugin version, installed/enabled와 hook wiring 9종을 확인했다. 계속 실행 중이던 공식 앱 process에서는 재설치 뒤 hook event가 관찰되지 않아 public `0.4.7` post-reinstall official-app hook E2E 완료를 주장하지 않는다.
+- Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Public exact `codex-agent-view@0.4.7`의 this-device global reinstall, registry-extracted artifact 일치, CLI/plugin version, installed/enabled와 hook wiring 9종을 확인했다. 같은 현재 공식 앱 process는 초기 none observed 뒤 later actual hooks 전달을 시작했고 최종 public `0.4.7` official-app hook E2E도 완료했다.
 
 ### Public `0.4.7` release evidence
 
 `0.4.7`은 normal 또는 late `SubagentStop`과 `PostToolUse`가 대응하는 earlier start recent activity를 stopped/completed로 refine하도록 수정한다. 이 source candidate 동작은 unit/reducer tests로 검증했고 전체 Node tests `126/126`, plugin validation과 npm pack validation을 통과했다. 이는 아래 historical `0.4.6` post-release reproduction에서 agent map은 stopped였지만 recent `subagent_started` row가 running으로 남았던 gap의 수정 근거다.
 
-This-device public exact reinstall에서 global CLI와 installed plugin이 모두 `0.4.7`이고 plugin은 installed/enabled였다. Registry-extracted artifact와 global install diff는 0이며 installed hook bundle 9종이 valid했다. 다만 package replacement와 clean monitor 뒤에도 이미 실행 중이던 공식 Codex 앱 process가 hook event를 전달하지 않았고 `doctor`는 none observed를 보고했다. 따라서 public exact `0.4.7`의 official-app hook E2E는 **미확인**이며, 앱을 완전히 다시 열고 새 task에서 재검증해야 한다.
+This-device public exact reinstall에서 global CLI와 installed plugin이 모두 `0.4.7`이고 plugin은 installed/enabled였다. Registry-extracted artifact와 global install diff는 0이며 installed hook bundle 9종이 valid했다. Package replacement와 clean monitor 직후에는 같은 공식 앱 process에서 initial none observed였지만, 이후 later actual hooks가 전달되며 status에서 2 tasks/3 subagents를 관찰했다. Exact hot-reload timing은 미확인이다.
 
-별도의 installed public runtime E2E에서는 public exact `0.4.7` monitor의 `/api/events`에 synthetic `SubagentStart`, `PreToolUse`, `Stop`, late `PostToolUse`, late `SubagentStop`을 순서대로 ingest했다. 최종 상태는 session completed, agent stopped, tool completed였고 earlier agent start는 stopped, earlier tool start는 completed로 refine되어 false running rows 0을 확인했다. Monitor restart 뒤 QA session 제거와 0 tasks도 확인했다. 이 synthetic installed-runtime evidence는 공식 앱이 hook command를 실제 호출했다는 증거가 아니며 위 official-app hook E2E 미확인 경계를 바꾸지 않는다.
+별도의 installed public runtime E2E에서는 public exact `0.4.7` monitor의 `/api/events`에 synthetic `SubagentStart`, `PreToolUse`, `Stop`, late `PostToolUse`, late `SubagentStop`을 순서대로 ingest했다. 최종 상태는 session completed, agent stopped, tool completed였고 earlier agent start는 stopped, earlier tool start는 completed로 refine되어 false running rows 0을 확인했다. Monitor restart 뒤 QA session 제거와 0 tasks도 확인했다. 이 synthetic installed-runtime evidence는 아래 actual official-app hook E2E와 별도다.
+
+최종 official-app E2E에서 bounded worker `public_047_final_app_e2e`의 latest agent start+stop pair를 모두 관찰했고 agent status와 earlier start row가 stopped였다. Bad terminal agent start rows 0, bad terminal tool start rows 0을 확인했다. 별도의 actual tool check에서도 `kyurasi-next-supabase` completed tool pairs 48/48 start rows completed, false running 0과 `codex-agent-view` 42/42, false running 0을 확인했다. Monitor 관찰 시작 전에 start가 지나간 `kyurasi-next-supabase` agent 2개는 `stopped_without_start`로 정직하게 표시됐다.
 
 | 확인 항목 | 결과 |
 | --- | --- |
@@ -37,7 +39,7 @@ This-device public exact reinstall에서 global CLI와 installed plugin이 모�
 | This-device acceptance | Public exact reinstall, CLI/plugin `0.4.7`, installed/enabled, hook wiring 9종 valid |
 | Installed public runtime E2E | Synthetic start/tool/Stop/late terminal ingest → session completed, agent stopped, tool completed, earlier starts refined, false running rows 0; monitor restart 뒤 QA session 제거와 0 tasks |
 | Source validation | Node tests `126/126`, plugin validation, npm pack validation 통과 |
-| Official app hook E2E | 계속 실행 중이던 app process에서 event none observed; 앱 완전 재실행/new task 전까지 미확인 |
+| Official app hook E2E | Initial none observed 뒤 same-process later actual hooks: 2 tasks/3 subagents; `public_047_final_app_e2e` start+stop/stopped, bad terminal agent/tool start rows 0; tool pairs 48/48 및 42/42 completed, false running 0. Exact hot-reload timing은 미확인 |
 | Main CI | `30763034343`, Node.js 18/20/22 성공 |
 | Source commit | `f00116826a34389624a2815a043421855398f019` |
 | Annotated tag / GitHub Release | `v0.4.7` → `f001168` / [public release](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.7), `draft: false`, `prerelease: false` |
@@ -524,7 +526,7 @@ codex plugin marketplace remove codex-agent-view
 - [x] Public `0.4.7` npm publish, registry signature/digest/size와 release-source tarball byte 일치 확인
 - [x] Public exact `0.4.7` this-device CLI/plugin installed/enabled, registry/global diff 0과 hook wiring 9종 valid 확인
 - [x] `v0.4.7` annotated tag, public non-draft GitHub Release와 main/tag CI 성공 확인
-- [ ] Public exact `0.4.7` official-app hook E2E: 계속 실행 중이던 app process에서는 event none observed; 앱 완전 재실행/new task 필요
+- [x] Public exact `0.4.7` official-app hook E2E: initial none observed 뒤 same-process later actual hooks, 2 tasks/3 subagents, worker start/stop와 actual tool pair false-running 0 확인
 - [ ] Opt-in capture가 존재하는 경우의 보존·별도 정리 경로 확인
 
 Historical `0.2.0` public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest` fixture event가 status/UI에 반영됐고 search/filter가 동작했으며 browser console error가 없었다. 별도의 `0.2.1` 공식 앱 E2E에서는 실제 `PermissionRequest` hook과 read-only waiting 표시를 포함한 위 8종 event를 확인했다.
@@ -556,7 +558,7 @@ Historical `0.2.0` public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `P
 - [x] Historical public `0.4.5`: registry metadata/digest/signature와 25-file artifact, this-device exact reinstall, CLI/plugin installed/enabled, hook wiring 9종, `doctor` events/sessions, official in-app E2E, main/tag CI, annotated tag와 public GitHub Release를 확인했다.
 - [x] Historical public `0.4.6`: registry metadata/digest/signature와 25-file artifact, release-source/registry tarball byte 일치, this-device exact reinstall, CLI/plugin installed/enabled, hook wiring 9종, installed lifecycle E2E, official in-app Browser E2E, 126/126 tests, plugin/pack validation, main/tag CI, annotated tag와 public GitHub Release를 확인했다. 후속 official-app E2E의 recent activity gap도 보존한다.
 - [x] Current public `0.4.7`: registry metadata/digest/signature와 25-file artifact, release-source/registry tarball byte 일치, registry/global diff 0, this-device exact reinstall, CLI/plugin installed/enabled, hook wiring 9종, source candidate lifecycle regression tests, 126/126 tests, plugin/pack validation, main/tag CI, annotated tag와 public GitHub Release를 확인했다.
-- [ ] Public exact `0.4.7` post-reinstall official-app hook E2E는 앱 완전 재실행/new task 뒤 검증한다.
+- [x] Public exact `0.4.7` post-reinstall official-app hook E2E를 같은 app process의 later actual hook 전달로 완료했다. Exact hot-reload timing은 미확인이다.
 - [ ] npm-backed marketplace catalog를 제공한다면 package, version range, registry와 authentication policy를 확정한다.
 - [x] Historical `0.2.1` 공식 앱에서 plugin installed/enabled와 새 task 핵심 lifecycle/permission 및 task ID 등록 없는 자동 표시를 실제 사용자 환경에서 검증했다.
 - [x] 후속 `0.3.0` source에서 실제 `SessionEnd`를 독립 검증했다.
