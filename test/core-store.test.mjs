@@ -69,6 +69,18 @@ test("reduces lifecycle, tool, and permission events without sensitive state", (
   assert.equal(snapshot.sessions[0].agents[0].started_at_ms, 100);
   assert.equal(snapshot.sessions[0].agents[0].stopped_at_ms, 140);
   assert.deepEqual(snapshot.sessions[0].permission, { status: "idle" });
+  assert.equal(
+    snapshot.sessions[0].recent_activities.find(
+      ({ type }) => type === "subagent_started",
+    ).status,
+    "stopped",
+  );
+  assert.equal(
+    snapshot.sessions[0].recent_activities.find(
+      ({ type }) => type === "tool_started",
+    ).status,
+    "completed",
+  );
 
   const serialized = JSON.stringify(snapshot);
   for (const privateValue of [
@@ -491,6 +503,16 @@ test("makes SessionEnd terminal and marks orphan work as interrupted", () => {
   assert.equal(session.status, "completed");
   assert.equal(session.agents[0].status, "stopped");
   assert.equal(session.tools[0].status, "completed");
+  assert.equal(
+    session.recent_activities.find(({ type }) => type === "subagent_started")
+      .status,
+    "stopped",
+  );
+  assert.equal(
+    session.recent_activities.find(({ type }) => type === "tool_started")
+      .status,
+    "completed",
+  );
 });
 
 test("does not reopen a completed turn with late same-turn start events", () => {
@@ -546,6 +568,16 @@ test("does not reopen a completed turn with late same-turn start events", () => 
   session = store.getSnapshot().sessions[0];
   assert.equal(session.tools[0].status, "completed");
   assert.equal(session.agents[0].status, "stopped");
+  assert.equal(
+    session.recent_activities.find(({ type }) => type === "subagent_started")
+      .status,
+    "stopped",
+  );
+  assert.equal(
+    session.recent_activities.find(({ type }) => type === "tool_started")
+      .status,
+    "completed",
+  );
 });
 
 test("clears permission only for matching terminal events", () => {

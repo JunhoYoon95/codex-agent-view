@@ -232,6 +232,27 @@ function addActivity(session, event, status, limit) {
   }
 }
 
+function refineUnresolvedStartActivity(
+  session,
+  { type, idField, id, status },
+) {
+  const unresolvedStatuses = new Set([
+    "running",
+    "completion_not_observed",
+    "interrupted",
+  ]);
+  for (const activity of session.recent_activities) {
+    if (
+      activity.type === type &&
+      activity[idField] === id &&
+      unresolvedStatuses.has(activity.status)
+    ) {
+      activity.status = status;
+      break;
+    }
+  }
+}
+
 function applySessionEvent(session, event, limits) {
   const lifecycle = session.lifecycle;
   if (event.type === "session_started") {
@@ -377,6 +398,14 @@ function applySubagentEvent(session, event, limits) {
     agent.stopped_at_ms = event.received_at_ms;
     agent.status = agent.start_observed ? "stopped" : "stopped_without_start";
     agent.has_out_of_order_events = !agent.start_observed;
+    if (agent.start_observed) {
+      refineUnresolvedStartActivity(session, {
+        type: "subagent_started",
+        idField: "agent_id",
+        id: event.agent_id,
+        status: "stopped",
+      });
+    }
   }
 
   agent.agent_type = event.agent_type;
@@ -430,6 +459,14 @@ function applyToolEvent(session, event, limits) {
     tool.status = tool.start_observed ? "completed" : "completed_without_start";
     tool.has_out_of_order_events = !tool.start_observed;
     activityStatus = tool.status;
+    if (tool.start_observed) {
+      refineUnresolvedStartActivity(session, {
+        type: "tool_started",
+        idField: "tool_use_id",
+        id: event.tool_use_id,
+        status: "completed",
+      });
+    }
 
     const permission = session.permission;
     if (

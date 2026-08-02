@@ -67,7 +67,7 @@ test("documents the current live-view UX and evidence boundary", async () => {
   assert.match(privacy, /page cannot mint, discover, or replace/);
 });
 
-test("records 0.4.6 as the current lifecycle release candidate while preserving public 0.4.5 evidence", async () => {
+test("records 0.4.7 as the current release candidate while preserving public 0.4.6 evidence", async () => {
   const [packageText, manifestText, english, korean, distribution, submission] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -79,19 +79,20 @@ test("records 0.4.6 as the current lifecycle release candidate while preserving 
   const packageMetadata = JSON.parse(packageText);
   const manifest = JSON.parse(manifestText);
 
-  assert.equal(packageMetadata.version, "0.4.6");
-  assert.equal(manifest.version, "0.4.6");
-  assert.match(english, /npm install --global codex-agent-view@0\.4\.6/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.4\.6/);
-  assert.match(english, /Version `0\.4\.6` is the lifecycle-correctness release/);
-  assert.match(korean, /`0\.4\.6`은 lifecycle 정확성을 바로잡는 릴리스/);
+  assert.equal(packageMetadata.version, "0.4.7");
+  assert.equal(manifest.version, "0.4.7");
+  assert.match(english, /npm install --global codex-agent-view@0\.4\.7/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.4\.7/);
+  assert.match(english, /Version `0\.4\.7` completes the lifecycle-correctness patch/);
+  assert.match(korean, /`0\.4\.7`은 lifecycle 정확성 patch를 완성/);
+  assert.match(distribution, /Public `0\.4\.6` release evidence/);
+  assert.match(distribution, /public npm `latest` \/ version \| `0\.4\.6` \/ `0\.4\.6`/i);
+  assert.match(distribution, /Repository candidate는 `0\.4\.7`/);
+  assert.match(distribution, /recent `subagent_started` row가 `running`으로 남는 gap/);
   assert.match(distribution, /Public `0\.4\.5` release evidence/);
   assert.match(submission, /Public `0\.4\.5` release evidence/);
-  for (const document of [distribution, submission]) {
-    assert.match(document, /public npm `latest`\/version.*`0\.4\.5`/i);
-    assert.doesNotMatch(document, /`?0\.4\.5`? release candidate/i);
-    assert.doesNotMatch(document, /public npm `latest`\/version.*`0\.4\.6`/i);
-  }
+  assert.doesNotMatch(distribution, /`?0\.4\.6`? release candidate/i);
+  assert.match(submission, /public npm `latest`\/version.*`0\.4\.5`/i);
 });
 
 test("keeps README local links resolvable and the root guide free of Korean copy", async () => {
@@ -153,7 +154,10 @@ test("records verified public 0.4.5 acceptance and keeps external publication bo
   ]);
 
   for (const document of [distribution, findings, submission]) {
-    assert.match(document, /public npm `latest`\/version.*`0\.4\.5`/i);
+    assert.match(
+      document,
+      /(?:public npm `latest`\/version|npm `latest` \/ version \|).*`0\.4\.5`/i,
+    );
     assert.match(document, /d5c1f593ae7e48e226e396d02579cd7f9ef8d01e/);
     assert.match(
       document,

@@ -8,12 +8,12 @@ Codex Agent View gives you a clear, read-only view of what Codex is working on a
 
 ## Quick start: install once, then stay inside the Codex app
 
-This README documents `codex-agent-view@0.4.6`. Use the exact-version command below for the one-time terminal installation.
+This README documents `codex-agent-view@0.4.7`. Use the exact-version command below for the one-time terminal installation.
 
 Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
 ```bash
-npm install --global codex-agent-view@0.4.6
+npm install --global codex-agent-view@0.4.7
 codex-agent-view install
 ```
 
@@ -40,7 +40,7 @@ In short: install once in a terminal; perform snapshot queries, status checks, l
 
 ## Status
 
-Version `0.4.6` is the lifecycle-correctness release. It gives `SessionEnd` terminal priority, settles unfinished child activity without pretending it succeeded, prevents late events from reopening a finished turn, and reports prolonged unconfirmed activity as **End not confirmed** instead of leaving it indefinitely **Running**. It retains the app-native snapshot skill, privacy-minimized hooks, bounded in-memory reducer, local authenticated live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
+Version `0.4.7` completes the lifecycle-correctness patch. In addition to terminal `SessionEnd`, late-event protection, and honest **End not confirmed** state, normal or late `SubagentStop` and `PostToolUse` events now refine the matching earlier start entry in recent activity to **Stopped** or **Completed**. A finished agent or tool therefore no longer leaves its prior recent-activity row falsely **Running**. It retains the app-native snapshot skill, privacy-minimized hooks, bounded in-memory reducer, local authenticated live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -166,16 +166,16 @@ After plugin enablement/trust and an app restart, the first trusted hook interna
 
 ## Install from npm
 
-The commands below install `0.4.6` by exact version.
+The commands below install `0.4.7` by exact version.
 
 ```bash
-npm install --global codex-agent-view@0.4.6
+npm install --global codex-agent-view@0.4.7
 codex-agent-view install
 ```
 
 After these two commands, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. Use the plugin card's **Quick start** action to select `@codex-agent-view`, then explicitly select `$show-agents` in the app. Repeat that explicit skill selection after closing the panel.
 
-The `0.4.6` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. When upgrading an older valid installation, `install` preserves the installation-owned read-only viewer credential; the legacy `0.4.2` migration behavior remains as documented for `0.4.3`. Neither token nor the private URL is printed.
+The `0.4.7` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. When upgrading an older valid installation, `install` preserves the installation-owned read-only viewer credential; the legacy `0.4.2` migration behavior remains as documented for `0.4.3`. Neither token nor the private URL is printed.
 
 Version-specific npm, install, migration, CI, tag, and GitHub Release evidence is preserved in [Distribution](docs/distribution.md). That evidence is updated only after each item is actually verified.
 

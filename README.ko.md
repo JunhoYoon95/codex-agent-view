@@ -10,10 +10,10 @@ Codex Agent View는 Codex가 지금 어떤 작업을 수행하고 있고 어떤 
 
 ### 빠른 시작: 설치 후에는 Codex 앱 안에서만 사용
 
-이 README는 `codex-agent-view@0.4.6` 사용법을 설명한다. **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다.
+이 README는 `codex-agent-view@0.4.7` 사용법을 설명한다. **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다.
 
 ```bash
-npm install --global codex-agent-view@0.4.6
+npm install --global codex-agent-view@0.4.7
 codex-agent-view install
 ```
 
@@ -40,7 +40,7 @@ Live UI의 기본 언어는 영어이며 language selector에서 **English**, **
 
 ### 현재 상태
 
-`0.4.6`은 lifecycle 정확성을 바로잡는 릴리스다. `SessionEnd`에 최종 우선순위를 부여하고, 끝나지 않은 child activity를 성공으로 추정하지 않은 채 정리하며, 늦게 도착한 event가 완료된 turn을 다시 실행 중으로 열지 못하게 한다. 종료 신호 없이 오래 남은 활동은 무기한 **실행 중**으로 두지 않고 **종료 미확인**으로 표시한다. 아래의 기존 제품 구성은 그대로 유지한다.
+`0.4.7`은 lifecycle 정확성 patch를 완성한다. `SessionEnd` 최종 우선순위, 늦은 event 차단과 정직한 **종료 미확인** 표시에 더해, 정상 또는 늦게 도착한 `SubagentStop`과 `PostToolUse`가 recent activity의 대응 start 항목을 **중지됨** 또는 **완료**로 갱신한다. 따라서 종료된 agent나 tool의 이전 recent activity가 잘못 **실행 중**으로 남지 않는다. 아래의 기존 제품 구성은 그대로 유지한다.
 
 - 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
@@ -214,16 +214,16 @@ Plugin enable/trust와 앱 재시작 뒤 생성되거나 재개되는 task는 tr
 
 ### npm 설치 명령 참고
 
-아래 명령은 `0.4.6`을 exact version으로 설치한다.
+아래 명령은 `0.4.7`을 exact version으로 설치한다.
 
 ```bash
-npm install --global codex-agent-view@0.4.6
+npm install --global codex-agent-view@0.4.7
 codex-agent-view install
 ```
 
 이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화와 hook trust를 확인한 다음 새 task를 만든다. 첫 trusted hook이 backend 준비와 event 전달을 내부 처리하므로 사용자가 monitor CLI를 실행하지 않는다. Plugin 카드의 **지금 사용해보기**로 `@codex-agent-view`를 선택하고 앱에서 `$show-agents`를 명시 선택한다. Panel을 닫은 뒤에도 같은 방식으로 skill을 다시 선택한다.
 
-`0.4.6` 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다. 이전의 유효한 설치에서 upgrade하면 installation-owned read-only viewer credential을 유지하며, `0.4.3`에서 검증한 legacy `0.4.2` migration 동작도 그대로 보존한다. Token과 private URL은 출력하지 않는다.
+`0.4.7` 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다. 이전의 유효한 설치에서 upgrade하면 installation-owned read-only viewer credential을 유지하며, `0.4.3`에서 검증한 legacy `0.4.2` migration 동작도 그대로 보존한다. Token과 private URL은 출력하지 않는다.
 
 Version별 npm, install, migration, CI, tag와 GitHub Release evidence는 [docs/distribution.md](docs/distribution.md)에 보존한다. 각 evidence는 실제 확인한 뒤에만 갱신한다.
 
