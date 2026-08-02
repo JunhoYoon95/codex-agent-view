@@ -25,6 +25,10 @@
   --waiting-soft: #fff0ce;
   --completed: #45605f;
   --completed-soft: #e5eceb;
+  --unconfirmed: #8a4f18;
+  --unconfirmed-soft: #f9e8d6;
+  --interrupted: #765226;
+  --interrupted-soft: #f2e8d9;
   --unknown: #6b6678;
   --unknown-soft: #ece9f2;
   --danger: #a13838;
@@ -597,6 +601,16 @@ h1 {
   background: linear-gradient(110deg, var(--running-soft), var(--surface-raised) 72%);
 }
 
+.session-card[data-status="completion_not_observed"],
+.session-card[data-status="stale"] {
+  border-color: color-mix(in srgb, var(--unconfirmed) 52%, var(--border-default));
+}
+
+.session-card[data-status="completion_not_observed"] .session-header,
+.session-card[data-status="stale"] .session-header {
+  background: linear-gradient(110deg, var(--unconfirmed-soft), var(--surface-raised) 72%);
+}
+
 .session-header {
   display: flex;
   align-items: center;
@@ -666,6 +680,17 @@ h1 {
   background: var(--completed-soft);
 }
 
+.status-badge[data-status="completion_not_observed"],
+.status-badge[data-status="stale"] {
+  color: var(--unconfirmed);
+  background: var(--unconfirmed-soft);
+}
+
+.status-badge[data-status="interrupted"] {
+  color: var(--interrupted);
+  background: var(--interrupted-soft);
+}
+
 .status-badge[data-status="running"] .status-dot,
 .activity-marker[data-status="running"] {
   background: var(--running);
@@ -679,6 +704,31 @@ h1 {
 .status-badge[data-status="completed"] .status-dot,
 .activity-marker[data-status="completed"] {
   background: var(--completed);
+}
+
+.status-badge[data-status="completion_not_observed"] .status-dot,
+.status-badge[data-status="stale"] .status-dot,
+.activity-marker[data-status="completion_not_observed"],
+.activity-marker[data-status="stale"] {
+  background: var(--unconfirmed);
+}
+
+.status-badge[data-status="interrupted"] .status-dot,
+.activity-marker[data-status="interrupted"] {
+  background: var(--interrupted);
+}
+
+.status-explanation {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.session-state .status-explanation {
+  max-width: 24rem;
+  text-align: right;
 }
 
 .time-label,
@@ -724,6 +774,13 @@ h1 {
 .agent-item[data-status="running"] {
   background: color-mix(in srgb, var(--running-soft) 62%, var(--surface-raised));
   border-color: color-mix(in srgb, var(--running) 42%, var(--border-default));
+}
+
+.agent-item[data-status="completion_not_observed"],
+.agent-item[data-status="stale"],
+.agent-item[data-status="interrupted"] {
+  background: color-mix(in srgb, var(--unconfirmed-soft) 58%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--unconfirmed) 38%, var(--border-default));
 }
 
 .agent-heading {
@@ -933,6 +990,10 @@ footer p {
     align-items: flex-start;
   }
 
+  .session-state .status-explanation {
+    text-align: left;
+  }
+
   .session-header {
     gap: var(--space-3);
     padding: var(--space-4);
@@ -980,6 +1041,10 @@ footer p {
     --waiting-soft: #493819;
     --completed: #a9bfbb;
     --completed-soft: #34433f;
+    --unconfirmed: #f2b879;
+    --unconfirmed-soft: #493421;
+    --interrupted: #dcc09a;
+    --interrupted-soft: #423729;
     --unknown: #bbb3ca;
     --unknown-soft: #3c3746;
     --danger: #f19a9a;

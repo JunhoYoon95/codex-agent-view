@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { createMonitorStore } from "../src/core/index.mjs";
 
+function createTestStore(options = {}) {
+  return createMonitorStore({ now: () => 0, ...options });
+}
+
 function subagentPayload(eventName, overrides = {}) {
   return {
     session_id: "session-1",
@@ -26,7 +30,7 @@ function toolPayload(eventName, overrides = {}) {
 }
 
 test("reduces lifecycle, tool, and permission events without sensitive state", () => {
-  const store = createMonitorStore();
+  const store = createTestStore();
   store.ingest(subagentPayload("SubagentStart"), { receivedAtMs: 100 });
   store.ingest(
     toolPayload("PreToolUse", {
@@ -78,7 +82,7 @@ test("reduces lifecycle, tool, and permission events without sensitive state", (
 });
 
 test("derives session status without inventing parent completion", () => {
-  const store = createMonitorStore();
+  const store = createTestStore();
   store.ingest(toolPayload("PreToolUse"), { receivedAtMs: 10 });
   assert.equal(store.getSnapshot().sessions[0].status, "running");
 
@@ -103,7 +107,7 @@ test("derives session status without inventing parent completion", () => {
 });
 
 test("tracks parent session and turn lifecycle from hooks", () => {
-  const store = createMonitorStore();
+  const store = createTestStore();
   store.ingest(
     { session_id: "session-1", hook_event_name: "SessionStart", source: "startup" },
     { receivedAtMs: 5 },
@@ -123,7 +127,7 @@ test("tracks parent session and turn lifecycle from hooks", () => {
     { receivedAtMs: 20 },
   );
   session = store.getSnapshot().sessions[0];
-  assert.equal(session.status, "observed");
+  assert.equal(session.status, "completed");
   assert.equal(session.root_turn.status, "completed");
 
   store.ingest(
@@ -144,7 +148,7 @@ test("tracks parent session and turn lifecycle from hooks", () => {
 });
 
 test("keeps the latest observed workspace label without retaining a full path", () => {
-  const store = createMonitorStore();
+  const store = createTestStore();
   store.ingest(
     {
       session_id: "session-1",
@@ -190,7 +194,7 @@ test("keeps the latest observed workspace label without retaining a full path", 
 });
 
 test("keeps the first valid task summary across follow-ups and out-of-order prompts", () => {
-  const store = createMonitorStore();
+  const store = createTestStore();
   const originalRawPrompt = `검색 결과 필터를 고쳐 주세요 ${"private detail ".repeat(30)}`;
 
   store.ingest(
@@ -231,7 +235,7 @@ test("keeps the first valid task summary across follow-ups and out-of-order prom
 });
 
 test("fills an empty task summary only from the next non-stale valid prompt", () => {
-  const store = createMonitorStore();
+  const store = createTestStore();
 
   store.ingest(
     {
@@ -281,7 +285,7 @@ test("fills an empty task summary only from the next non-stale valid prompt", ()
 });
 
 test("treats repeated lifecycle and tool hooks as duplicates", () => {
-  const store = createMonitorStore();
+  const store = createTestStore();
   const start = subagentPayload("SubagentStart");
   const toolStart = toolPayload("PreToolUse");
 
@@ -296,7 +300,7 @@ test("treats repeated lifecycle and tool hooks as duplicates", () => {
 });
 
 test("keeps stopped and completed state when events arrive out of order", () => {
-  const store = createMonitorStore();
+  const store = createTestStore();
   store.ingest(subagentPayload("SubagentStop"), { receivedAtMs: 200 });
   store.ingest(subagentPayload("SubagentStart"), { receivedAtMs: 100 });
   store.ingest(toolPayload("PostToolUse"), { receivedAtMs: 300 });
@@ -324,7 +328,7 @@ test("keeps stopped and completed state when events arrive out of order", () => 
 });
 
 test("represents missing start events instead of inventing them", () => {
-  const store = createMonitorStore();
+  const store = createTestStore();
   store.ingest(subagentPayload("SubagentStop"), { receivedAtMs: 10 });
   store.ingest(toolPayload("PostToolUse"), { receivedAtMs: 20 });
 
@@ -335,7 +339,7 @@ test("represents missing start events instead of inventing them", () => {
 });
 
 test("ignores malformed and unknown events while retaining bounded diagnostics", () => {
-  const store = createMonitorStore({ maxDiagnostics: 2 });
+  const store = createTestStore({ maxDiagnostics: 2 });
   store.ingest(null, { receivedAtMs: 1 });
   store.ingest(
     {
@@ -360,7 +364,7 @@ test("ignores malformed and unknown events while retaining bounded diagnostics",
 });
 
 test("bounds sessions, agents, and recent activities", () => {
-  const store = createMonitorStore({
+  const store = createTestStore({
     maxSessions: 2,
     maxAgentsPerSession: 2,
     maxActivitiesPerSession: 2,
@@ -405,7 +409,7 @@ test("bounds sessions, agents, and recent activities", () => {
 });
 
 test("does not let an older permission event replace newer waiting state", () => {
-  const store = createMonitorStore();
+  const store = createTestStore();
   const permission = (turnId, toolName) => ({
     session_id: "session-1",
     turn_id: turnId,
@@ -427,4 +431,393 @@ test("does not let an older permission event replace newer waiting state", () =>
     requested_at_ms: 200,
   });
   assert.equal(snapshot.diagnostics[0].code, "stale_event_ignored");
+});
+
+test("makes SessionEnd terminal and marks orphan work as interrupted", () => {
+  const store = createTestStore();
+  store.ingest(
+    { session_id: "session-1", hook_event_name: "SessionStart" },
+    { receivedAtMs: 10 },
+  );
+  store.ingest(subagentPayload("UserPromptSubmit"), { receivedAtMs: 20 });
+  store.ingest(subagentPayload("SubagentStart"), { receivedAtMs: 30 });
+  store.ingest(toolPayload("PreToolUse"), { receivedAtMs: 40 });
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-1",
+      hook_event_name: "PermissionRequest",
+      tool_name: "Bash",
+    },
+    { receivedAtMs: 50 },
+  );
+  store.ingest(
+    { session_id: "session-1", hook_event_name: "SessionEnd" },
+    { receivedAtMs: 60 },
+  );
+
+  let session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "completed");
+  assert.equal(session.root_turn.status, "completed");
+  assert.equal(session.agents[0].status, "interrupted");
+  assert.equal(session.tools[0].status, "interrupted");
+  assert.deepEqual(session.permission, { status: "idle" });
+  assert.equal(
+    session.recent_activities.find(
+      ({ type }) => type === "permission_requested",
+    ).status,
+    "interrupted",
+  );
+  assert.equal(
+    session.recent_activities.find(({ type }) => type === "subagent_started")
+      .status,
+    "interrupted",
+  );
+  assert.equal(
+    session.recent_activities.find(({ type }) => type === "tool_started")
+      .status,
+    "interrupted",
+  );
+
+  assert.equal(
+    store.ingest(toolPayload("PostToolUse"), { receivedAtMs: 70 }).status,
+    "applied",
+  );
+  assert.equal(
+    store.ingest(subagentPayload("SubagentStop"), { receivedAtMs: 80 }).status,
+    "applied",
+  );
+  session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "completed");
+  assert.equal(session.agents[0].status, "stopped");
+  assert.equal(session.tools[0].status, "completed");
+});
+
+test("does not reopen a completed turn with late same-turn start events", () => {
+  const store = createTestStore();
+  store.ingest(subagentPayload("UserPromptSubmit"), { receivedAtMs: 10 });
+  store.ingest(subagentPayload("SubagentStart"), { receivedAtMs: 20 });
+  store.ingest(toolPayload("PreToolUse"), { receivedAtMs: 30 });
+  store.ingest(subagentPayload("Stop"), { receivedAtMs: 40 });
+
+  let session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "completed");
+  assert.equal(session.agents[0].status, "completion_not_observed");
+  assert.equal(session.tools[0].status, "completion_not_observed");
+
+  for (const payload of [
+    subagentPayload("UserPromptSubmit"),
+    {
+      session_id: "session-1",
+      turn_id: "turn-1",
+      hook_event_name: "PermissionRequest",
+      tool_name: "Bash",
+    },
+    toolPayload("PreToolUse", { tool_use_id: "late-tool" }),
+    subagentPayload("SubagentStart", { agent_id: "late-agent" }),
+  ]) {
+    assert.equal(
+      store.ingest(payload, { receivedAtMs: 50 }).status,
+      "stale",
+    );
+  }
+
+  session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "completed");
+  assert.equal(session.root_turn.status, "completed");
+  assert.deepEqual(session.permission, { status: "idle" });
+  assert(!session.recent_activities.some(({ status }) => status === "running"));
+  assert(
+    !session.recent_activities.some(
+      ({ status }) => status === "waiting_for_user",
+    ),
+  );
+  assert.equal(session.agents.length, 1);
+  assert.equal(session.tools.length, 1);
+
+  assert.equal(
+    store.ingest(toolPayload("PostToolUse"), { receivedAtMs: 60 }).status,
+    "applied",
+  );
+  assert.equal(
+    store.ingest(subagentPayload("SubagentStop"), { receivedAtMs: 70 }).status,
+    "applied",
+  );
+  session = store.getSnapshot().sessions[0];
+  assert.equal(session.tools[0].status, "completed");
+  assert.equal(session.agents[0].status, "stopped");
+});
+
+test("clears permission only for matching terminal events", () => {
+  const store = createTestStore();
+  const permission = {
+    session_id: "session-1",
+    turn_id: "turn-1",
+    hook_event_name: "PermissionRequest",
+    tool_name: "Bash",
+  };
+  store.ingest(permission, { receivedAtMs: 10 });
+
+  store.ingest(
+    toolPayload("PostToolUse", {
+      tool_name: "apply_patch",
+      tool_use_id: "tool-other-name",
+    }),
+    { receivedAtMs: 20 },
+  );
+  store.ingest(
+    toolPayload("PostToolUse", {
+      turn_id: "turn-2",
+      tool_use_id: "tool-other-turn",
+    }),
+    { receivedAtMs: 30 },
+  );
+  assert.equal(
+    store.getSnapshot().sessions[0].permission.status,
+    "waiting_for_user",
+  );
+
+  store.ingest(toolPayload("PostToolUse"), { receivedAtMs: 40 });
+  assert.deepEqual(store.getSnapshot().sessions[0].permission, {
+    status: "idle",
+  });
+  assert.equal(
+    store
+      .getSnapshot()
+      .sessions[0].recent_activities.find(
+        ({ type }) => type === "permission_requested",
+      ).status,
+    "completed",
+  );
+
+  store.ingest(
+    { ...permission, turn_id: "turn-2" },
+    { receivedAtMs: 50 },
+  );
+  store.ingest(subagentPayload("Stop"), { receivedAtMs: 60 });
+  assert.equal(
+    store.getSnapshot().sessions[0].permission.status,
+    "waiting_for_user",
+  );
+  store.ingest(
+    { session_id: "session-1", hook_event_name: "SessionEnd" },
+    { receivedAtMs: 70 },
+  );
+  assert.deepEqual(store.getSnapshot().sessions[0].permission, {
+    status: "idle",
+  });
+});
+
+test("resets transient state when a session starts a new observation epoch", () => {
+  const store = createTestStore();
+  store.ingest(
+    { session_id: "session-1", hook_event_name: "SessionStart" },
+    { receivedAtMs: 10 },
+  );
+  store.ingest(subagentPayload("UserPromptSubmit"), { receivedAtMs: 20 });
+  store.ingest(subagentPayload("SubagentStart"), { receivedAtMs: 30 });
+  store.ingest(toolPayload("PreToolUse"), { receivedAtMs: 40 });
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-1",
+      hook_event_name: "PermissionRequest",
+      tool_name: "Bash",
+    },
+    { receivedAtMs: 50 },
+  );
+  store.ingest(
+    { session_id: "session-1", hook_event_name: "SessionEnd" },
+    { receivedAtMs: 60 },
+  );
+  store.ingest(
+    { session_id: "session-1", hook_event_name: "SessionStart" },
+    { receivedAtMs: 70 },
+  );
+
+  const session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "observed");
+  assert.equal(session.root_turn.status, "idle");
+  assert.deepEqual(session.permission, { status: "idle" });
+  assert.deepEqual(session.agents, []);
+  assert.deepEqual(session.tools, []);
+});
+
+test("resume and clear start a new epoch without requiring SessionEnd", () => {
+  for (const source of ["resume", "clear"]) {
+    const store = createTestStore();
+    store.ingest(
+      {
+        session_id: "session-1",
+        hook_event_name: "SessionStart",
+        source: "startup",
+      },
+      { receivedAtMs: 10 },
+    );
+    store.ingest(subagentPayload("UserPromptSubmit"), { receivedAtMs: 20 });
+    store.ingest(subagentPayload("SubagentStart"), { receivedAtMs: 30 });
+    store.ingest(toolPayload("PreToolUse"), { receivedAtMs: 40 });
+    store.ingest(
+      {
+        session_id: "session-1",
+        turn_id: "turn-1",
+        hook_event_name: "PermissionRequest",
+        tool_name: "Bash",
+      },
+      { receivedAtMs: 50 },
+    );
+
+    assert.equal(
+      store.ingest(
+        {
+          session_id: "session-1",
+          hook_event_name: "SessionStart",
+          source,
+        },
+        { receivedAtMs: 60 },
+      ).status,
+      "applied",
+    );
+
+    const session = store.getSnapshot().sessions[0];
+    assert.equal(session.status, "observed");
+    assert.equal(session.root_turn.status, "idle");
+    assert.deepEqual(session.permission, { status: "idle" });
+    assert.deepEqual(session.agents, []);
+    assert.deepEqual(session.tools, []);
+    assert.equal(
+      session.recent_activities[0].session_start_source,
+      source,
+    );
+    assert(
+      !session.recent_activities.some(
+        ({ status }) => status === "running" || status === "waiting_for_user",
+      ),
+    );
+    assert(
+      session.recent_activities.some(
+        ({ status }) => status === "completion_not_observed",
+      ),
+    );
+  }
+});
+
+test("compact SessionStart preserves an active turn and transient work", () => {
+  const store = createTestStore();
+  store.ingest(
+    {
+      session_id: "session-1",
+      hook_event_name: "SessionStart",
+      source: "startup",
+    },
+    { receivedAtMs: 10 },
+  );
+  store.ingest(subagentPayload("UserPromptSubmit"), { receivedAtMs: 20 });
+  store.ingest(subagentPayload("SubagentStart"), { receivedAtMs: 30 });
+  store.ingest(toolPayload("PreToolUse"), { receivedAtMs: 40 });
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-1",
+      hook_event_name: "PermissionRequest",
+      tool_name: "Bash",
+    },
+    { receivedAtMs: 50 },
+  );
+
+  assert.equal(
+    store.ingest(
+      {
+        session_id: "session-1",
+        hook_event_name: "SessionStart",
+        source: "compact",
+      },
+      { receivedAtMs: 60 },
+    ).status,
+    "applied",
+  );
+
+  const session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "waiting_for_user");
+  assert.equal(session.root_turn.status, "running");
+  assert.equal(session.agents[0].status, "running");
+  assert.equal(session.tools[0].status, "running");
+  assert.equal(session.permission.status, "waiting_for_user");
+  assert.equal(session.recent_activities[0].session_start_source, "compact");
+  assert(session.recent_activities.some(({ status }) => status === "running"));
+  assert(
+    session.recent_activities.some(
+      ({ status }) => status === "waiting_for_user",
+    ),
+  );
+});
+
+test("unknown SessionStart sources do not reset active transient state", () => {
+  const store = createTestStore();
+  store.ingest(
+    {
+      session_id: "session-1",
+      hook_event_name: "SessionStart",
+      source: "startup",
+    },
+    { receivedAtMs: 10 },
+  );
+  store.ingest(subagentPayload("UserPromptSubmit"), { receivedAtMs: 20 });
+  store.ingest(subagentPayload("SubagentStart"), { receivedAtMs: 30 });
+  store.ingest(toolPayload("PreToolUse"), { receivedAtMs: 40 });
+
+  assert.equal(
+    store.ingest(
+      {
+        session_id: "session-1",
+        hook_event_name: "SessionStart",
+        source: "private-future-source",
+      },
+      { receivedAtMs: 50 },
+    ).status,
+    "duplicate",
+  );
+
+  const session = store.getSnapshot().sessions[0];
+  assert.equal(session.status, "running");
+  assert.equal(session.root_turn.status, "running");
+  assert.equal(session.agents[0].status, "running");
+  assert.equal(session.tools[0].status, "running");
+  assert(!JSON.stringify(session).includes("private-future-source"));
+});
+
+test("downgrades old active state when terminal hooks were not observed", () => {
+  let nowMs = 100;
+  const store = createMonitorStore({
+    now: () => nowMs,
+    staleAfterMs: 50,
+  });
+  store.ingest(subagentPayload("UserPromptSubmit"), { receivedAtMs: 100 });
+  store.ingest(subagentPayload("SubagentStart"), { receivedAtMs: 100 });
+  store.ingest(toolPayload("PreToolUse"), { receivedAtMs: 100 });
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-1",
+      hook_event_name: "PermissionRequest",
+      tool_name: "Bash",
+    },
+    { receivedAtMs: 100 },
+  );
+
+  nowMs = 149;
+  assert.equal(store.getSnapshot().sessions[0].status, "waiting_for_user");
+  nowMs = 150;
+  const stale = store.getSnapshot().sessions[0];
+  assert.equal(stale.status, "completion_not_observed");
+  assert.equal(stale.root_turn.status, "completion_not_observed");
+  assert.equal(stale.permission.status, "completion_not_observed");
+  assert.equal(stale.agents[0].status, "completion_not_observed");
+  assert.equal(stale.tools[0].status, "completion_not_observed");
+  assert(!stale.recent_activities.some(({ status }) => status === "running"));
+  assert(
+    !stale.recent_activities.some(
+      ({ status }) => status === "waiting_for_user",
+    ),
+  );
 });

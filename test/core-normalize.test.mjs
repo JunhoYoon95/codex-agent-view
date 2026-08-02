@@ -117,6 +117,42 @@ test("does not copy sensitive or unknown payload fields", () => {
   }
 });
 
+test("allowlists only verified SessionStart source values", () => {
+  for (const source of ["startup", "resume", "clear", "compact"]) {
+    const result = normalizeHookPayload(
+      {
+        session_id: "session-1",
+        hook_event_name: "SessionStart",
+        source,
+      },
+      { receivedAtMs: 123 },
+    );
+    assert.equal(result.status, "accepted");
+    assert.equal(result.event.session_start_source, source);
+  }
+
+  for (const source of [
+    "private-future-source",
+    "Resume",
+    "resume\nprivate",
+    42,
+    {},
+    null,
+  ]) {
+    const result = normalizeHookPayload(
+      {
+        session_id: "session-1",
+        hook_event_name: "SessionStart",
+        source,
+      },
+      { receivedAtMs: 124 },
+    );
+    assert.equal(result.status, "accepted");
+    assert(!("session_start_source" in result.event));
+    assert(!JSON.stringify(result).includes("private-future-source"));
+  }
+});
+
 test("accepts a bounded workspace label without retaining cwd", () => {
   const result = normalizeHookPayload(
     {

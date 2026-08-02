@@ -8,9 +8,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  LOOPBACK_HOST,
+  RUNTIME_SCHEMA_VERSION,
   readRuntimeInfo,
   readViewerToken,
   runtimeFile,
+  writeRuntimeInfo,
 } from "../src/runtime/config.mjs";
 import { startMonitorServer } from "../src/runtime/server.mjs";
 
@@ -186,6 +189,83 @@ test("concurrent hooks converge on one auto-started monitor", async (t) => {
 
   await stopDetachedMonitor(env);
   assert.equal(processExists(runtime.pid), false);
+});
+
+test("retries a transient live-runtime rejection with the same minimized event", async (t) => {
+  const { env, port } = await temporaryRuntime(t);
+  const token = "r".repeat(43);
+  const receivedBodies = [];
+  let eventRequests = 0;
+  const server = createServer((request, response) => {
+    if (request.method === "GET" && request.url === "/api/state") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end('{"sessions":[]}');
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/api/events") {
+      eventRequests += 1;
+      const chunks = [];
+      request.on("data", (chunk) => chunks.push(chunk));
+      request.on("end", () => {
+        receivedBodies.push(Buffer.concat(chunks).toString("utf8"));
+        if (eventRequests === 1) {
+          response.writeHead(503);
+          response.end();
+          return;
+        }
+        response.writeHead(202, { "content-type": "application/json" });
+        response.end('{"status":"accepted"}');
+      });
+      return;
+    }
+
+    response.writeHead(404);
+    response.end();
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, LOOPBACK_HOST, resolve);
+  });
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        server.close(() => resolve());
+      }),
+  );
+  await writeRuntimeInfo(
+    {
+      schema_version: RUNTIME_SCHEMA_VERSION,
+      host: LOOPBACK_HOST,
+      port,
+      token,
+      pid: process.pid,
+      started_at_ms: Date.now(),
+    },
+    env,
+  );
+
+  const result = await runSender(
+    {
+      session_id: "session-retry",
+      turn_id: "turn-retry",
+      hook_event_name: "SessionEnd",
+      reason: "completed",
+      prompt: "private prompt",
+      tool_input: { command: "private command" },
+    },
+    env,
+  );
+
+  assert.deepEqual(result, { code: 0, stderr: "", stdout: "{}\n" });
+  assert.equal(eventRequests, 2);
+  assert.equal(receivedBodies.length, 2);
+  assert.equal(receivedBodies[0], receivedBodies[1]);
+  const delivered = JSON.parse(receivedBodies[1]);
+  assert.equal(delivered.hook_event_name, "SessionEnd");
+  assert.equal(delivered.session_id, "session-retry");
+  assert(!receivedBodies[1].includes("private prompt"));
+  assert(!receivedBodies[1].includes("private command"));
 });
 
 test("fails open with neutral stdout when auto-start cannot bind", async (t) => {

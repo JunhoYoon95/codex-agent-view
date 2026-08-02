@@ -11,6 +11,12 @@ const NORMALIZED_EVENT_TYPES = Object.freeze({
 });
 
 const SESSION_EVENT_TYPES = new Set(["session_started", "session_ended"]);
+const SESSION_START_SOURCES = new Set([
+  "startup",
+  "resume",
+  "clear",
+  "compact",
+]);
 
 const MAX_IDENTIFIER_LENGTH = 512;
 const MAX_LABEL_LENGTH = 256;
@@ -189,6 +195,13 @@ export function normalizeHookPayload(payload, options = {}) {
   }
 
   const event = commonEvent(payload, type, receivedAtMs);
+  if (
+    type === "session_started" &&
+    typeof payload.source === "string" &&
+    SESSION_START_SOURCES.has(payload.source)
+  ) {
+    event.session_start_source = payload.source;
+  }
   const workspaceLabel = optionalWorkspaceLabel(payload);
   if (workspaceLabel) {
     event.workspace_label = workspaceLabel;

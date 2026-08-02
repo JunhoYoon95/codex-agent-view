@@ -118,6 +118,19 @@ means that monitor process observed no hook events; it does not prove that the
 Codex app has no tasks. Restarting the in-memory monitor begins a new bounded
 observation window.
 
+When a CLI or live-monitor snapshot returns lifecycle statuses, preserve their
+meaning exactly:
+
+- A session/work-item `completed` status is grounded in an observed `Stop` or
+  terminal `SessionEnd`; report it as observed completion, not inferred
+  success.
+- `completion_not_observed` means active state had no new event for the default
+  five-minute window and no ending hook was observed. Render it as **End not
+  confirmed**. Never reinterpret it as either `running` or `completed`.
+- `interrupted` means the parent/session became terminal while a child agent or
+  tool had no own stop/completion signal. Never rewrite it as `running` or
+  `completed`, and do not invent a success or failure result.
+
 After explicit installation, hook review/trust, and a Codex app restart, the
 first trusted hook normally prepares the local backend internally and retries
 delivery of that same privacy-minimized event. The user never registers a task

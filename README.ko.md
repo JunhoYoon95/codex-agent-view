@@ -10,10 +10,10 @@ Codex Agent View는 Codex가 지금 어떤 작업을 수행하고 있고 어떤 
 
 ### 빠른 시작: 설치 후에는 Codex 앱 안에서만 사용
 
-이 README는 `codex-agent-view@0.4.5` 사용법을 설명한다. **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다.
+이 README는 `codex-agent-view@0.4.6` 사용법을 설명한다. **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다.
 
 ```bash
-npm install --global codex-agent-view@0.4.5
+npm install --global codex-agent-view@0.4.6
 codex-agent-view install
 ```
 
@@ -40,7 +40,7 @@ Live UI의 기본 언어는 영어이며 language selector에서 **English**, **
 
 ### 현재 상태
 
-`0.4.5`는 아래 구성에 작업 수준 요청 요약, 비개발자용 작업/참여 에이전트 용어, session ID를 제거한 live card와 화면 안 연결·인증 복구를 추가한다.
+`0.4.6`은 lifecycle 정확성을 바로잡는 릴리스다. `SessionEnd`에 최종 우선순위를 부여하고, 끝나지 않은 child activity를 성공으로 추정하지 않은 채 정리하며, 늦게 도착한 event가 완료된 turn을 다시 실행 중으로 열지 못하게 한다. 종료 신호 없이 오래 남은 활동은 무기한 **실행 중**으로 두지 않고 **종료 미확인**으로 표시한다. 아래의 기존 제품 구성은 그대로 유지한다.
 
 - 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
@@ -88,12 +88,15 @@ Codex Agent View는 historical audit이나 session replay 제품이 아니라 �
 
 - 앱 안의 현재 task snapshot은 공식 Codex 앱이 제공하는 내장 thread tools의 explicit status와 `subAgentActivity`를 우선 사용한다.
 - Hook event는 local monitor의 세부 lifecycle 상태에 대한 source of truth다. Monitor state는 bounded memory에만 있고 재시작하면 새 관찰 window가 시작된다. 별도 private viewer credential은 task history가 아니라 인증 metadata다.
+- `Stop`은 관찰된 root turn과 session/work-item 요약을 즉시 `completed`로 표시한다. 진행 중이던 child agent나 tool은 자체 stop/tool completion 신호를 관찰하지 못했으므로 해당 row에서 별도로 `completion_not_observed`로 표시한다. `SessionEnd`는 terminal priority를 가지며, 그 시점에도 열려 있는 child agent·tool·permission은 완료로 추정하지 않고 `interrupted`로 표시한다.
+- 공식 `SessionEnd` 전달은 최대 30분 지연될 수 있다. 종료 hook을 관찰하지 못한 채 활동이 열린 상태로 남으면 새 event가 없는 5분 뒤 `completion_not_observed`(**종료 미확인**)로 바꾸며 `completed`로 추정하지 않는다. 지연되거나 누락된 terminal event 때문에 오래된 활동을 완료·성공으로 잘못 표시하지 않기 위한 경계다.
 - Read-only viewer credential은 한 설치 수명 동안 monitor 재시작과 upgrade를 넘어 유지되며, runtime/control token은 별도 process-scoped credential이다.
 - 설치·trust·앱 재시작 뒤 첫 trusted hook이 backend를 자동 준비한다. 이는 monitor process 준비이며 Codex 화면이나 tab을 몰래 생성하는 기능이 아니다.
 - 외부 telemetry, 원격 server, account, 필수 SQLite/영구 event store가 없다.
 - 전체 prompt 원문, transcript path, 전체 tool input/output, assistant message를 monitor 상태나 UI에 저장·표시하지 않는다. 위에서 설명한 bounded/redacted 한 줄 작업 요약만 process memory에 유지할 수 있다.
 - 기본 monitor는 진행 중인 작업과 참여 에이전트를 먼저 정렬하고 사람이 읽을 수 있는 label/status를 우선하며, raw ID와 event name은 주 정보로 표시하지 않는다. Live card에는 session ID를 표시하지 않는다.
 - task/subagent 중지·재시작, message 전송, permission 자동 승인·거절 기능이 없다.
+- Sender는 기존 bounded retry와 fail-open 동작을 유지한다. Disk queue나 persistent replay가 없으므로 hook budget 안에 전달하지 못한 event를 나중에 재생하지 않는다.
 - 별도로 실행한 App Server는 앱 내장 thread tools와 다른 process다. 공식 앱의 live source로 간주하거나 둘을 같은 API로 설명하지 않는다.
 
 별도로 실행한 Codex `0.146` App Server의 `thread/list` fallback도 실제 확인했지만 현재 root/subagent가 모두 `notLoaded`로 나타나 공식 앱의 live running/completed 상태를 공유하지 않았다. Persisted parent ID, alias, depth 보강은 가능했지만 live 판별에는 채택하지 않았다. `0.3.0`의 primary snapshot은 이 별도 server가 아니라 현재 공식 앱이 직접 제공하는 내장 thread tools를 사용한다.
@@ -211,16 +214,16 @@ Plugin enable/trust와 앱 재시작 뒤 생성되거나 재개되는 task는 tr
 
 ### npm 설치 명령 참고
 
-아래 명령은 `0.4.5`를 exact version으로 설치한다.
+아래 명령은 `0.4.6`을 exact version으로 설치한다.
 
 ```bash
-npm install --global codex-agent-view@0.4.5
+npm install --global codex-agent-view@0.4.6
 codex-agent-view install
 ```
 
 이 두 명령 뒤에는 Codex 앱을 완전히 다시 열고 Plugins 화면에서 설치·활성화와 hook trust를 확인한 다음 새 task를 만든다. 첫 trusted hook이 backend 준비와 event 전달을 내부 처리하므로 사용자가 monitor CLI를 실행하지 않는다. Plugin 카드의 **지금 사용해보기**로 `@codex-agent-view`를 선택하고 앱에서 `$show-agents`를 명시 선택한다. Panel을 닫은 뒤에도 같은 방식으로 skill을 다시 선택한다.
 
-`0.4.5` 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다. 이전의 유효한 설치에서 upgrade하면 installation-owned read-only viewer credential을 유지하며, `0.4.3`에서 검증한 legacy `0.4.2` migration 동작도 그대로 보존한다. Token과 private URL은 출력하지 않는다.
+`0.4.6` 설치 경로는 위의 global package 설치와 명시적인 `codex-agent-view install` command 조합이다. 이후 일반 사용은 Codex 앱 안에서 진행한다. 이전의 유효한 설치에서 upgrade하면 installation-owned read-only viewer credential을 유지하며, `0.4.3`에서 검증한 legacy `0.4.2` migration 동작도 그대로 보존한다. Token과 private URL은 출력하지 않는다.
 
 Version별 npm, install, migration, CI, tag와 GitHub Release evidence는 [docs/distribution.md](docs/distribution.md)에 보존한다. 각 evidence는 실제 확인한 뒤에만 갱신한다.
 

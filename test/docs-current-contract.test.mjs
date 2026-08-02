@@ -67,7 +67,7 @@ test("documents the current live-view UX and evidence boundary", async () => {
   assert.match(privacy, /page cannot mint, discover, or replace/);
 });
 
-test("records 0.4.5 as the current public release while preserving historical 0.4.4", async () => {
+test("records 0.4.6 as the current lifecycle release candidate while preserving public 0.4.5 evidence", async () => {
   const [packageText, manifestText, english, korean, distribution, submission] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -79,17 +79,18 @@ test("records 0.4.5 as the current public release while preserving historical 0.
   const packageMetadata = JSON.parse(packageText);
   const manifest = JSON.parse(manifestText);
 
-  assert.equal(packageMetadata.version, "0.4.5");
-  assert.equal(manifest.version, "0.4.5");
-  assert.match(english, /npm install --global codex-agent-view@0\.4\.5/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.4\.5/);
-  assert.doesNotMatch(english, /release candidate|public npm `latest`[^\n]*0\.4\.4/i);
-  assert.doesNotMatch(korean, /release candidate|public npm `latest`[^\n]*0\.4\.4/i);
+  assert.equal(packageMetadata.version, "0.4.6");
+  assert.equal(manifest.version, "0.4.6");
+  assert.match(english, /npm install --global codex-agent-view@0\.4\.6/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.4\.6/);
+  assert.match(english, /Version `0\.4\.6` is the lifecycle-correctness release/);
+  assert.match(korean, /`0\.4\.6`은 lifecycle 정확성을 바로잡는 릴리스/);
   assert.match(distribution, /Public `0\.4\.5` release evidence/);
   assert.match(submission, /Public `0\.4\.5` release evidence/);
   for (const document of [distribution, submission]) {
     assert.match(document, /public npm `latest`\/version.*`0\.4\.5`/i);
     assert.doesNotMatch(document, /`?0\.4\.5`? release candidate/i);
+    assert.doesNotMatch(document, /public npm `latest`\/version.*`0\.4\.6`/i);
   }
 });
 

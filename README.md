@@ -8,12 +8,12 @@ Codex Agent View gives you a clear, read-only view of what Codex is working on a
 
 ## Quick start: install once, then stay inside the Codex app
 
-This README documents `codex-agent-view@0.4.5`. Use the exact-version command below for the one-time terminal installation.
+This README documents `codex-agent-view@0.4.6`. Use the exact-version command below for the one-time terminal installation.
 
 Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
 ```bash
-npm install --global codex-agent-view@0.4.5
+npm install --global codex-agent-view@0.4.6
 codex-agent-view install
 ```
 
@@ -40,7 +40,7 @@ In short: install once in a terminal; perform snapshot queries, status checks, l
 
 ## Status
 
-Version `0.4.5` adds the work-level request summary, user-facing work/agent terminology, session-ID-free live cards, and in-panel connection/authentication recovery described above. It retains the app-native snapshot skill, privacy-minimized hooks, bounded in-memory reducer, local authenticated live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
+Version `0.4.6` is the lifecycle-correctness release. It gives `SessionEnd` terminal priority, settles unfinished child activity without pretending it succeeded, prevents late events from reopening a finished turn, and reports prolonged unconfirmed activity as **End not confirmed** instead of leaving it indefinitely **Running**. It retains the app-native snapshot skill, privacy-minimized hooks, bounded in-memory reducer, local authenticated live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -78,6 +78,8 @@ Codex Agent View is a live companion, not a historical audit or session-replay p
 
 - The app-native current-task snapshot prioritizes explicit status and `subAgentActivity` from the official Codex app's built-in thread tools.
 - Hooks remain the source of truth for detailed lifecycle state in the trusted-hook auto-prepared local live backend. Its operational state exists only in bounded process memory; restart begins a new observation window. The separate private viewer credential is authentication metadata, not stored task history.
+- `Stop` marks the observed root turn and the session/work-item summary `completed` immediately. If a child agent or tool was still active, its own row is separately marked `completion_not_observed` because no child stop/tool completion signal was observed. `SessionEnd` has terminal priority; any child agent, tool, or permission still open at that point is shown as `interrupted`, not silently completed.
+- Official `SessionEnd` delivery may be delayed by up to 30 minutes. If no ending hook is observed while activity still appears open, five minutes without a new event changes it to `completion_not_observed` (**End not confirmed**), never inferred `completed`. This keeps a delayed or missing terminal event from turning stale activity into a false success.
 - The viewer credential is read-only and remains stable across monitor restarts and package upgrades during one installation. The runtime/control token remains separate and process-scoped.
 - After installation, hook trust, and an app restart, the first trusted hook automatically prepares the backend. This prepares a local process; it does not create app UI without a user action.
 - There is no external telemetry, remote server, account, required SQLite/persistent event store, or remote control.
@@ -85,6 +87,7 @@ Codex Agent View is a live companion, not a historical audit or session-replay p
 - The default monitor sorts active work and participating agents first, uses human-readable labels and statuses as the primary presentation, and keeps raw IDs and event names out of the primary reading path. Session IDs are not shown in the live cards.
 - The product cannot stop or restart tasks/subagents, send messages, or approve/deny permissions.
 - Missing, duplicated, or out-of-order events remain visible as empty, unknown, or degraded state instead of being guessed away.
+- The sender keeps its bounded retry and fail-open behavior. It has no disk-backed queue or persistent replay; an event that cannot be delivered within the hook budget is not replayed later.
 
 A separately launched Codex `0.146` App Server `thread/list` fallback was also tested. It reported both the current root and subagents as `notLoaded`, so it did not share the official app's live running/completed state. That separate process is not the same as the built-in thread tools exposed directly by the current official app; `0.3.0` uses the latter for its primary snapshot.
 
@@ -163,16 +166,16 @@ After plugin enablement/trust and an app restart, the first trusted hook interna
 
 ## Install from npm
 
-The commands below install `0.4.5` by exact version.
+The commands below install `0.4.6` by exact version.
 
 ```bash
-npm install --global codex-agent-view@0.4.5
+npm install --global codex-agent-view@0.4.6
 codex-agent-view install
 ```
 
 After these two commands, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. Use the plugin card's **Quick start** action to select `@codex-agent-view`, then explicitly select `$show-agents` in the app. Repeat that explicit skill selection after closing the panel.
 
-The `0.4.5` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. When upgrading an older valid installation, `install` preserves the installation-owned read-only viewer credential; the legacy `0.4.2` migration behavior remains as documented for `0.4.3`. Neither token nor the private URL is printed.
+The `0.4.6` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. When upgrading an older valid installation, `install` preserves the installation-owned read-only viewer credential; the legacy `0.4.2` migration behavior remains as documented for `0.4.3`. Neither token nor the private URL is printed.
 
 Version-specific npm, install, migration, CI, tag, and GitHub Release evidence is preserved in [Distribution](docs/distribution.md). That evidence is updated only after each item is actually verified.
 

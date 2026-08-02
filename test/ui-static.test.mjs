@@ -34,6 +34,29 @@ function loadStableAgentOrdinalHelper() {
   return Function(`"use strict";\n${app.slice(start, end)}\nreturn { assignStableAgentOrdinals };`)();
 }
 
+function loadStatusHelpers() {
+  const normalizeStatus = extractFunction("normalizeStatus");
+  const normalizeCoreStatus = extractFunction("normalizeCoreStatus");
+  const deriveSessionStatus = extractFunction("deriveSessionStatus");
+  return Function(
+    "KNOWN_STATUSES",
+    `"use strict"; ${normalizeStatus}\n${normalizeCoreStatus}\n${deriveSessionStatus}\nreturn { normalizeCoreStatus, deriveSessionStatus };`,
+  )(new Set([
+    "running",
+    "waiting",
+    "completed",
+    "completion_not_observed",
+    "stale",
+    "interrupted",
+    "unknown",
+  ]));
+}
+
+function loadStatusFilterHelper() {
+  const source = extractFunction("sessionMatchesStatus");
+  return Function(`"use strict"; ${source}; return sessionMatchesStatus;`)();
+}
+
 function createRefreshStateHarness(responses) {
   const calls = [];
   const connectionStates = [];
@@ -364,10 +387,52 @@ for (const status of [401, 403]) {
 
 test("does not infer parent task completion from completed subagents", () => {
   assert.match(app, /function deriveSessionStatus\(session, agents, recentActivities\)/);
+  assert.match(app, /reportedStatus !== "unknown"[\s\S]*?return reportedStatus/);
   assert.match(app, /session\.permission\?\.status === "waiting_for_user"[\s\S]*?return "waiting"/);
-  assert.match(app, /reportedStatus === "running" \|\| reportedStatus === "completed"/);
   assert.match(app, /agents\.some\(\(agent\) => agent\.status === "running"\)[\s\S]*?return "running"/);
   assert.doesNotMatch(app, /agents\.every\(/);
+});
+
+test("renders unconfirmed and interrupted lifecycle states honestly in every locale", () => {
+  assert.match(app, /"completion_not_observed"/);
+  assert.match(app, /"stale"/);
+  assert.match(app, /"interrupted"/);
+  assert.match(app, /statusCompletionNotObserved: "End not confirmed"/);
+  assert.match(app, /statusCompletionNotObserved: "종료 확인 안 됨"/);
+  assert.match(app, /statusCompletionNotObserved: "Fin no confirmado"/);
+  assert.match(app, /completionNotObservedExplanation: "No end signal was received for this item/);
+  assert.match(app, /completionNotObservedExplanation: "이 항목의 종료 신호를 받지 못해/);
+  assert.match(app, /completionNotObservedExplanation: "No se recibió una señal de fin para este elemento/);
+  assert.doesNotMatch(app, /completionNotObservedExplanation: "(?:No recent activity|최근 활동이 없지만|No se observó actividad reciente)/);
+  assert.match(app, /interruptedExplanation: "This activity was still open when the work ended/);
+  assert.match(app, /function createStatusExplanation\(status\)/);
+  assert.match(app, /explanation\.className = "status-explanation"/);
+  assert.match(html, /<option value="completion_not_observed"[^>]*>End not confirmed<\/option>/);
+  assert.match(styles, /\.session-card\[data-status="completion_not_observed"\]/);
+  assert.match(styles, /\.status-badge\[data-status="interrupted"\]/);
+  assert.match(styles, /\.status-explanation/);
+
+  const { normalizeCoreStatus, deriveSessionStatus } = loadStatusHelpers();
+  for (const status of ["completion_not_observed", "stale", "interrupted"]) {
+    assert.equal(normalizeCoreStatus(status), status);
+  }
+  assert.equal(
+    deriveSessionStatus(
+      { status: "completion_not_observed", permission: { status: "waiting_for_user" } },
+      [{ status: "running" }],
+      [{ status: "running" }],
+    ),
+    "completion_not_observed",
+  );
+
+  const sessionMatchesStatus = loadStatusFilterHelper();
+  const activityInterrupted = {
+    status: "completed",
+    agents: [{ status: "completed" }],
+    recentActivities: [{ status: "interrupted" }],
+  };
+  assert.equal(sessionMatchesStatus(activityInterrupted, "interrupted"), true);
+  assert.equal(sessionMatchesStatus(activityInterrupted, "running"), false);
 });
 
 test("keeps agent ordinals stable when last-seen ordering changes", () => {

@@ -5,6 +5,7 @@ const DEFAULT_LIMITS = Object.freeze({
   maxAgentsPerSession: 100,
   maxDiagnostics: 100,
   maxSessions: 50,
+  staleAfterMs: 5 * 60 * 1000,
 });
 
 function positiveInteger(value, name) {
@@ -74,7 +75,30 @@ function applyWorkspaceLabel(session, event) {
   session.workspace_label_observed_at_ms = event.received_at_ms;
 }
 
-function deriveSessionStatus(session) {
+function hasActiveState(session) {
+  return (
+    session.permission.status === "waiting_for_user" ||
+    session.root_turn.status === "running" ||
+    [...session.agents.values()].some(({ status }) => status === "running") ||
+    [...session.tools.values()].some(({ status }) => status === "running")
+  );
+}
+
+function isStaleActiveSession(session, nowMs, staleAfterMs) {
+  return (
+    !session.lifecycle.end_observed &&
+    hasActiveState(session) &&
+    nowMs - session.last_seen_at_ms >= staleAfterMs
+  );
+}
+
+function deriveSessionStatus(session, nowMs, staleAfterMs) {
+  if (session.lifecycle.end_observed) {
+    return "completed";
+  }
+  if (isStaleActiveSession(session, nowMs, staleAfterMs)) {
+    return "completion_not_observed";
+  }
   if (session.permission.status === "waiting_for_user") {
     return "waiting_for_user";
   }
@@ -85,10 +109,90 @@ function deriveSessionStatus(session) {
   ) {
     return "running";
   }
-  if (session.lifecycle.end_observed) {
+  if (session.root_turn.status === "completed") {
     return "completed";
   }
   return "observed";
+}
+
+function settleRunningState(session, status, options = {}) {
+  const turnId = options.turnId;
+  const settledAgentIds = new Set();
+  const settledToolUseIds = new Set();
+  for (const agent of session.agents.values()) {
+    if (
+      agent.status === "running" &&
+      (turnId === undefined || agent.turn_id === turnId)
+    ) {
+      agent.status = status;
+      settledAgentIds.add(agent.agent_id);
+    }
+  }
+  for (const tool of session.tools.values()) {
+    if (
+      tool.status === "running" &&
+      (turnId === undefined || tool.turn_id === turnId)
+    ) {
+      tool.status = status;
+      settledToolUseIds.add(tool.tool_use_id);
+    }
+  }
+  for (const activity of session.recent_activities) {
+    if (
+      activity.status === "running" &&
+      ((activity.type === "subagent_started" &&
+        settledAgentIds.has(activity.agent_id)) ||
+        (activity.type === "tool_started" &&
+          settledToolUseIds.has(activity.tool_use_id)))
+    ) {
+      activity.status = status;
+    }
+  }
+}
+
+function clearPermission(session, activityStatus) {
+  const permission = session.permission;
+  if (permission.status !== "waiting_for_user") {
+    return;
+  }
+  for (const activity of session.recent_activities) {
+    if (
+      activity.type === "permission_requested" &&
+      activity.status === "waiting_for_user" &&
+      activity.turn_id === permission.turn_id &&
+      activity.tool_name === permission.tool_name
+    ) {
+      activity.status = activityStatus;
+      break;
+    }
+  }
+  session.permission = { status: "idle" };
+}
+
+function settleRootTurnActivity(session, status) {
+  for (const activity of session.recent_activities) {
+    if (
+      activity.type === "turn_started" &&
+      activity.status === "running" &&
+      activity.turn_id === session.root_turn.turn_id
+    ) {
+      activity.status = status;
+      break;
+    }
+  }
+}
+
+function resetTransientState(session) {
+  session.agents.clear();
+  session.tools.clear();
+  session.root_turn = {
+    status: "idle",
+    turn_id: null,
+    started_at_ms: null,
+    stopped_at_ms: null,
+    has_out_of_order_events: false,
+  };
+  session.permission = { status: "idle" };
 }
 
 function touchMapEntry(map, key, value) {
@@ -109,7 +213,14 @@ function addActivity(session, event, status, limit) {
     received_at_ms: event.received_at_ms,
   };
 
-  for (const field of ["turn_id", "agent_id", "agent_type", "tool_name", "tool_use_id"]) {
+  for (const field of [
+    "turn_id",
+    "agent_id",
+    "agent_type",
+    "tool_name",
+    "tool_use_id",
+    "session_start_source",
+  ]) {
     if (field in event) {
       activity[field] = event[field];
     }
@@ -125,11 +236,35 @@ function applySessionEvent(session, event, limits) {
   const lifecycle = session.lifecycle;
   if (event.type === "session_started") {
     const resumedAfterEnd = lifecycle.end_observed;
+    const startsNewEpoch =
+      resumedAfterEnd ||
+      event.session_start_source === "resume" ||
+      event.session_start_source === "clear";
+    if (event.session_start_source === "compact") {
+      if (resumedAfterEnd) {
+        return "stale";
+      }
+      lifecycle.start_observed = true;
+      lifecycle.started_at_ms ??= event.received_at_ms;
+      addActivity(session, event, "observed", limits.maxActivitiesPerSession);
+      return "applied";
+    }
+    if (lifecycle.start_observed && !startsNewEpoch) {
+      return "duplicate";
+    }
+    if (startsNewEpoch) {
+      if (!resumedAfterEnd) {
+        settleRootTurnActivity(session, "completion_not_observed");
+        clearPermission(session, "completion_not_observed");
+        settleRunningState(session, "completion_not_observed");
+      }
+      resetTransientState(session);
+    }
     lifecycle.start_observed = true;
-    lifecycle.started_at_ms ??= event.received_at_ms;
+    lifecycle.started_at_ms = event.received_at_ms;
     lifecycle.end_observed = false;
     lifecycle.ended_at_ms = null;
-    lifecycle.has_out_of_order_events ||= resumedAfterEnd;
+    lifecycle.has_out_of_order_events = false;
     addActivity(session, event, "observed", limits.maxActivitiesPerSession);
     return "applied";
   }
@@ -140,9 +275,11 @@ function applySessionEvent(session, event, limits) {
   lifecycle.end_observed = true;
   lifecycle.ended_at_ms = event.received_at_ms;
   lifecycle.has_out_of_order_events = !lifecycle.start_observed;
+  settleRootTurnActivity(session, "completed");
   session.root_turn.status = "completed";
   session.root_turn.stopped_at_ms ??= event.received_at_ms;
-  session.permission = { status: "idle" };
+  clearPermission(session, "interrupted");
+  settleRunningState(session, "interrupted");
   addActivity(session, event, "completed", limits.maxActivitiesPerSession);
   return "applied";
 }
@@ -150,9 +287,10 @@ function applySessionEvent(session, event, limits) {
 function applyTurnEvent(session, event, limits) {
   const turn = session.root_turn;
   if (event.type === "turn_started") {
-    if (turn.turn_id === event.turn_id && turn.status === "running") {
-      return "duplicate";
+    if (turn.turn_id === event.turn_id) {
+      return turn.status === "running" ? "duplicate" : "stale";
     }
+    settleRunningState(session, "completion_not_observed");
     session.root_turn = {
       status: "running",
       turn_id: event.turn_id,
@@ -160,7 +298,12 @@ function applyTurnEvent(session, event, limits) {
       stopped_at_ms: null,
       has_out_of_order_events: false,
     };
-    session.permission = { status: "idle" };
+    if (
+      session.permission.status !== "waiting_for_user" ||
+      session.permission.turn_id !== event.turn_id
+    ) {
+      clearPermission(session, "completion_not_observed");
+    }
     addActivity(session, event, "running", limits.maxActivitiesPerSession);
     return "applied";
   }
@@ -169,6 +312,9 @@ function applyTurnEvent(session, event, limits) {
     return "duplicate";
   }
   const startObserved = turn.turn_id === event.turn_id && turn.started_at_ms !== null;
+  if (startObserved) {
+    settleRootTurnActivity(session, "completed");
+  }
   session.root_turn = {
     status: "completed",
     turn_id: event.turn_id,
@@ -176,7 +322,15 @@ function applyTurnEvent(session, event, limits) {
     stopped_at_ms: event.received_at_ms,
     has_out_of_order_events: !startObserved,
   };
-  session.permission = { status: "idle" };
+  if (
+    session.permission.status === "waiting_for_user" &&
+    session.permission.turn_id === event.turn_id
+  ) {
+    clearPermission(session, "completion_not_observed");
+  }
+  settleRunningState(session, "completion_not_observed", {
+    turnId: event.turn_id,
+  });
   addActivity(
     session,
     event,
@@ -192,6 +346,7 @@ function applySubagentEvent(session, event, limits) {
     agent = {
       agent_id: event.agent_id,
       agent_type: event.agent_type,
+      turn_id: event.turn_id,
       status: "unknown",
       started_at_ms: null,
       stopped_at_ms: null,
@@ -225,6 +380,7 @@ function applySubagentEvent(session, event, limits) {
   }
 
   agent.agent_type = event.agent_type;
+  agent.turn_id = event.turn_id;
   agent.last_seen_at_ms = Math.max(agent.last_seen_at_ms, event.received_at_ms);
   touchMapEntry(session.agents, event.agent_id, agent);
   trimMap(session.agents, limits.maxAgentsPerSession);
@@ -282,7 +438,7 @@ function applyToolEvent(session, event, limits) {
       permission.turn_id === event.turn_id &&
       event.received_at_ms >= permission.requested_at_ms
     ) {
-      session.permission = { status: "idle" };
+      clearPermission(session, "completed");
     }
   }
 
@@ -328,8 +484,28 @@ function applyPermissionEvent(session, event, limits) {
 }
 
 function applyEvent(session, event, limits) {
-  if (event.type === "session_started" || event.type === "session_ended") {
+  if (event.type === "session_started") {
     return applySessionEvent(session, event, limits);
+  }
+  if (
+    session.lifecycle.end_observed &&
+    event.type !== "tool_completed" &&
+    event.type !== "subagent_stopped"
+  ) {
+    return event.type === "session_ended" ? "duplicate" : "stale";
+  }
+  if (event.type === "session_ended") {
+    return applySessionEvent(session, event, limits);
+  }
+  if (
+    session.root_turn.status === "completed" &&
+    session.root_turn.turn_id === event.turn_id &&
+    (event.type === "turn_started" ||
+      event.type === "permission_requested" ||
+      event.type === "tool_started" ||
+      event.type === "subagent_started")
+  ) {
+    return "stale";
   }
   if (event.type === "turn_started" || event.type === "turn_stopped") {
     return applyTurnEvent(session, event, limits);
@@ -343,22 +519,51 @@ function applyEvent(session, event, limits) {
   return applyPermissionEvent(session, event, limits);
 }
 
-function snapshotSession(session) {
+function snapshotSession(session, nowMs, staleAfterMs) {
+  const staleActive = isStaleActiveSession(session, nowMs, staleAfterMs);
   return {
     session_id: session.session_id,
     workspace_label: session.workspace_label,
     task_summary: session.task_summary,
-    status: deriveSessionStatus(session),
+    status: deriveSessionStatus(session, nowMs, staleAfterMs),
     first_seen_at_ms: session.first_seen_at_ms,
     last_seen_at_ms: session.last_seen_at_ms,
     agents: [...session.agents.values()]
-      .map(({ start_observed, stop_observed, ...agent }) => ({ ...agent }))
+      .map(({ start_observed, stop_observed, ...agent }) => ({
+        ...agent,
+        ...(staleActive && agent.status === "running"
+          ? { status: "completion_not_observed" }
+          : {}),
+      }))
       .sort((left, right) => right.last_seen_at_ms - left.last_seen_at_ms),
-    root_turn: { ...session.root_turn },
+    tools: [...session.tools.values()]
+      .map(({ start_observed, completion_observed, ...tool }) => ({
+        ...tool,
+        ...(staleActive && tool.status === "running"
+          ? { status: "completion_not_observed" }
+          : {}),
+      }))
+      .sort((left, right) => right.last_seen_at_ms - left.last_seen_at_ms),
+    root_turn: {
+      ...session.root_turn,
+      ...(staleActive && session.root_turn.status === "running"
+        ? { status: "completion_not_observed" }
+        : {}),
+    },
     recent_activities: session.recent_activities.map((activity) => ({
       ...activity,
+      ...(staleActive &&
+      (activity.status === "running" ||
+        activity.status === "waiting_for_user")
+        ? { status: "completion_not_observed" }
+        : {}),
     })),
-    permission: { ...session.permission },
+    permission: {
+      ...session.permission,
+      ...(staleActive && session.permission.status === "waiting_for_user"
+        ? { status: "completion_not_observed" }
+        : {}),
+    },
   };
 }
 
@@ -380,6 +585,10 @@ export function createMonitorStore(options = {}) {
     maxSessions: positiveInteger(
       options.maxSessions ?? DEFAULT_LIMITS.maxSessions,
       "maxSessions",
+    ),
+    staleAfterMs: positiveInteger(
+      options.staleAfterMs ?? DEFAULT_LIMITS.staleAfterMs,
+      "staleAfterMs",
     ),
   };
   const now = options.now ?? Date.now;
@@ -445,12 +654,15 @@ export function createMonitorStore(options = {}) {
   }
 
   function getSnapshot() {
+    const snapshotAtMs = now();
     return {
       schema_version: 1,
       source_of_truth: "hook",
       updated_at_ms: updatedAtMs,
       sessions: [...sessions.values()]
-        .map(snapshotSession)
+        .map((session) =>
+          snapshotSession(session, snapshotAtMs, limits.staleAfterMs),
+        )
         .sort((left, right) => right.last_seen_at_ms - left.last_seen_at_ms),
       diagnostics: diagnostics.map((diagnostic) => ({ ...diagnostic })),
     };

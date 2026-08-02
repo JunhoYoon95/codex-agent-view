@@ -121,6 +121,8 @@ Phase 0의 repository 조사와 구현 입력 정리는 완료됐다. Repository
 - monitor core를 외부 DB 없이 bounded in-memory reducer로 구현했고, live companion의 완성 architecture로 채택했다.
 - 공식 앱 내장 thread tools로 workspace를 넘나드는 active task의 explicit status, 최신 explicit commentary와 `subAgentActivity`를 bounded snapshot으로 읽을 수 있다.
 - Explicit active status와 `idle + hasUnreadTurn`을 구분해 후자를 별도 확인 대기 그룹에 표시할 수 있다. `idle` 또는 unread만으로 성공이나 완료를 추론할 수는 없다.
+- `Stop`은 root turn과 session/work-item 요약을 즉시 `completed`로 표시한다. 당시 진행 중인 child agent/tool row는 자체 종료 신호 미관찰 상태인 `completion_not_observed`로 분리한다. `SessionEnd`는 terminal priority를 가지며 그 시점의 orphan agent/tool/permission을 `interrupted`로 정리한다.
+- 종료 hook을 관찰하지 못한 active state는 기본 5분 동안 새 event가 없으면 `completion_not_observed`로 표시할 수 있다. 이는 종료 관찰 실패 상태이며 완료 또는 성공 판정이 아니다.
 - 전체 `cwd` 대신 control-character 제거, whitespace 정규화, 최대 120자의 basename `workspace_label`만 optional monitor의 process memory에 유지할 수 있다.
 - Live task/event state를 process-local bounded memory에만 유지하면서, task content가 없는 read-only viewer credential만 설치 수명 private file로 분리해 열린 Codex tab의 restart/upgrade 재연결을 지원할 수 있다.
 
@@ -214,9 +216,9 @@ Phase 0 capture는 원본 payload를 영구 model로 복사하기 위한 것이 
 | Event | runtime에 유지하는 입력 field | derived state |
 | --- | --- | --- |
 | turn 공통 | `hook_event_name`, `session_id`, `turn_id`, local `received_at_ms` | normalized event type, session first/last seen |
-| `SessionStart` / `SessionEnd` | `hook_event_name`, `session_id`, local `received_at_ms` | session start/end observed, observed/completed, out-of-order flag |
+| `SessionStart` / `SessionEnd` | `hook_event_name`, `session_id`, local `received_at_ms`; `SessionStart`의 verified `session_start_source` enum(`startup`, `resume`, `clear`, `compact`, 있을 때) | session start/end observed, terminal `completed`, orphan work `interrupted`, out-of-order flag |
 | `UserPromptSubmit` | turn 공통 field, bounded/redacted one-line `task_summary`(있을 때) | root turn running, 작업 수준의 짧은 요청 요약, out-of-order flag |
-| `Stop` | turn 공통 field | root turn completed, out-of-order flag |
+| `Stop` | turn 공통 field | root turn과 session/work-item 요약을 즉시 `completed`; active child/tool row는 `completion_not_observed`, out-of-order flag |
 | `SubagentStart` / `SubagentStop` | `agent_id`, `agent_type` | running, stopped, stopped-without-start, out-of-order flag |
 | `PreToolUse` / `PostToolUse` | `tool_name`, `tool_use_id` | running, completed, completed-without-start, out-of-order flag |
 | `PermissionRequest` | `tool_name` | waiting-for-user permission state |
@@ -227,9 +229,13 @@ Phase 0 capture는 원본 payload를 영구 model로 복사하기 위한 것이 
 
 `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `Stop`은 `0.2.1`에서 parent task가 subagent를 만들기 전에도 관찰 window에 나타나도록 추가했다. 이 wiring과 reducer fixture 통과는 공식 GUI가 해당 command hook을 실제 dispatch했다는 증거가 아니다.
 
-Reducer는 event identity가 완전히 보장된다고 가정하지 않는다. 관찰된 ID를 상관관계 key로 사용하되 duplicate, stop-before-start, post-before-pre, stale permission event를 명시적 상태로 처리한다. Session, agent, activity, diagnostic collection에 상한을 두고 monitor restart 뒤 이전 event를 복구하거나 parent completion을 추측하지 않는다.
+Verified `session_start_source`가 `resume` 또는 `clear`이면 새 observation epoch를 시작하며 root turn, agent, tool과 permission transient state를 reset하고, 열린 session의 `compact`는 현재 active transient state를 보존한다.
 
-Runtime server는 `127.0.0.1` 외 bind를 거부한다. Process-scoped runtime/control token은 `/api/events`, `/api/internal/shutdown`, `/api/state`를 인증하고, 별도 installation-scoped viewer credential은 `/api/state`만 읽을 수 있다. Viewer credential private file은 user-only 권한으로 유지되며 task/event payload를 포함하지 않는다. Hook sender는 기존 backend 전달이 실패하면 fixed loopback port의 detached backend를 무출력으로 내부 준비하고, 500ms 전송 timeout과 최대 1.6초의 bounded wait 안에서 같은 최소화 event를 재시도한다. 동시 hook은 하나의 listener로 수렴하며 준비 실패는 neutral `{}` response로 fail-open해 Codex task를 막지 않는다. Event를 disk queue에 적재하거나 이후 replay하지 않는다. Browser는 viewer token을 URL fragment에서 `sessionStorage`로 옮기고 fragment를 제거하며 external asset/CDN을 사용하지 않는다.
+Reducer는 event identity가 완전히 보장된다고 가정하지 않는다. 관찰된 ID를 상관관계 key로 사용하되 duplicate, stop-before-start, post-before-pre, stale permission event를 명시적 상태로 처리한다. `SessionEnd`는 terminal signal로 우선 적용하고 그 시점에도 열린 orphan agent/tool/permission을 `interrupted`로 정리한다. `Stop`은 root turn과 session/work-item 요약을 즉시 `completed`로 표시하고, 당시 열린 child agent/tool row는 자체 종료 신호가 관찰되지 않은 `completion_not_observed`로 분리한다. 종료 hook을 관찰하지 못한 active state는 기본 5분 동안 새 event가 없으면 `completion_not_observed`로 표시하며, 이를 완료나 성공으로 바꾸지 않는다.
+
+공식 Codex lifecycle에서 `SessionEnd`는 최대 30분 지연될 수 있다. 따라서 단순히 오래된 상태라는 이유만으로 `completed`를 추정하면 정상적으로 지연 중인 terminal event를 거짓 완료로 바꿀 수 있다. `completion_not_observed`는 이 관찰 한계를 사용자에게 그대로 보여주며, 이후 실제 `SessionEnd`가 도착하면 terminal priority에 따라 확정 상태를 적용한다. Session, agent, activity, diagnostic collection에는 상한을 두고 monitor restart 뒤 이전 event를 복구하거나 parent completion을 추측하지 않는다.
+
+Runtime server는 `127.0.0.1` 외 bind를 거부한다. Process-scoped runtime/control token은 `/api/events`, `/api/internal/shutdown`, `/api/state`를 인증하고, 별도 installation-scoped viewer credential은 `/api/state`만 읽을 수 있다. Viewer credential private file은 user-only 권한으로 유지되며 task/event payload를 포함하지 않는다. Hook sender는 기존 backend 전달이 실패하면 fixed loopback port의 detached backend를 무출력으로 내부 준비하고, 500ms 전송 timeout과 최대 1.6초의 bounded wait 안에서 같은 최소화 event를 재시도한다. 동시 hook은 하나의 listener로 수렴하며 준비 실패는 neutral `{}` response로 fail-open해 Codex task를 막지 않는다. Event를 disk queue에 적재하거나 이후 replay하지 않으므로, 전달되지 않은 terminal hook을 persistent history에서 복구할 수 있다고 가정하지 않는다. Browser는 viewer token을 URL fragment에서 `sessionStorage`로 옮기고 fragment를 제거하며 external asset/CDN을 사용하지 않는다.
 
 설치·hook trust·앱 재시작 뒤 첫 trusted hook이 backend를 자동 준비하므로 일반 사용자는 task ID를 등록하거나 terminal에서 `start`, `status`, `doctor`를 실행하지 않는다. 다만 공식 public plugin API에는 앱 시작 시 prompt 없이 sidebar, panel 또는 Browser tab을 생성하는 기능이 없다. Plugin manifest의 `interface.defaultPrompt`는 starter text이며 `$show-agents` text가 skill selection으로 dispatch된다고 보장하지 않는다. Current source는 이 field를 제거해 **지금 사용해보기**가 `@codex-agent-view` 뒤에 text를 붙이지 않게 하고, 사용자는 Codex 앱에서 `$show-agents` skill을 명시 선택한다. 이 skill이 app-native text snapshot까지 수행한다고 주장하지 않는다. 앱의 Browser capability 또는 permission을 사용할 수 없으면 private URL 노출이나 외부 browser 우회 없이 실패를 안내한다.
 

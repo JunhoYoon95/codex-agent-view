@@ -4,7 +4,15 @@ const SESSION_TOKEN_KEY = "codex-agent-view-access-token";
 const EXCLUDED_SESSION_KEY = "codex-agent-view-excluded-session";
 const LANGUAGE_KEY = "codex-agent-view-language";
 const SUPPORTED_LANGUAGES = new Set(["en", "ko", "es"]);
-const KNOWN_STATUSES = new Set(["running", "waiting", "completed", "unknown"]);
+const KNOWN_STATUSES = new Set([
+  "running",
+  "waiting",
+  "completed",
+  "completion_not_observed",
+  "stale",
+  "interrupted",
+  "unknown",
+]);
 const VIEWER_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const CANONICAL_SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -47,7 +55,13 @@ const MESSAGES = Object.freeze({
     statusRunning: "Running",
     statusWaiting: "Waiting",
     statusCompleted: "Completed",
+    statusCompletionNotObserved: "End not confirmed",
+    statusStale: "Stale · end not confirmed",
+    statusInterrupted: "Interrupted",
     statusUnknown: "Unknown",
+    completionNotObservedExplanation: "No end signal was received for this item, so completion cannot be confirmed.",
+    staleExplanation: "This status is out of date and no end signal was received. Completion cannot be confirmed.",
+    interruptedExplanation: "This activity was still open when the work ended; its own completion signal was not observed.",
     connectingCopy: "Connecting to the Codex app's local status.",
     sessionListAria: "Codex work list",
     privacyPrompt: "This view shows only a shortened request summary; it never displays the full request or tool inputs.",
@@ -180,7 +194,13 @@ const MESSAGES = Object.freeze({
     statusRunning: "실행 중",
     statusWaiting: "대기",
     statusCompleted: "완료",
+    statusCompletionNotObserved: "종료 확인 안 됨",
+    statusStale: "오래된 상태 · 종료 확인 안 됨",
+    statusInterrupted: "중단됨",
     statusUnknown: "알 수 없음",
+    completionNotObservedExplanation: "이 항목의 종료 신호를 받지 못해 완료 여부를 확정할 수 없습니다.",
+    staleExplanation: "상태 정보가 오래되었고 종료 신호를 받지 못했습니다. 완료 여부를 확정할 수 없습니다.",
+    interruptedExplanation: "전체 작업이 끝날 때 이 활동이 열린 상태였습니다. 이 활동 자체의 완료 신호는 확인되지 않았습니다.",
     connectingCopy: "Codex 앱의 로컬 상태에 연결하고 있습니다.",
     sessionListAria: "Codex 작업 목록",
     privacyPrompt: "이 화면은 짧게 줄인 요청 요약만 표시하며, 전체 요청이나 도구 입력은 표시하지 않습니다.",
@@ -313,7 +333,13 @@ const MESSAGES = Object.freeze({
     statusRunning: "En ejecución",
     statusWaiting: "En espera",
     statusCompleted: "Completado",
+    statusCompletionNotObserved: "Fin no confirmado",
+    statusStale: "Estado desactualizado · fin no confirmado",
+    statusInterrupted: "Interrumpido",
     statusUnknown: "Desconocido",
+    completionNotObservedExplanation: "No se recibió una señal de fin para este elemento, por lo que no se puede confirmar que haya terminado.",
+    staleExplanation: "El estado está desactualizado y no se recibió una señal de fin. No se puede confirmar que haya terminado.",
+    interruptedExplanation: "Esta actividad seguía abierta cuando terminó el trabajo; no se observó su propia señal de finalización.",
     connectingCopy: "Conectando al estado local de la aplicación Codex.",
     sessionListAria: "Lista de trabajos de Codex",
     privacyPrompt: "Esta vista solo muestra un resumen abreviado de la solicitud; nunca muestra la solicitud completa ni las entradas de herramientas.",
@@ -414,14 +440,26 @@ const STATUS_KEYS = Object.freeze({
   running: "statusRunning",
   waiting: "statusWaiting",
   completed: "statusCompleted",
+  completion_not_observed: "statusCompletionNotObserved",
+  stale: "statusStale",
+  interrupted: "statusInterrupted",
   unknown: "statusUnknown",
 });
 
 const STATUS_ORDER = Object.freeze({
   running: 0,
   waiting: 1,
-  unknown: 2,
-  completed: 3,
+  completion_not_observed: 2,
+  stale: 2,
+  interrupted: 3,
+  unknown: 4,
+  completed: 5,
+});
+
+const STATUS_EXPLANATION_KEYS = Object.freeze({
+  completion_not_observed: "completionNotObservedExplanation",
+  stale: "staleExplanation",
+  interrupted: "interruptedExplanation",
 });
 
 const ACTIVITY_KEYS = Object.freeze({
@@ -693,6 +731,9 @@ function normalizeCoreStatus(value) {
   ) {
     return "completed";
   }
+  if (value === "completion_not_observed" || value === "stale" || value === "interrupted") {
+    return value;
+  }
   return normalizeStatus(value);
 }
 
@@ -783,12 +824,12 @@ function normalizeDiagnostic(value) {
 }
 
 function deriveSessionStatus(session, agents, recentActivities) {
+  const reportedStatus = normalizeCoreStatus(session.status);
+  if (reportedStatus !== "unknown") {
+    return reportedStatus;
+  }
   if (session.permission?.status === "waiting_for_user") {
     return "waiting";
-  }
-  const reportedStatus = normalizeCoreStatus(session.status);
-  if (reportedStatus === "running" || reportedStatus === "completed") {
-    return reportedStatus;
   }
   if (
     agents.some((agent) => agent.status === "running") ||
@@ -924,10 +965,22 @@ function createStatusBadge(status) {
   dot.setAttribute("aria-hidden", "true");
 
   const label = document.createElement("span");
-  label.textContent = t(STATUS_KEYS[status]);
+  label.textContent = t(STATUS_KEYS[status] ?? "statusUnknown");
 
   badge.append(dot, label);
   return badge;
+}
+
+function createStatusExplanation(status) {
+  const messageKey = STATUS_EXPLANATION_KEYS[status];
+  if (!messageKey) {
+    return null;
+  }
+
+  const explanation = document.createElement("p");
+  explanation.className = "status-explanation";
+  explanation.textContent = t(messageKey);
+  return explanation;
 }
 
 function createTime(timestampMs, prefix) {
@@ -1006,10 +1059,16 @@ function createAgentItem(agent) {
     document.createTextNode(` · ${formatDuration(agent.startedAtMs, agent.stoppedAtMs)}`),
   );
 
+  const statusExplanation = createStatusExplanation(agent.status);
+
   const technicalRows = [[t("agentId"), agent.agentId]];
   technicalRows.push([t("rawProfile"), agent.agentType]);
 
-  item.append(heading, metadata, createTechnicalInfo(technicalRows));
+  item.append(heading, metadata);
+  if (statusExplanation) {
+    item.append(statusExplanation);
+  }
+  item.append(createTechnicalInfo(technicalRows));
   return item;
 }
 
@@ -1081,6 +1140,10 @@ function createSessionCard(session) {
     createStatusBadge(session.status),
     createTime(session.lastActivityAtMs, t("recentActivity")),
   );
+  const statusExplanation = createStatusExplanation(session.status);
+  if (statusExplanation) {
+    sessionState.append(statusExplanation);
+  }
 
   cardHeader.append(identity, sessionState);
 
@@ -1156,10 +1219,15 @@ function sessionMatchesQuery(session, query) {
 }
 
 function sessionMatchesStatus(session, status) {
+  const matchesStatus = (candidate) => (
+    candidate === status ||
+    (status === "completion_not_observed" && candidate === "stale")
+  );
   return (
     status === "all" ||
-    session.status === status ||
-    session.agents.some((agent) => agent.status === status)
+    matchesStatus(session.status) ||
+    session.agents.some((agent) => matchesStatus(agent.status)) ||
+    session.recentActivities.some((activity) => matchesStatus(activity.status))
   );
 }
 

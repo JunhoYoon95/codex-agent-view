@@ -54,7 +54,7 @@ if (args.join(" ") === "plugin marketplace list --json") {
   process.stdout.write(JSON.stringify({ installed: [{
     pluginId: "codex-agent-view@codex-agent-view",
     enabled: process.env.FAKE_PLUGIN_DISABLED !== "1",
-    version: "0.4.5",
+    version: "0.4.6",
     source: { source: "local", path: sourcePath }
   }] }) + "\\n");
 } else {
@@ -745,7 +745,7 @@ test("doctor distinguishes valid registration from unobservable hook trust and n
     enabled: true,
     installed: true,
     source_path: join(runtimeRoot, "marketplace"),
-    version: "0.4.5",
+    version: "0.4.6",
   });
   assert.equal(report.hook.wiring_ok, true);
   assert.equal(report.hook.trust, "unknown");

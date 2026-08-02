@@ -124,6 +124,20 @@ test("skill uses app task tools before the CLI and keeps sensitive content out o
   assert.match(skill, /tool outputs, command output, tokens, credentials/);
   assert.match(skill, /agent-internal diagnostic path, not a normal user workflow/);
   assert.match(skill, /Never tell the user to open a terminal, type a CLI command/);
+  assert.match(
+    skill,
+    /session\/work-item `completed` status is grounded in an observed `Stop` or\n\s+terminal `SessionEnd`/,
+  );
+  assert.match(
+    skill,
+    /`completion_not_observed` means active state had no new event for the default\n\s+five-minute window and no ending hook was observed/,
+  );
+  assert.match(skill, /Never reinterpret it as either `running` or `completed`/);
+  assert.match(
+    skill,
+    /`interrupted` means the parent\/session became terminal while a child agent or\n\s+tool had no own stop\/completion signal/,
+  );
+  assert.match(skill, /Never rewrite it as `running` or\n\s+`completed`/);
   assert.match(skill, /first trusted hook normally prepares the local backend internally/);
   assert.match(skill, /never registers a task\nID or runs `start`, `status`, or `doctor`/);
   assert.match(skill, /verified app-native thread response has no dedicated field that identifies/);
