@@ -277,6 +277,48 @@ test("delivers a minimized hook event to a live server", async (t) => {
   }
 });
 
+test("derives a safe task summary from UserPromptSubmit before transport", async (t) => {
+  const { env } = await temporaryRuntime(t);
+  const monitor = await startMonitorServer({
+    host: "127.0.0.1",
+    port: 0,
+    env,
+    token: "p".repeat(43),
+    now: () => 550,
+  });
+  t.after(async () => monitor.close().catch(() => {}));
+
+  const rawPrompt = [
+    "상품 검색 결과의 정렬 오류를 고쳐 주세요.",
+    "https://example.com/private person@example.com",
+    "/Users/private/customer/app token=super-secret-token-value",
+    "추가 설명 ".repeat(80),
+  ].join("\n");
+  const result = await runSender(
+    {
+      session_id: "session-summary",
+      turn_id: "turn-summary",
+      hook_event_name: "UserPromptSubmit",
+      prompt: rawPrompt,
+      cwd: "/private/customer/storefront",
+    },
+    env,
+  );
+
+  assert.deepEqual(result, { code: 0, stderr: "", stdout: "{}\n" });
+  const session = monitor.store.getSnapshot().sessions[0];
+  assert.equal(session.workspace_label, "storefront");
+  assert.match(session.task_summary, /^상품 검색 결과의 정렬 오류를 고쳐 주세요\./);
+  assert(Array.from(session.task_summary).length <= 180);
+  const serialized = JSON.stringify(session);
+  assert(!serialized.includes(rawPrompt));
+  assert(!serialized.includes("https://example.com/private"));
+  assert(!serialized.includes("person@example.com"));
+  assert(!serialized.includes("/Users/private/customer/app"));
+  assert(!serialized.includes("super-secret-token-value"));
+  assert(!serialized.includes('"prompt"'));
+});
+
 test("derives only a bounded sanitized workspace basename", async (t) => {
   const { env } = await temporaryRuntime(t);
   const monitor = await startMonitorServer({

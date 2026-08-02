@@ -19,6 +19,8 @@ function createSession(event) {
     session_id: event.session_id,
     workspace_label: null,
     workspace_label_observed_at_ms: null,
+    task_summary: null,
+    task_summary_observed_at_ms: null,
     first_seen_at_ms: event.received_at_ms,
     last_seen_at_ms: event.received_at_ms,
     agents: new Map(),
@@ -40,6 +42,22 @@ function createSession(event) {
     permission: { status: "idle" },
     recent_activities: [],
   };
+}
+
+function applyTaskSummary(session, event) {
+  if (event.type !== "turn_started") {
+    return;
+  }
+  if (
+    session.task_summary_observed_at_ms !== null &&
+    event.received_at_ms < session.task_summary_observed_at_ms
+  ) {
+    return;
+  }
+  session.task_summary_observed_at_ms = event.received_at_ms;
+  if (session.task_summary === null && "task_summary" in event) {
+    session.task_summary = event.task_summary;
+  }
 }
 
 function applyWorkspaceLabel(session, event) {
@@ -329,6 +347,7 @@ function snapshotSession(session) {
   return {
     session_id: session.session_id,
     workspace_label: session.workspace_label,
+    task_summary: session.task_summary,
     status: deriveSessionStatus(session),
     first_seen_at_ms: session.first_seen_at_ms,
     last_seen_at_ms: session.last_seen_at_ms,
@@ -409,6 +428,7 @@ export function createMonitorStore(options = {}) {
     }
 
     applyWorkspaceLabel(session, event);
+    applyTaskSummary(session, event);
 
     session.first_seen_at_ms = Math.min(
       session.first_seen_at_ms,

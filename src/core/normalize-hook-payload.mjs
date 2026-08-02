@@ -15,7 +15,28 @@ const SESSION_EVENT_TYPES = new Set(["session_started", "session_ended"]);
 const MAX_IDENTIFIER_LENGTH = 512;
 const MAX_LABEL_LENGTH = 256;
 const MAX_WORKSPACE_LABEL_LENGTH = 120;
+const MAX_PROMPT_INSPECTION_LENGTH = 4_096;
+const MAX_TASK_SUMMARY_LENGTH = 180;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/;
+const CONTROL_CHARACTERS_GLOBAL = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const URL =
+  /\b[A-Z][A-Z0-9+.-]*:\/\/[^\s<>"'`]+|\bwww\.[^\s<>"'`]+/giu;
+const EMAIL = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu;
+const LABELED_CREDENTIAL =
+  /\b(?:[A-Z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|auth(?:orization)?|bearer|credential|key|password|passwd|private[_-]?key|refresh[_-]?token|secret|token)\b\s*(?:=|:)\s*(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;]+)/giu;
+const BEARER_CREDENTIAL = /\bBearer\s+[A-Za-z0-9._~+\/-]+=*/giu;
+const PREFIXED_SECRET =
+  /\b(?:AKIA[0-9A-Z]{16}|AIza[A-Za-z0-9_-]{20,}|github_pat_[A-Za-z0-9_]{12,}|gh[pousr]_[A-Za-z0-9_]{12,}|glpat-[A-Za-z0-9_-]{12,}|npm_[A-Za-z0-9_]{12,}|sk-[A-Za-z0-9_-]{12,}|(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{12,}|whsec_[A-Za-z0-9]{12,}|xox[baprs]-[A-Za-z0-9-]{12,})\b/gu;
+const JWT = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/gu;
+const PRIVATE_KEY_BLOCK =
+  /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z0-9 ]*PRIVATE KEY-----|$)/giu;
+const WINDOWS_ABSOLUTE_PATH =
+  /(^|[\s("'`=:[{])[A-Za-z]:[\\/][^\s<>"'`)\]},;]*/gu;
+const UNC_ABSOLUTE_PATH =
+  /(^|[\s("'`=:[{])\\\\[^\s<>"'`)\]},;]+(?:\\[^\s<>"'`)\]},;]+)+/gu;
+const POSIX_ABSOLUTE_PATH =
+  /(^|[\s("'`=:[{])\/(?!\/)[^\s<>"'`)\]},;]*(?:\/[^\s<>"'`)\]},;]+)*/gu;
 
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -86,6 +107,52 @@ function optionalWorkspaceLabel(payload) {
   return label;
 }
 
+function replaceAbsolutePaths(value) {
+  return value
+    .replace(UNC_ABSOLUTE_PATH, (_match, prefix) => `${prefix}[path]`)
+    .replace(WINDOWS_ABSOLUTE_PATH, (_match, prefix) => `${prefix}[path]`)
+    .replace(POSIX_ABSOLUTE_PATH, (_match, prefix) => `${prefix}[path]`);
+}
+
+/**
+ * Derive a short, display-safe hint from an untrusted UserPromptSubmit prompt.
+ * The caller must discard the raw prompt after this synchronous derivation.
+ */
+export function deriveTaskSummary(value) {
+  if (typeof value !== "string" || value.length === 0) {
+    return null;
+  }
+
+  let summary = value
+    .slice(0, MAX_PROMPT_INSPECTION_LENGTH)
+    .replace(PRIVATE_KEY_BLOCK, "[credential]")
+    .replace(CONTROL_CHARACTERS_GLOBAL, " ")
+    .replace(URL, "[link]")
+    .replace(EMAIL, "[email]")
+    .replace(LABELED_CREDENTIAL, "[credential]")
+    .replace(BEARER_CREDENTIAL, "[credential]")
+    .replace(PREFIXED_SECRET, "[credential]")
+    .replace(JWT, "[credential]");
+  summary = replaceAbsolutePaths(summary).replace(/\s+/gu, " ").trim();
+
+  if (!summary || !summary.replace(/\[(?:credential|email|link|path)\]/gu, "").trim()) {
+    return null;
+  }
+
+  const characters = Array.from(summary);
+  if (characters.length <= MAX_TASK_SUMMARY_LENGTH) {
+    return summary;
+  }
+
+  const bounded = characters
+    .slice(0, MAX_TASK_SUMMARY_LENGTH - 1)
+    .join("")
+    .trimEnd();
+  const lastSpace = bounded.lastIndexOf(" ");
+  const readableBoundary = lastSpace >= Math.floor(MAX_TASK_SUMMARY_LENGTH * 0.6);
+  return `${readableBoundary ? bounded.slice(0, lastSpace) : bounded}…`;
+}
+
 /**
  * Validate an untrusted Codex hook payload and retain only monitor-safe fields.
  * Raw prompts, tool input/output, paths, and assistant messages are never copied.
@@ -125,6 +192,17 @@ export function normalizeHookPayload(payload, options = {}) {
   const workspaceLabel = optionalWorkspaceLabel(payload);
   if (workspaceLabel) {
     event.workspace_label = workspaceLabel;
+  }
+
+  if (type === "turn_started") {
+    const taskSummary = deriveTaskSummary(
+      typeof payload.task_summary === "string"
+        ? payload.task_summary
+        : payload.prompt,
+    );
+    if (taskSummary) {
+      event.task_summary = taskSummary;
+    }
   }
 
   if (type === "subagent_started" || type === "subagent_stopped") {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { normalizeHookPayload } from "../src/core/index.mjs";
+import { deriveTaskSummary } from "../src/core/normalize-hook-payload.mjs";
 
 const common = {
   session_id: "session-1",
@@ -130,6 +131,97 @@ test("accepts a bounded workspace label without retaining cwd", () => {
   assert.equal(result.status, "accepted");
   assert.equal(result.event.workspace_label, "acme-project");
   assert(!JSON.stringify(result).includes("/private/customer/acme-project"));
+});
+
+test("derives a bounded one-line task summary while redacting private values", () => {
+  const rawPrompt = [
+    "결제 화면 오류를 재현하고 원인을 고쳐 주세요.",
+    "참고: https://example.com/private?id=42",
+    "내부 링크: custom-scheme://private.example/resource",
+    "담당자: person@example.com",
+    "파일: /Users/private/customer/app/page.tsx",
+    "윈도우 파일: C:\\Users\\private\\secrets.txt",
+    "공유 파일: \\\\server\\private\\secrets.txt",
+    "token=super-secret-token-value",
+    "OPENAI_API_KEY=super-secret-api-key",
+    "AKIAIOSFODNN7EXAMPLE",
+    "sk_live_1234567890abcdef",
+    "Bearer eyJprivate.header.signature",
+    "-----BEGIN PRIVATE KEY-----\nprivate-key-material\n-----END PRIVATE KEY-----",
+    "추가 조건 ".repeat(80),
+  ].join("\n");
+
+  const summary = deriveTaskSummary(rawPrompt);
+  assert.equal(typeof summary, "string");
+  assert(summary.startsWith("결제 화면 오류를 재현하고 원인을 고쳐 주세요."));
+  assert(Array.from(summary).length <= 180);
+  assert(!/[\r\n\u0000-\u001f]/u.test(summary));
+  for (const privateValue of [
+    "https://example.com/private?id=42",
+    "custom-scheme://private.example/resource",
+    "person@example.com",
+    "/Users/private/customer/app/page.tsx",
+    "C:\\Users\\private\\secrets.txt",
+    "\\\\server\\private\\secrets.txt",
+    "super-secret-token-value",
+    "super-secret-api-key",
+    "AKIAIOSFODNN7EXAMPLE",
+    "sk_live_1234567890abcdef",
+    "eyJprivate.header.signature",
+    "private-key-material",
+  ]) {
+    assert(!summary.includes(privateValue));
+  }
+  for (const placeholder of ["[link]", "[email]", "[path]", "[credential]"]) {
+    assert(summary.includes(placeholder));
+  }
+  assert(summary.endsWith("…"));
+});
+
+test("derives task summaries only for UserPromptSubmit and never copies raw prompt fields", () => {
+  const rawPrompt = `관리자 화면을 정리해 주세요 ${"private detail ".repeat(40)}`;
+  const started = normalizeHookPayload(
+    { ...common, hook_event_name: "UserPromptSubmit", prompt: rawPrompt },
+    { receivedAtMs: 125 },
+  );
+
+  assert.equal(started.status, "accepted");
+  assert.match(started.event.task_summary, /^관리자 화면을 정리해 주세요/);
+  assert(!("prompt" in started.event));
+  assert(!JSON.stringify(started).includes(rawPrompt));
+
+  const unrelated = normalizeHookPayload(
+    {
+      ...common,
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      tool_use_id: "tool-1",
+      prompt: rawPrompt,
+      task_summary: rawPrompt,
+    },
+    { receivedAtMs: 126 },
+  );
+  assert.equal(unrelated.status, "accepted");
+  assert(!("task_summary" in unrelated.event));
+  assert(!JSON.stringify(unrelated).includes(rawPrompt));
+});
+
+test("omits empty or fully private task summaries", () => {
+  for (const prompt of [
+    null,
+    {},
+    "\n\u0000\t",
+    "https://example.com/private",
+    "person@example.com /Users/private/file.txt token=private-value",
+  ]) {
+    assert.equal(deriveTaskSummary(prompt), null);
+    const result = normalizeHookPayload(
+      { ...common, hook_event_name: "UserPromptSubmit", prompt },
+      { receivedAtMs: 127 },
+    );
+    assert.equal(result.status, "accepted");
+    assert(!("task_summary" in result.event));
+  }
 });
 
 test("omits malformed optional workspace labels without dropping lifecycle events", () => {

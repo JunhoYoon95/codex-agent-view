@@ -5,6 +5,7 @@ import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { minimizePayload } from "./capture-hook.mjs";
+import { deriveTaskSummary } from "../src/core/normalize-hook-payload.mjs";
 import { readRuntimeInfo } from "../src/runtime/config.mjs";
 
 const MAX_STDIN_BYTES = 2 * 1024 * 1024;
@@ -54,9 +55,15 @@ function deriveWorkspaceLabel(cwd) {
 function monitorEnvelope(payload) {
   const minimized = minimizePayload(payload);
   const workspaceLabel = deriveWorkspaceLabel(payload.cwd);
-  return workspaceLabel
-    ? { ...minimized, workspace_label: workspaceLabel }
-    : minimized;
+  const taskSummary =
+    payload.hook_event_name === "UserPromptSubmit"
+      ? deriveTaskSummary(payload.prompt)
+      : null;
+  return {
+    ...minimized,
+    ...(workspaceLabel ? { workspace_label: workspaceLabel } : {}),
+    ...(taskSummary ? { task_summary: taskSummary } : {}),
+  };
 }
 
 async function sendToRuntime(runtime, envelope) {

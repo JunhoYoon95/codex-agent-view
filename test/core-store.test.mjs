@@ -189,6 +189,97 @@ test("keeps the latest observed workspace label without retaining a full path", 
   }
 });
 
+test("keeps the first valid task summary across follow-ups and out-of-order prompts", () => {
+  const store = createMonitorStore();
+  const originalRawPrompt = `검색 결과 필터를 고쳐 주세요 ${"private detail ".repeat(30)}`;
+
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-original",
+      hook_event_name: "UserPromptSubmit",
+      prompt: originalRawPrompt,
+    },
+    { receivedAtMs: 100 },
+  );
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-follow-up",
+      hook_event_name: "UserPromptSubmit",
+      prompt: "완료",
+    },
+    { receivedAtMs: 200 },
+  );
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-private",
+      hook_event_name: "UserPromptSubmit",
+      prompt: "https://example.com/private",
+    },
+    { receivedAtMs: 300 },
+  );
+
+  const session = store.getSnapshot().sessions[0];
+  assert.match(session.task_summary, /^검색 결과 필터를 고쳐 주세요/);
+  assert(!session.task_summary.includes("완료"));
+  const serialized = JSON.stringify(session);
+  assert(!serialized.includes(originalRawPrompt));
+  assert(!serialized.includes("example.com"));
+  assert(!serialized.includes("prompt"));
+});
+
+test("fills an empty task summary only from the next non-stale valid prompt", () => {
+  const store = createMonitorStore();
+
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-private",
+      hook_event_name: "UserPromptSubmit",
+      prompt: "https://example.com/private",
+    },
+    { receivedAtMs: 200 },
+  );
+  let session = store.getSnapshot().sessions[0];
+  assert.equal(session.task_summary, null);
+
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-stale",
+      hook_event_name: "UserPromptSubmit",
+      prompt: "오래된 요청을 표시하지 마세요",
+    },
+    { receivedAtMs: 100 },
+  );
+  session = store.getSnapshot().sessions[0];
+  assert.equal(session.task_summary, null);
+
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-valid",
+      hook_event_name: "UserPromptSubmit",
+      prompt: "주문 내역 화면의 빈 상태를 개선해 주세요",
+    },
+    { receivedAtMs: 300 },
+  );
+  store.ingest(
+    {
+      session_id: "session-1",
+      turn_id: "turn-later",
+      hook_event_name: "UserPromptSubmit",
+      prompt: "다시 해봐",
+    },
+    { receivedAtMs: 400 },
+  );
+  session = store.getSnapshot().sessions[0];
+  assert.equal(session.task_summary, "주문 내역 화면의 빈 상태를 개선해 주세요");
+  assert(!JSON.stringify(session).includes("오래된 요청"));
+});
+
 test("treats repeated lifecycle and tool hooks as duplicates", () => {
   const store = createMonitorStore();
   const start = subagentPayload("SubagentStart");
