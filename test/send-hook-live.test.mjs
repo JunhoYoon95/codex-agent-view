@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { createMonitorStore } from "../src/core/index.mjs";
 import {
   LOOPBACK_HOST,
   RUNTIME_SCHEMA_VERSION,
@@ -352,6 +353,165 @@ test("delivers a minimized hook event to a live server", async (t) => {
     "private output",
     "/private/workspace",
     "/private/transcript.jsonl",
+  ]) {
+    assert(!serialized.includes(privateValue));
+  }
+});
+
+test("connects sender tool lifecycle to one exact agent turn without raw input", async (t) => {
+  const { env } = await temporaryRuntime(t);
+  let nowMs = 700;
+  const monitor = await startMonitorServer({
+    host: "127.0.0.1",
+    port: 0,
+    env,
+    store: createMonitorStore({ now: () => nowMs }),
+    token: "c".repeat(43),
+    now: () => nowMs,
+  });
+  t.after(async () => monitor.close().catch(() => {}));
+
+  const common = {
+    session_id: "session-agent-current-tool",
+    turn_id: "agent-turn",
+  };
+  assert.deepEqual(
+    await runSender(
+      {
+        ...common,
+        hook_event_name: "SubagentStart",
+        agent_id: "agent-1",
+        agent_type: "default",
+      },
+      env,
+    ),
+    { code: 0, stderr: "", stdout: "{}\n" },
+  );
+
+  nowMs = 710;
+  assert.deepEqual(
+    await runSender(
+      {
+        ...common,
+        hook_event_name: "PreToolUse",
+        tool_name: "apply_patch",
+        tool_use_id: "edit-1",
+        tool_input: {
+          patch: "private customer patch that must never enter the snapshot",
+        },
+      },
+      env,
+    ),
+    { code: 0, stderr: "", stdout: "{}\n" },
+  );
+
+  let agent = monitor.store.getSnapshot().sessions[0].agents[0];
+  assert.equal(agent.current_tool_name, "apply_patch");
+  assert.equal(agent.current_tool_status, "running");
+  assert.equal(agent.current_tool_observed_at_ms, 710);
+  assert(!JSON.stringify(agent).includes("private customer patch"));
+
+  nowMs = 720;
+  assert.deepEqual(
+    await runSender(
+      {
+        ...common,
+        hook_event_name: "PostToolUse",
+        tool_name: "apply_patch",
+        tool_use_id: "edit-1",
+        tool_input: {
+          patch: "private customer patch that must never enter the snapshot",
+        },
+        tool_response: "private patch result",
+      },
+      env,
+    ),
+    { code: 0, stderr: "", stdout: "{}\n" },
+  );
+
+  agent = monitor.store.getSnapshot().sessions[0].agents[0];
+  assert.equal(agent.current_tool_name, "apply_patch");
+  assert.equal(agent.current_tool_status, "completed");
+  assert.equal(agent.current_tool_observed_at_ms, 720);
+  const serialized = JSON.stringify(monitor.store.getSnapshot());
+  assert(!serialized.includes("private customer patch"));
+  assert(!serialized.includes("private patch result"));
+  assert(!serialized.includes('"tool_input"'));
+  assert(!serialized.includes('"tool_response"'));
+});
+
+test("derives one safe spawn assignment through sender and live monitor", async (t) => {
+  const { env } = await temporaryRuntime(t);
+  let nowMs = 800;
+  const monitor = await startMonitorServer({
+    host: "127.0.0.1",
+    port: 0,
+    env,
+    store: createMonitorStore({ now: () => nowMs }),
+    token: "s".repeat(43),
+    now: () => nowMs,
+  });
+  t.after(async () => monitor.close().catch(() => {}));
+
+  const common = {
+    session_id: "session-agent-assignment",
+    turn_id: "parent-turn",
+    tool_name: "collaborationspawn_agent",
+    tool_use_id: "spawn-1",
+  };
+  const rawMessage = `gAAAAAB${"A".repeat(172)}`;
+  assert.deepEqual(
+    await runSender(
+      {
+        ...common,
+        hook_event_name: "PreToolUse",
+        tool_input: { task_name: "assignment_e2e", message: rawMessage },
+      },
+      env,
+    ),
+    { code: 0, stderr: "", stdout: "{}\n" },
+  );
+
+  nowMs = 805;
+  assert.deepEqual(
+    await runSender(
+      {
+        ...common,
+        hook_event_name: "PostToolUse",
+        tool_input: { task_name: "assignment_e2e", message: rawMessage },
+        tool_response: "private spawn response",
+      },
+      env,
+    ),
+    { code: 0, stderr: "", stdout: "{}\n" },
+  );
+
+  nowMs = 810;
+  assert.deepEqual(
+    await runSender(
+      {
+        session_id: common.session_id,
+        turn_id: "agent-turn",
+        hook_event_name: "SubagentStart",
+        agent_id: "agent-1",
+        agent_type: "default",
+      },
+      env,
+    ),
+    { code: 0, stderr: "", stdout: "{}\n" },
+  );
+
+  const snapshot = monitor.store.getSnapshot();
+  const agent = snapshot.sessions[0].agents[0];
+  assert.equal(agent.assignment_summary, "assignment e2e");
+  assert.equal(agent.assignment_match, "best_effort_singleton");
+  const serialized = JSON.stringify(snapshot);
+  for (const privateValue of [
+    rawMessage,
+    "private spawn response",
+    '"tool_input"',
+    '"tool_response"',
+    "pending_spawn_assignments",
   ]) {
     assert(!serialized.includes(privateValue));
   }

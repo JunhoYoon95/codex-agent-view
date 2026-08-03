@@ -72,7 +72,7 @@ const MESSAGES = Object.freeze({
     interruptedExplanation: "This activity was still open when the work ended; its own completion signal was not observed.",
     connectingCopy: "Connecting this browser to the local Codex monitor on this device.",
     sessionListAria: "Codex work list",
-    privacyPrompt: "This view shows only a shortened request summary; it never displays the full request or tool inputs.",
+    privacyPrompt: "This view shows only shortened request and agent-work summaries; it never displays full requests or tool inputs.",
     privacyLocal: "Data is read only from the local monitor on this device.",
     timeUnknown: "Time unavailable",
     startedUnknown: "Start time unavailable",
@@ -86,7 +86,19 @@ const MESSAGES = Object.freeze({
     subagentsCount: "Participating agents · {count}",
     subagentName: "Agent {ordinal}",
     agentProfile: "Role/profile · {profile}",
-    agentProfileNote: "Codex currently provides each agent's role, but not its full assignment description.",
+    agentProfileNote: "When available, each agent shows a shortened assigned-work summary and current activity.",
+    agentAssignment: "Assigned work",
+    agentAssignmentUnavailable: "No assignment detail was observed for this agent.",
+    agentCurrentActivity: "Current activity",
+    agentCurrentActivityUnavailable: "Current activity details are not available yet.",
+    agentToolRunning: "{tool} in progress",
+    agentToolRunningObserved: "{tool} in progress · observed {time}",
+    agentToolCompletedRecently: "Recent activity: {tool} completed",
+    agentToolCompletedRecentlyObserved: "Recent activity: {tool} completed · observed {time}",
+    agentWorkEnded: "Agent work ended",
+    agentLastActivityCompletionUnconfirmed: "Agent work ended, but completion of its last activity was not confirmed.",
+    agentWaitingForNextStep: "Waiting for input or the next step",
+    agentCurrentStatusUnverified: "The agent's current status could not be verified.",
     noSubagents: "No participating agents have been observed for this work item.",
     noRecentActivity: "No recent activity to display.",
     technicalInfo: "Technical information",
@@ -215,7 +227,7 @@ const MESSAGES = Object.freeze({
     interruptedExplanation: "전체 작업이 끝날 때 이 활동이 열린 상태였습니다. 이 활동 자체의 완료 신호는 확인되지 않았습니다.",
     connectingCopy: "이 브라우저를 기기의 로컬 Codex 모니터에 연결하고 있습니다.",
     sessionListAria: "Codex 작업 목록",
-    privacyPrompt: "이 화면은 짧게 줄인 요청 요약만 표시하며, 전체 요청이나 도구 입력은 표시하지 않습니다.",
+    privacyPrompt: "이 화면은 짧게 줄인 요청과 에이전트 작업 요약만 표시하며, 전체 요청이나 도구 입력은 표시하지 않습니다.",
     privacyLocal: "데이터는 이 기기의 로컬 모니터에서만 읽습니다.",
     timeUnknown: "시간 정보 없음",
     startedUnknown: "시작 시간 없음",
@@ -229,7 +241,19 @@ const MESSAGES = Object.freeze({
     subagentsCount: "참여 에이전트 · {count}",
     subagentName: "에이전트 {ordinal}",
     agentProfile: "역할/프로필 · {profile}",
-    agentProfileNote: "Codex는 현재 각 에이전트의 역할을 제공하지만, 구체적인 할당 내용 전체는 제공하지 않습니다.",
+    agentProfileNote: "확인 가능한 경우 각 에이전트에 짧게 줄인 할당 작업 요약과 현재 활동을 표시합니다.",
+    agentAssignment: "할당된 작업",
+    agentAssignmentUnavailable: "이 에이전트의 할당 작업 설명을 확인하지 못했습니다.",
+    agentCurrentActivity: "현재 작업",
+    agentCurrentActivityUnavailable: "현재 작업 정보를 아직 확인할 수 없습니다.",
+    agentToolRunning: "{tool} 진행 중",
+    agentToolRunningObserved: "{tool} 진행 중 · {time} 확인",
+    agentToolCompletedRecently: "최근 활동: {tool} 완료",
+    agentToolCompletedRecentlyObserved: "최근 활동: {tool} 완료 · {time} 확인",
+    agentWorkEnded: "에이전트 작업 종료 확인됨",
+    agentLastActivityCompletionUnconfirmed: "에이전트 작업 종료는 확인됐지만 마지막 활동의 완료는 확인되지 않았습니다.",
+    agentWaitingForNextStep: "입력 또는 다음 단계를 기다리는 중",
+    agentCurrentStatusUnverified: "에이전트의 현재 상태를 확인할 수 없습니다.",
     noSubagents: "이 작업에 참여한 에이전트가 아직 관찰되지 않았습니다.",
     noRecentActivity: "표시할 최근 활동이 없습니다.",
     technicalInfo: "기술 정보",
@@ -358,7 +382,7 @@ const MESSAGES = Object.freeze({
     interruptedExplanation: "Esta actividad seguía abierta cuando terminó el trabajo; no se observó su propia señal de finalización.",
     connectingCopy: "Conectando este navegador al monitor local de Codex en este dispositivo.",
     sessionListAria: "Lista de trabajos de Codex",
-    privacyPrompt: "Esta vista solo muestra un resumen abreviado de la solicitud; nunca muestra la solicitud completa ni las entradas de herramientas.",
+    privacyPrompt: "Esta vista solo muestra resúmenes abreviados de solicitudes y trabajo de agentes; nunca muestra solicitudes completas ni entradas de herramientas.",
     privacyLocal: "Los datos se leen únicamente del monitor local de este dispositivo.",
     timeUnknown: "Hora no disponible",
     startedUnknown: "Hora de inicio no disponible",
@@ -372,7 +396,19 @@ const MESSAGES = Object.freeze({
     subagentsCount: "Agentes participantes · {count}",
     subagentName: "Agente {ordinal}",
     agentProfile: "Rol/perfil · {profile}",
-    agentProfileNote: "Codex proporciona el rol de cada agente, pero no la descripción completa de su asignación.",
+    agentProfileNote: "Cuando está disponible, cada agente muestra un resumen abreviado del trabajo asignado y su actividad actual.",
+    agentAssignment: "Trabajo asignado",
+    agentAssignmentUnavailable: "No se observó información sobre el trabajo asignado de este agente.",
+    agentCurrentActivity: "Actividad actual",
+    agentCurrentActivityUnavailable: "Los detalles de la actividad actual aún no están disponibles.",
+    agentToolRunning: "{tool} en curso",
+    agentToolRunningObserved: "{tool} en curso · observado {time}",
+    agentToolCompletedRecently: "Actividad reciente: {tool} completada",
+    agentToolCompletedRecentlyObserved: "Actividad reciente: {tool} completada · observada {time}",
+    agentWorkEnded: "Fin del trabajo del agente confirmado",
+    agentLastActivityCompletionUnconfirmed: "El trabajo del agente terminó, pero no se confirmó que su última actividad se completara.",
+    agentWaitingForNextStep: "Esperando una respuesta o el siguiente paso",
+    agentCurrentStatusUnverified: "No se pudo verificar el estado actual del agente.",
     noSubagents: "Todavía no se observaron agentes participantes en este trabajo.",
     noRecentActivity: "No hay actividad reciente que mostrar.",
     technicalInfo: "Información técnica",
@@ -875,6 +911,14 @@ function safeString(value, fallback) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
+function safeSummary(value) {
+  return safeString(value, "")
+    .replace(CONTROL_CHARACTERS, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+}
+
 function sanitizedFallbackLabel(value, fallback) {
   const normalized = safeString(value, "")
     .replace(CONTROL_CHARACTERS, " ")
@@ -932,6 +976,56 @@ function formatActivityLabel(activity) {
     });
 }
 
+function formatAgentCurrentActivity(agent) {
+  if (agent.status === "completed") {
+    if (
+      agent.currentToolStatus === "completion_not_observed" ||
+      agent.currentToolStatus === "interrupted"
+    ) {
+      return t("agentLastActivityCompletionUnconfirmed");
+    }
+    return t("agentWorkEnded");
+  }
+
+  const lifecycleExplanationKey = STATUS_EXPLANATION_KEYS[agent.status];
+  if (lifecycleExplanationKey) {
+    return t(lifecycleExplanationKey);
+  }
+  if (agent.status === "unknown") {
+    return t("agentCurrentStatusUnverified");
+  }
+
+  if (agent.currentToolName && agent.currentToolStatus === "running") {
+    const tool = formatToolLabel(agent.currentToolName);
+    return agent.currentToolObservedAtMs === null
+      ? t("agentToolRunning", { tool })
+      : t("agentToolRunningObserved", {
+        tool,
+        time: formatRelativeTime(agent.currentToolObservedAtMs),
+      });
+  }
+
+  if (
+    agent.status === "running" &&
+    agent.currentToolName &&
+    agent.currentToolStatus === "completed"
+  ) {
+    const tool = formatToolLabel(agent.currentToolName);
+    return agent.currentToolObservedAtMs === null
+      ? t("agentToolCompletedRecently", { tool })
+      : t("agentToolCompletedRecentlyObserved", {
+        tool,
+        time: formatRelativeTime(agent.currentToolObservedAtMs),
+      });
+  }
+
+  if (agent.status === "waiting") {
+    return t("agentWaitingForNextStep");
+  }
+
+  return t("agentCurrentActivityUnavailable");
+}
+
 function safeTimestamp(value) {
   return Number.isFinite(value) && value >= 0 && value <= 8_640_000_000_000_000
     ? value
@@ -969,6 +1063,10 @@ function normalizeAgent(value, index) {
   return {
     agentId: safeString(agent.agent_id, `unknown-agent-${index + 1}`),
     agentType: safeString(agent.agent_type, "unknown"),
+    assignmentSummary: safeSummary(agent.assignment_summary),
+    currentToolName: safeSummary(agent.current_tool_name),
+    currentToolStatus: normalizeCoreStatus(agent.current_tool_status),
+    currentToolObservedAtMs: safeTimestamp(agent.current_tool_observed_at_ms),
     status: normalizeCoreStatus(agent.status),
     startedAtMs: safeTimestamp(agent.started_at_ms),
     stoppedAtMs: safeTimestamp(agent.stopped_at_ms),
@@ -1288,10 +1386,26 @@ function createAgentItem(agent) {
 
   const statusExplanation = createStatusExplanation(agent.status);
 
+  const workSummary = document.createElement("dl");
+  workSummary.className = "agent-work-summary";
+  const summaryRows = [
+    [t("agentAssignment"), agent.assignmentSummary || t("agentAssignmentUnavailable")],
+    [t("agentCurrentActivity"), formatAgentCurrentActivity(agent)],
+  ];
+  for (const [label, value] of summaryRows) {
+    const row = document.createElement("div");
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const description = document.createElement("dd");
+    description.textContent = value;
+    row.append(term, description);
+    workSummary.append(row);
+  }
+
   const technicalRows = [[t("agentId"), agent.agentId]];
   technicalRows.push([t("rawProfile"), agent.agentType]);
 
-  item.append(heading, metadata);
+  item.append(heading, workSummary, metadata);
   if (statusExplanation) {
     item.append(statusExplanation);
   }
@@ -1433,6 +1547,8 @@ function sessionMatchesQuery(session, query) {
     ...session.agents.flatMap((agent) => [
       agent.agentId,
       formatAgentRole(agent.agentType),
+      agent.assignmentSummary,
+      formatAgentCurrentActivity(agent),
       agent.status,
     ]),
     ...session.recentActivities.flatMap((activity) => [

@@ -8,6 +8,10 @@ const DEFAULT_LIMITS = Object.freeze({
   staleAfterMs: 5 * 60 * 1000,
 });
 
+const OBSERVED_SPAWN_AGENT_TOOL_NAME = "collaborationspawn_agent";
+const SPAWN_ASSIGNMENT_MATCH_WINDOW_MS = 15_000;
+const PENDING_SPAWN_PRE_TTL_MS = 30_000;
+
 function positiveInteger(value, name) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new TypeError(`${name} must be a positive safe integer`);
@@ -26,6 +30,8 @@ function createSession(event) {
     last_seen_at_ms: event.received_at_ms,
     agents: new Map(),
     tools: new Map(),
+    pending_spawn_assignments: new Map(),
+    pending_spawn_assignment_overflowed: false,
     lifecycle: {
       start_observed: false,
       end_observed: false,
@@ -119,6 +125,7 @@ function settleRunningState(session, status, options = {}) {
   const turnId = options.turnId;
   const settledAgentIds = new Set();
   const settledToolUseIds = new Set();
+  const settledTurnIds = new Set();
   for (const agent of session.agents.values()) {
     if (
       agent.status === "running" &&
@@ -135,6 +142,7 @@ function settleRunningState(session, status, options = {}) {
     ) {
       tool.status = status;
       settledToolUseIds.add(tool.tool_use_id);
+      settledTurnIds.add(tool.turn_id);
     }
   }
   for (const activity of session.recent_activities) {
@@ -147,6 +155,9 @@ function settleRunningState(session, status, options = {}) {
     ) {
       activity.status = status;
     }
+  }
+  for (const settledTurnId of settledTurnIds) {
+    syncAgentCurrentToolForTurn(session, settledTurnId);
   }
 }
 
@@ -185,6 +196,8 @@ function settleRootTurnActivity(session, status) {
 function resetTransientState(session) {
   session.agents.clear();
   session.tools.clear();
+  session.pending_spawn_assignments.clear();
+  session.pending_spawn_assignment_overflowed = false;
   session.root_turn = {
     status: "idle",
     turn_id: null,
@@ -203,6 +216,171 @@ function touchMapEntry(map, key, value) {
 function trimMap(map, limit) {
   while (map.size > limit) {
     map.delete(map.keys().next().value);
+  }
+}
+
+function prunePendingSpawnAssignments(session, observedAtMs) {
+  for (const [toolUseId, candidate] of session.pending_spawn_assignments) {
+    const expiresAtMs =
+      candidate.post_observed_at_ms === null
+        ? candidate.pre_observed_at_ms + PENDING_SPAWN_PRE_TTL_MS
+        : candidate.post_observed_at_ms + SPAWN_ASSIGNMENT_MATCH_WINDOW_MS;
+    if (observedAtMs > expiresAtMs) {
+      session.pending_spawn_assignments.delete(toolUseId);
+    }
+  }
+}
+
+function observeSpawnAssignmentToolEvent(session, event, limit) {
+  if (
+    event.tool_name !== OBSERVED_SPAWN_AGENT_TOOL_NAME ||
+    session.pending_spawn_assignment_overflowed
+  ) {
+    return;
+  }
+
+  if (event.type === "tool_started") {
+    if (!("spawn_assignment_observed" in event)) {
+      return;
+    }
+    if (
+      !session.pending_spawn_assignments.has(event.tool_use_id) &&
+      session.pending_spawn_assignments.size >= limit
+    ) {
+      session.pending_spawn_assignments.clear();
+      session.pending_spawn_assignment_overflowed = true;
+      return;
+    }
+    touchMapEntry(session.pending_spawn_assignments, event.tool_use_id, {
+      tool_use_id: event.tool_use_id,
+      turn_id: event.turn_id,
+      assignment_summary: event.assignment_summary ?? null,
+      pre_observed_at_ms: event.received_at_ms,
+      post_observed_at_ms: null,
+    });
+    return;
+  }
+
+  const candidate = session.pending_spawn_assignments.get(event.tool_use_id);
+  if (!candidate) {
+    return;
+  }
+  if (candidate.turn_id !== event.turn_id) {
+    session.pending_spawn_assignments.delete(event.tool_use_id);
+    return;
+  }
+  candidate.post_observed_at_ms = event.received_at_ms;
+  touchMapEntry(session.pending_spawn_assignments, event.tool_use_id, candidate);
+}
+
+function attachSingletonSpawnAssignment(session, agent) {
+  if (
+    session.pending_spawn_assignment_overflowed ||
+    !agent.start_observed ||
+    agent.stop_observed ||
+    agent.has_out_of_order_events ||
+    "assignment_match" in agent
+  ) {
+    return;
+  }
+
+  const pendingCandidates = [...session.pending_spawn_assignments.values()];
+  if (pendingCandidates.length !== 1) {
+    return;
+  }
+
+  const [candidate] = pendingCandidates;
+  if (
+    candidate.post_observed_at_ms === null ||
+    candidate.post_observed_at_ms > agent.started_at_ms ||
+    agent.started_at_ms - candidate.post_observed_at_ms >
+      SPAWN_ASSIGNMENT_MATCH_WINDOW_MS ||
+    candidate.assignment_summary === null
+  ) {
+    return;
+  }
+  const eligibleUnmatchedAgents = [...session.agents.values()].filter(
+    (candidateAgent) =>
+      candidateAgent.start_observed &&
+      !("assignment_match" in candidateAgent) &&
+      candidateAgent.started_at_ms >= candidate.post_observed_at_ms &&
+      candidateAgent.started_at_ms - candidate.post_observed_at_ms <=
+        SPAWN_ASSIGNMENT_MATCH_WINDOW_MS,
+  );
+  if (
+    eligibleUnmatchedAgents.length !== 1 ||
+    eligibleUnmatchedAgents[0].agent_id !== agent.agent_id
+  ) {
+    return;
+  }
+
+  agent.assignment_summary = candidate.assignment_summary;
+  agent.assignment_match = "best_effort_singleton";
+  session.pending_spawn_assignments.delete(candidate.tool_use_id);
+}
+
+function clearAgentCurrentTool(agent) {
+  delete agent.current_tool_name;
+  delete agent.current_tool_status;
+  delete agent.current_tool_observed_at_ms;
+}
+
+function syncAgentCurrentToolForTurn(session, turnId) {
+  const matchingAgents = [...session.agents.values()].filter(
+    (agent) => agent.turn_id === turnId,
+  );
+
+  if (matchingAgents.length !== 1) {
+    for (const agent of matchingAgents) {
+      clearAgentCurrentTool(agent);
+    }
+    return;
+  }
+
+  const matchingTools = [...session.tools.values()].filter(
+    (tool) => tool.turn_id === turnId,
+  );
+  const runningTools = matchingTools.filter((tool) => tool.status === "running");
+  const currentToolCandidates =
+    runningTools.length > 0 ? runningTools : matchingTools;
+  const latestObservedAtMs = currentToolCandidates.reduce(
+    (latest, tool) => Math.max(latest, tool.last_seen_at_ms),
+    -1,
+  );
+  const latestTools = currentToolCandidates.filter(
+    (tool) => tool.last_seen_at_ms === latestObservedAtMs,
+  );
+  const [agent] = matchingAgents;
+  if (latestTools.length !== 1) {
+    clearAgentCurrentTool(agent);
+    return;
+  }
+
+  const [latestTool] = latestTools;
+  agent.current_tool_name = latestTool.tool_name;
+  agent.current_tool_status = latestTool.status;
+  agent.current_tool_observed_at_ms = latestTool.last_seen_at_ms;
+}
+
+function settleRunningToolsForExactAgentTurn(session, turnId) {
+  const matchingAgents = [...session.agents.values()].filter(
+    (agent) => agent.turn_id === turnId,
+  );
+  if (matchingAgents.length !== 1) {
+    return;
+  }
+
+  for (const tool of session.tools.values()) {
+    if (tool.turn_id !== turnId || tool.status !== "running") {
+      continue;
+    }
+    tool.status = "completion_not_observed";
+    refineUnresolvedStartActivity(session, {
+      type: "tool_started",
+      idField: "tool_use_id",
+      id: tool.tool_use_id,
+      status: "completion_not_observed",
+    });
   }
 }
 
@@ -301,6 +479,8 @@ function applySessionEvent(session, event, limits) {
   session.root_turn.stopped_at_ms ??= event.received_at_ms;
   clearPermission(session, "interrupted");
   settleRunningState(session, "interrupted");
+  session.pending_spawn_assignments.clear();
+  session.pending_spawn_assignment_overflowed = false;
   addActivity(session, event, "completed", limits.maxActivitiesPerSession);
   return "applied";
 }
@@ -312,6 +492,8 @@ function applyTurnEvent(session, event, limits) {
       return turn.status === "running" ? "duplicate" : "stale";
     }
     settleRunningState(session, "completion_not_observed");
+    session.pending_spawn_assignments.clear();
+    session.pending_spawn_assignment_overflowed = false;
     session.root_turn = {
       status: "running",
       turn_id: event.turn_id,
@@ -352,6 +534,11 @@ function applyTurnEvent(session, event, limits) {
   settleRunningState(session, "completion_not_observed", {
     turnId: event.turn_id,
   });
+  for (const [toolUseId, candidate] of session.pending_spawn_assignments) {
+    if (candidate.turn_id === event.turn_id) {
+      session.pending_spawn_assignments.delete(toolUseId);
+    }
+  }
   addActivity(
     session,
     event,
@@ -413,6 +600,13 @@ function applySubagentEvent(session, event, limits) {
   agent.last_seen_at_ms = Math.max(agent.last_seen_at_ms, event.received_at_ms);
   touchMapEntry(session.agents, event.agent_id, agent);
   trimMap(session.agents, limits.maxAgentsPerSession);
+  if (event.type === "subagent_started") {
+    attachSingletonSpawnAssignment(session, agent);
+  }
+  if (event.type === "subagent_stopped") {
+    settleRunningToolsForExactAgentTurn(session, event.turn_id);
+  }
+  syncAgentCurrentToolForTurn(session, event.turn_id);
   addActivity(session, event, agent.status, limits.maxActivitiesPerSession);
   return "applied";
 }
@@ -484,6 +678,12 @@ function applyToolEvent(session, event, limits) {
   tool.last_seen_at_ms = Math.max(tool.last_seen_at_ms, event.received_at_ms);
   touchMapEntry(session.tools, event.tool_use_id, tool);
   trimMap(session.tools, limits.maxActivitiesPerSession);
+  observeSpawnAssignmentToolEvent(
+    session,
+    event,
+    limits.maxAgentsPerSession,
+  );
+  syncAgentCurrentToolForTurn(session, event.turn_id);
   addActivity(session, event, activityStatus, limits.maxActivitiesPerSession);
   return "applied";
 }
@@ -521,6 +721,10 @@ function applyPermissionEvent(session, event, limits) {
 }
 
 function applyEvent(session, event, limits) {
+  prunePendingSpawnAssignments(
+    session,
+    Math.max(session.last_seen_at_ms, event.received_at_ms),
+  );
   if (event.type === "session_started") {
     return applySessionEvent(session, event, limits);
   }
@@ -570,6 +774,9 @@ function snapshotSession(session, nowMs, staleAfterMs) {
         ...agent,
         ...(staleActive && agent.status === "running"
           ? { status: "completion_not_observed" }
+          : {}),
+        ...(staleActive && agent.current_tool_status === "running"
+          ? { current_tool_status: "completion_not_observed" }
           : {}),
       }))
       .sort((left, right) => right.last_seen_at_ms - left.last_seen_at_ms),

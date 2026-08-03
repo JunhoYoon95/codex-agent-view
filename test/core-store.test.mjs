@@ -29,6 +29,18 @@ function toolPayload(eventName, overrides = {}) {
   };
 }
 
+function spawnToolPayload(eventName, overrides = {}) {
+  return toolPayload(eventName, {
+    tool_name: "collaborationspawn_agent",
+    tool_use_id: "spawn-1",
+    tool_input: {
+      task_name: "theme_worker",
+      message: "테마 가져오기 쿼리 수정과 테스트를 맡아 주세요.",
+    },
+    ...overrides,
+  });
+}
+
 test("reduces lifecycle, tool, and permission events without sensitive state", () => {
   const store = createTestStore();
   store.ingest(subagentPayload("SubagentStart"), { receivedAtMs: 100 });
@@ -116,6 +128,667 @@ test("derives session status without inventing parent completion", () => {
   assert.equal(store.getSnapshot().sessions[0].status, "running");
   store.ingest(subagentPayload("SubagentStop"), { receivedAtMs: 50 });
   assert.equal(store.getSnapshot().sessions[0].status, "observed");
+});
+
+test("connects the latest tool lifecycle to one exact matching agent turn", () => {
+  const store = createTestStore();
+  store.ingest(
+    subagentPayload("SubagentStart", { turn_id: "agent-turn" }),
+    { receivedAtMs: 100 },
+  );
+  store.ingest(
+    toolPayload("PreToolUse", {
+      turn_id: "agent-turn",
+      tool_name: "apply_patch",
+      tool_use_id: "edit-1",
+    }),
+    { receivedAtMs: 110 },
+  );
+
+  let agent = store.getSnapshot().sessions[0].agents[0];
+  assert.equal(agent.current_tool_name, "apply_patch");
+  assert.equal(agent.current_tool_status, "running");
+  assert.equal(agent.current_tool_observed_at_ms, 110);
+  assert.equal(agent.last_seen_at_ms, 100);
+
+  store.ingest(
+    toolPayload("PostToolUse", {
+      turn_id: "agent-turn",
+      tool_name: "apply_patch",
+      tool_use_id: "edit-1",
+      tool_input: { command: "private patch" },
+      tool_response: "private result",
+    }),
+    { receivedAtMs: 120 },
+  );
+  agent = store.getSnapshot().sessions[0].agents[0];
+  assert.equal(agent.current_tool_status, "completed");
+  assert.equal(agent.current_tool_observed_at_ms, 120);
+  assert(!JSON.stringify(agent).includes("private patch"));
+  assert(!JSON.stringify(agent).includes("private result"));
+});
+
+test("attaches one completed spawn assignment to one subsequent agent start", () => {
+  const store = createTestStore();
+  store.ingest(spawnToolPayload("PreToolUse"), { receivedAtMs: 100 });
+  store.ingest(
+    spawnToolPayload("PostToolUse", {
+      tool_input: { private: "must not persist" },
+      tool_response: "private spawn response",
+    }),
+    { receivedAtMs: 105 },
+  );
+  store.ingest(subagentPayload("SubagentStart", { turn_id: "agent-turn" }), {
+    receivedAtMs: 110,
+  });
+
+  let snapshot = store.getSnapshot();
+  let agent = snapshot.sessions[0].agents[0];
+  assert.equal(
+    agent.assignment_summary,
+    "테마 가져오기 쿼리 수정과 테스트를 맡아 주세요.",
+  );
+  assert.equal(agent.assignment_match, "best_effort_singleton");
+  let serialized = JSON.stringify(snapshot);
+  for (const privateValue of [
+    "must not persist",
+    "private spawn response",
+    "pending_spawn_assignments",
+    '"tool_input"',
+    '"tool_response"',
+  ]) {
+    assert(!serialized.includes(privateValue));
+  }
+
+  store.ingest(subagentPayload("SubagentStop", { turn_id: "agent-turn" }), {
+    receivedAtMs: 120,
+  });
+  snapshot = store.getSnapshot();
+  agent = snapshot.sessions[0].agents[0];
+  assert.equal(agent.status, "stopped");
+  assert.equal(
+    agent.assignment_summary,
+    "테마 가져오기 쿼리 수정과 테스트를 맡아 주세요.",
+  );
+  assert.equal(agent.assignment_match, "best_effort_singleton");
+  serialized = JSON.stringify(snapshot);
+  assert(!serialized.includes("pending_spawn_assignments"));
+});
+
+test("requires the spawn PostToolUse before assigning a subsequent agent", () => {
+  const store = createTestStore();
+  store.ingest(spawnToolPayload("PreToolUse"), { receivedAtMs: 100 });
+  store.ingest(subagentPayload("SubagentStart", { turn_id: "agent-turn" }), {
+    receivedAtMs: 105,
+  });
+
+  const agent = store.getSnapshot().sessions[0].agents[0];
+  assert(!("assignment_summary" in agent));
+  assert(!("assignment_match" in agent));
+});
+
+test("counts an incomplete spawn when deciding assignment ambiguity", () => {
+  const store = createTestStore();
+  store.ingest(
+    spawnToolPayload("PreToolUse", {
+      tool_use_id: "spawn-completed",
+      tool_input: { task_name: "completed", message: "완료된 후보 작업" },
+    }),
+    { receivedAtMs: 100 },
+  );
+  store.ingest(
+    spawnToolPayload("PostToolUse", {
+      tool_use_id: "spawn-completed",
+    }),
+    { receivedAtMs: 105 },
+  );
+  store.ingest(
+    spawnToolPayload("PreToolUse", {
+      tool_use_id: "spawn-incomplete",
+      tool_input: { task_name: "incomplete", message: "미완료 후보 작업" },
+    }),
+    { receivedAtMs: 106 },
+  );
+  store.ingest(
+    subagentPayload("SubagentStart", {
+      agent_id: "agent-for-incomplete-spawn",
+      turn_id: "agent-turn",
+    }),
+    { receivedAtMs: 110 },
+  );
+
+  const agent = store.getSnapshot().sessions[0].agents[0];
+  assert(!("assignment_summary" in agent));
+  assert(!("assignment_match" in agent));
+});
+
+test("ignores an expired incomplete spawn when one fresh assignment is eligible", () => {
+  const store = createTestStore();
+  store.ingest(
+    spawnToolPayload("PreToolUse", {
+      tool_use_id: "spawn-expired-incomplete",
+      tool_input: { task_name: "expired", message: "만료될 미완료 작업" },
+    }),
+    { receivedAtMs: 100 },
+  );
+  store.ingest(
+    spawnToolPayload("PreToolUse", {
+      tool_use_id: "spawn-fresh",
+      tool_input: { task_name: "fresh", message: "새 할당 작업" },
+    }),
+    { receivedAtMs: 30_101 },
+  );
+  store.ingest(
+    spawnToolPayload("PostToolUse", { tool_use_id: "spawn-fresh" }),
+    { receivedAtMs: 30_105 },
+  );
+  store.ingest(
+    subagentPayload("SubagentStart", { turn_id: "fresh-agent-turn" }),
+    { receivedAtMs: 30_110 },
+  );
+
+  const agent = store.getSnapshot().sessions[0].agents[0];
+  assert.equal(agent.assignment_summary, "새 할당 작업");
+  assert.equal(agent.assignment_match, "best_effort_singleton");
+});
+
+test("does not guess assignment order for concurrent completed spawns", () => {
+  const store = createTestStore();
+  for (const [index, summary] of [
+    [1, "테마 UI 수정"],
+    [2, "테마 쿼리 수정"],
+  ]) {
+    const overrides = {
+      tool_use_id: `spawn-${index}`,
+      tool_input: { task_name: `worker_${index}`, message: summary },
+    };
+    store.ingest(spawnToolPayload("PreToolUse", overrides), {
+      receivedAtMs: 100 + index,
+    });
+    store.ingest(spawnToolPayload("PostToolUse", overrides), {
+      receivedAtMs: 105 + index,
+    });
+  }
+  for (const index of [1, 2]) {
+    store.ingest(
+      subagentPayload("SubagentStart", {
+        agent_id: `agent-${index}`,
+        turn_id: `agent-turn-${index}`,
+      }),
+      { receivedAtMs: 110 + index },
+    );
+  }
+
+  for (const agent of store.getSnapshot().sessions[0].agents) {
+    assert(!("assignment_summary" in agent));
+    assert(!("assignment_match" in agent));
+  }
+});
+
+test("counts a spawn with no safe summary when deciding concurrency ambiguity", () => {
+  const store = createTestStore();
+  const valid = {
+    tool_use_id: "spawn-valid",
+    tool_input: { task_name: "valid", message: "테마 UI 수정" },
+  };
+  const fullyPrivate = {
+    tool_use_id: "spawn-private",
+    tool_input: {
+      task_name: "private",
+      message: "person@example.com /Users/private/work token=private-value",
+    },
+  };
+  for (const [index, overrides] of [valid, fullyPrivate].entries()) {
+    store.ingest(spawnToolPayload("PreToolUse", overrides), {
+      receivedAtMs: 100 + index,
+    });
+    store.ingest(spawnToolPayload("PostToolUse", overrides), {
+      receivedAtMs: 105 + index,
+    });
+  }
+  for (const index of [1, 2]) {
+    store.ingest(
+      subagentPayload("SubagentStart", {
+        agent_id: `agent-${index}`,
+        turn_id: `agent-turn-${index}`,
+      }),
+      { receivedAtMs: 110 + index },
+    );
+  }
+
+  const snapshot = store.getSnapshot();
+  for (const agent of snapshot.sessions[0].agents) {
+    assert(!("assignment_summary" in agent));
+    assert(!("assignment_match" in agent));
+  }
+  const serialized = JSON.stringify(snapshot);
+  for (const privateValue of [
+    "person@example.com",
+    "/Users/private/work",
+    "private-value",
+    "pending_spawn_assignments",
+  ]) {
+    assert(!serialized.includes(privateValue));
+  }
+});
+
+test("does not attach expired or start-before-Post spawn assignments", () => {
+  const expiredStore = createTestStore();
+  expiredStore.ingest(spawnToolPayload("PreToolUse"), { receivedAtMs: 100 });
+  expiredStore.ingest(spawnToolPayload("PostToolUse"), { receivedAtMs: 105 });
+  expiredStore.ingest(
+    subagentPayload("SubagentStart", { turn_id: "late-agent-turn" }),
+    { receivedAtMs: 15_106 },
+  );
+  let agent = expiredStore.getSnapshot().sessions[0].agents[0];
+  assert(!("assignment_summary" in agent));
+
+  const outOfOrderStore = createTestStore();
+  outOfOrderStore.ingest(spawnToolPayload("PreToolUse"), {
+    receivedAtMs: 200,
+  });
+  outOfOrderStore.ingest(
+    subagentPayload("SubagentStart", { turn_id: "early-agent-turn" }),
+    { receivedAtMs: 205 },
+  );
+  outOfOrderStore.ingest(spawnToolPayload("PostToolUse"), {
+    receivedAtMs: 210,
+  });
+  agent = outOfOrderStore.getSnapshot().sessions[0].agents[0];
+  assert(!("assignment_summary" in agent));
+  assert(!("assignment_match" in agent));
+});
+
+test("clears pending spawn assignments at session end and resume", () => {
+  const store = createTestStore();
+  store.ingest(spawnToolPayload("PreToolUse"), { receivedAtMs: 100 });
+  store.ingest(spawnToolPayload("PostToolUse"), { receivedAtMs: 105 });
+  store.ingest(
+    { session_id: "session-1", hook_event_name: "SessionEnd" },
+    { receivedAtMs: 106 },
+  );
+  store.ingest(
+    {
+      session_id: "session-1",
+      hook_event_name: "SessionStart",
+      source: "resume",
+    },
+    { receivedAtMs: 107 },
+  );
+  store.ingest(subagentPayload("SubagentStart", { turn_id: "agent-turn" }), {
+    receivedAtMs: 110,
+  });
+
+  const agent = store.getSnapshot().sessions[0].agents[0];
+  assert(!("assignment_summary" in agent));
+  assert(!("assignment_match" in agent));
+});
+
+test("fails closed on pending spawn overflow until a new root turn", () => {
+  const boundedStore = createTestStore({ maxAgentsPerSession: 1 });
+  for (const index of [1, 2]) {
+    const overrides = {
+      tool_use_id: `spawn-${index}`,
+      tool_input: {
+        task_name: `worker_${index}`,
+        message: `작업 ${index}`,
+      },
+    };
+    boundedStore.ingest(spawnToolPayload("PreToolUse", overrides), {
+      receivedAtMs: 100 + index,
+    });
+    boundedStore.ingest(spawnToolPayload("PostToolUse", overrides), {
+      receivedAtMs: 105 + index,
+    });
+  }
+  boundedStore.ingest(
+    subagentPayload("SubagentStart", {
+      agent_id: "agent-overflow",
+      turn_id: "agent-turn-overflow",
+    }),
+    { receivedAtMs: 110 },
+  );
+  let agent = boundedStore.getSnapshot().sessions[0].agents[0];
+  assert(!("assignment_summary" in agent));
+  assert(!("assignment_match" in agent));
+
+  boundedStore.ingest(
+    { ...subagentPayload("UserPromptSubmit"), turn_id: "root-recovered" },
+    { receivedAtMs: 120 },
+  );
+  boundedStore.ingest(
+    spawnToolPayload("PreToolUse", {
+      turn_id: "root-recovered",
+      tool_use_id: "spawn-recovered",
+      tool_input: { task_name: "recovered", message: "복구 후 작업" },
+    }),
+    { receivedAtMs: 125 },
+  );
+  boundedStore.ingest(
+    spawnToolPayload("PostToolUse", {
+      turn_id: "root-recovered",
+      tool_use_id: "spawn-recovered",
+    }),
+    { receivedAtMs: 130 },
+  );
+  boundedStore.ingest(
+    subagentPayload("SubagentStart", {
+      agent_id: "agent-recovered",
+      turn_id: "agent-turn-recovered",
+    }),
+    { receivedAtMs: 135 },
+  );
+  agent = boundedStore.getSnapshot().sessions[0].agents[0];
+  assert.equal(agent.agent_id, "agent-recovered");
+  assert.equal(agent.assignment_summary, "복구 후 작업");
+  assert.equal(agent.assignment_match, "best_effort_singleton");
+
+  const newTurnStore = createTestStore();
+  newTurnStore.ingest(
+    { ...subagentPayload("UserPromptSubmit"), turn_id: "root-turn-1" },
+    { receivedAtMs: 90 },
+  );
+  newTurnStore.ingest(
+    spawnToolPayload("PreToolUse", { turn_id: "root-turn-1" }),
+    { receivedAtMs: 100 },
+  );
+  newTurnStore.ingest(
+    spawnToolPayload("PostToolUse", { turn_id: "root-turn-1" }),
+    { receivedAtMs: 105 },
+  );
+  newTurnStore.ingest(
+    { ...subagentPayload("UserPromptSubmit"), turn_id: "root-turn-2" },
+    { receivedAtMs: 106 },
+  );
+  newTurnStore.ingest(
+    subagentPayload("SubagentStart", { turn_id: "agent-turn" }),
+    { receivedAtMs: 110 },
+  );
+  agent = newTurnStore.getSnapshot().sessions[0].agents[0];
+  assert(!("assignment_summary" in agent));
+  assert(!("assignment_match" in agent));
+});
+
+test("does not assign an out-of-order start observed after its stop", () => {
+  const store = createTestStore();
+  store.ingest(spawnToolPayload("PreToolUse"), { receivedAtMs: 100 });
+  store.ingest(spawnToolPayload("PostToolUse"), { receivedAtMs: 105 });
+  store.ingest(subagentPayload("SubagentStop", { turn_id: "agent-turn" }), {
+    receivedAtMs: 108,
+  });
+  store.ingest(subagentPayload("SubagentStart", { turn_id: "agent-turn" }), {
+    receivedAtMs: 110,
+  });
+
+  const agent = store.getSnapshot().sessions[0].agents[0];
+  assert.equal(agent.has_out_of_order_events, true);
+  assert(!("assignment_summary" in agent));
+  assert(!("assignment_match" in agent));
+});
+
+test("hydrates current activity when the tool is observed before the agent", () => {
+  const store = createTestStore();
+  store.ingest(
+    toolPayload("PostToolUse", {
+      turn_id: "agent-turn",
+      tool_name: "Bash",
+      tool_use_id: "shell-1",
+    }),
+    { receivedAtMs: 90 },
+  );
+  store.ingest(
+    subagentPayload("SubagentStart", { turn_id: "agent-turn" }),
+    { receivedAtMs: 100 },
+  );
+
+  const agent = store.getSnapshot().sessions[0].agents[0];
+  assert.equal(agent.current_tool_name, "Bash");
+  assert.equal(agent.current_tool_status, "completed_without_start");
+  assert.equal(agent.current_tool_observed_at_ms, 90);
+  assert.equal(agent.last_seen_at_ms, 100);
+});
+
+test("does not attach tool activity when an agent turn is ambiguous", () => {
+  const store = createTestStore();
+  for (const agentId of ["agent-1", "agent-2"]) {
+    store.ingest(
+      subagentPayload("SubagentStart", {
+        agent_id: agentId,
+        turn_id: "shared-turn",
+      }),
+      { receivedAtMs: agentId === "agent-1" ? 100 : 101 },
+    );
+  }
+  store.ingest(
+    toolPayload("PreToolUse", {
+      turn_id: "shared-turn",
+      tool_use_id: "tool-shared",
+    }),
+    { receivedAtMs: 110 },
+  );
+
+  for (const agent of store.getSnapshot().sessions[0].agents) {
+    assert(!("current_tool_name" in agent));
+    assert(!("current_tool_status" in agent));
+    assert(!("current_tool_observed_at_ms" in agent));
+  }
+});
+
+test("keeps the newest tool event as the agent's current activity", () => {
+  const store = createTestStore();
+  store.ingest(
+    subagentPayload("SubagentStart", { turn_id: "agent-turn" }),
+    { receivedAtMs: 100 },
+  );
+  store.ingest(
+    toolPayload("PreToolUse", {
+      turn_id: "agent-turn",
+      tool_name: "Bash",
+      tool_use_id: "newer",
+    }),
+    { receivedAtMs: 130 },
+  );
+  store.ingest(
+    toolPayload("PostToolUse", {
+      turn_id: "agent-turn",
+      tool_name: "apply_patch",
+      tool_use_id: "older",
+    }),
+    { receivedAtMs: 120 },
+  );
+
+  const agent = store.getSnapshot().sessions[0].agents[0];
+  assert.equal(agent.current_tool_name, "Bash");
+  assert.equal(agent.current_tool_status, "running");
+  assert.equal(agent.current_tool_observed_at_ms, 130);
+});
+
+test("keeps a running tool current when an earlier tool completes later", () => {
+  const store = createTestStore();
+  store.ingest(
+    subagentPayload("SubagentStart", { turn_id: "agent-turn" }),
+    { receivedAtMs: 90 },
+  );
+  store.ingest(
+    toolPayload("PreToolUse", {
+      turn_id: "agent-turn",
+      tool_name: "Bash",
+      tool_use_id: "earlier-tool",
+    }),
+    { receivedAtMs: 100 },
+  );
+  store.ingest(
+    toolPayload("PreToolUse", {
+      turn_id: "agent-turn",
+      tool_name: "apply_patch",
+      tool_use_id: "still-running-tool",
+    }),
+    { receivedAtMs: 110 },
+  );
+  store.ingest(
+    toolPayload("PostToolUse", {
+      turn_id: "agent-turn",
+      tool_name: "Bash",
+      tool_use_id: "earlier-tool",
+    }),
+    { receivedAtMs: 120 },
+  );
+
+  const session = store.getSnapshot().sessions[0];
+  const agent = session.agents[0];
+  assert.equal(agent.current_tool_name, "apply_patch");
+  assert.equal(agent.current_tool_status, "running");
+  assert.equal(agent.current_tool_observed_at_ms, 110);
+  assert.equal(
+    session.tools.find(({ tool_use_id }) => tool_use_id === "earlier-tool")
+      .status,
+    "completed",
+  );
+});
+
+test("clears current activity when the same agent moves to a turn without tools", () => {
+  const store = createTestStore();
+  store.ingest(
+    subagentPayload("SubagentStart", { turn_id: "first-turn" }),
+    { receivedAtMs: 100 },
+  );
+  store.ingest(
+    toolPayload("PreToolUse", {
+      turn_id: "first-turn",
+      tool_name: "Bash",
+      tool_use_id: "shell-1",
+    }),
+    { receivedAtMs: 110 },
+  );
+  store.ingest(
+    subagentPayload("SubagentStop", { turn_id: "second-turn" }),
+    { receivedAtMs: 120 },
+  );
+
+  const agent = store.getSnapshot().sessions[0].agents[0];
+  assert.equal(agent.turn_id, "second-turn");
+  assert(!("current_tool_name" in agent));
+  assert(!("current_tool_status" in agent));
+  assert(!("current_tool_observed_at_ms" in agent));
+  assert.equal(agent.last_seen_at_ms, 120);
+});
+
+test("settles a running tool when its one exact matching agent stops", () => {
+  const store = createTestStore();
+  store.ingest(
+    subagentPayload("SubagentStart", { turn_id: "agent-turn" }),
+    { receivedAtMs: 100 },
+  );
+  store.ingest(
+    toolPayload("PreToolUse", {
+      turn_id: "agent-turn",
+      tool_use_id: "tool-1",
+    }),
+    { receivedAtMs: 110 },
+  );
+  store.ingest(
+    subagentPayload("SubagentStop", { turn_id: "agent-turn" }),
+    { receivedAtMs: 120 },
+  );
+
+  const session = store.getSnapshot().sessions[0];
+  assert.equal(session.agents[0].status, "stopped");
+  assert.equal(
+    session.agents[0].current_tool_status,
+    "completion_not_observed",
+  );
+  assert.equal(session.tools[0].status, "completion_not_observed");
+  assert.equal(
+    session.recent_activities.find(({ type }) => type === "tool_started")
+      .status,
+    "completion_not_observed",
+  );
+});
+
+test("does not settle running tools for an ambiguous agent turn", () => {
+  const store = createTestStore();
+  for (const agentId of ["agent-1", "agent-2"]) {
+    store.ingest(
+      subagentPayload("SubagentStart", {
+        agent_id: agentId,
+        turn_id: "shared-turn",
+      }),
+      { receivedAtMs: agentId === "agent-1" ? 100 : 101 },
+    );
+  }
+  store.ingest(
+    toolPayload("PreToolUse", {
+      turn_id: "shared-turn",
+      tool_use_id: "tool-shared",
+    }),
+    { receivedAtMs: 110 },
+  );
+  store.ingest(
+    subagentPayload("SubagentStop", {
+      agent_id: "agent-1",
+      turn_id: "shared-turn",
+    }),
+    { receivedAtMs: 120 },
+  );
+
+  const session = store.getSnapshot().sessions[0];
+  assert.equal(session.tools[0].status, "running");
+  for (const agent of session.agents) {
+    assert(!("current_tool_status" in agent));
+  }
+});
+
+test("omits current activity when latest tools share one observation timestamp", () => {
+  const store = createTestStore();
+  store.ingest(
+    subagentPayload("SubagentStart", { turn_id: "agent-turn" }),
+    { receivedAtMs: 100 },
+  );
+  for (const [toolUseId, toolName] of [
+    ["tool-a", "Bash"],
+    ["tool-z", "apply_patch"],
+  ]) {
+    store.ingest(
+      toolPayload("PreToolUse", {
+        turn_id: "agent-turn",
+        tool_name: toolName,
+        tool_use_id: toolUseId,
+      }),
+      { receivedAtMs: 110 },
+    );
+  }
+
+  const agent = store.getSnapshot().sessions[0].agents[0];
+  assert(!("current_tool_name" in agent));
+  assert(!("current_tool_status" in agent));
+  assert(!("current_tool_observed_at_ms" in agent));
+  assert.equal(agent.last_seen_at_ms, 100);
+});
+
+test("omits current activity when terminal tools share one observation timestamp", () => {
+  const store = createTestStore();
+  store.ingest(
+    subagentPayload("SubagentStart", { turn_id: "agent-turn" }),
+    { receivedAtMs: 100 },
+  );
+  for (const [toolUseId, toolName] of [
+    ["terminal-a", "Bash"],
+    ["terminal-b", "apply_patch"],
+  ]) {
+    store.ingest(
+      toolPayload("PostToolUse", {
+        turn_id: "agent-turn",
+        tool_name: toolName,
+        tool_use_id: toolUseId,
+      }),
+      { receivedAtMs: 110 },
+    );
+  }
+
+  const agent = store.getSnapshot().sessions[0].agents[0];
+  assert(!("current_tool_name" in agent));
+  assert(!("current_tool_status" in agent));
+  assert(!("current_tool_observed_at_ms" in agent));
 });
 
 test("tracks parent session and turn lifecycle from hooks", () => {
@@ -482,6 +1155,7 @@ test("makes SessionEnd terminal and marks orphan work as interrupted", () => {
   assert.equal(session.root_turn.status, "completed");
   assert.equal(session.agents[0].status, "interrupted");
   assert.equal(session.tools[0].status, "interrupted");
+  assert.equal(session.agents[0].current_tool_status, "interrupted");
   assert.deepEqual(session.permission, { status: "idle" });
   assert.equal(
     session.recent_activities.find(
@@ -512,6 +1186,7 @@ test("makes SessionEnd terminal and marks orphan work as interrupted", () => {
   assert.equal(session.status, "completed");
   assert.equal(session.agents[0].status, "stopped");
   assert.equal(session.tools[0].status, "completed");
+  assert.equal(session.agents[0].current_tool_status, "completed");
   assert.equal(
     session.recent_activities.find(({ type }) => type === "subagent_started")
       .status,
@@ -854,6 +1529,10 @@ test("downgrades old active state when terminal hooks were not observed", () => 
   assert.equal(stale.root_turn.status, "completion_not_observed");
   assert.equal(stale.permission.status, "completion_not_observed");
   assert.equal(stale.agents[0].status, "completion_not_observed");
+  assert.equal(
+    stale.agents[0].current_tool_status,
+    "completion_not_observed",
+  );
   assert.equal(stale.tools[0].status, "completion_not_observed");
   assert(!stale.recent_activities.some(({ status }) => status === "running"));
   assert(

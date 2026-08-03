@@ -23,6 +23,7 @@ const MAX_LABEL_LENGTH = 256;
 const MAX_WORKSPACE_LABEL_LENGTH = 120;
 const MAX_PROMPT_INSPECTION_LENGTH = 4_096;
 const MAX_TASK_SUMMARY_LENGTH = 180;
+const OBSERVED_SPAWN_AGENT_TOOL_NAME = "collaborationspawn_agent";
 const AMBIENT_BROWSER_CONTEXT_OPEN =
   '<in-app-browser-context source="ambient-ui-state">';
 const AMBIENT_BROWSER_CONTEXT_CLOSE = "</in-app-browser-context>";
@@ -47,6 +48,8 @@ const UNC_ABSOLUTE_PATH =
   /(^|[\s("'`=:[{])\\\\[^\s<>"'`)\]},;]+(?:\\[^\s<>"'`)\]},;]+)+/gu;
 const POSIX_ABSOLUTE_PATH =
   /(^|[\s("'`=:[{])\/(?!\/)[^\s<>"'`)\]},;]*(?:\/[^\s<>"'`)\]},;]+)*/gu;
+const OPAQUE_SINGLE_TOKEN = /^[A-Za-z0-9+/_=.:-]+$/u;
+const LONG_HEXADECIMAL_TOKEN = /^[A-F0-9]{40,}$/iu;
 
 function isObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -198,6 +201,55 @@ export function deriveTaskSummary(value) {
   return `${readableBoundary ? bounded.slice(0, lastSpace) : bounded}…`;
 }
 
+function isOpaqueSummaryValue(value) {
+  const candidate = typeof value === "string" ? value.trim() : "";
+  if (!candidate || /\s/u.test(candidate)) {
+    return false;
+  }
+  if (/^gAAAA[A-Za-z0-9_-]+={0,2}$/u.test(candidate)) {
+    return true;
+  }
+  return (
+    (candidate.length >= 64 && OPAQUE_SINGLE_TOKEN.test(candidate)) ||
+    LONG_HEXADECIMAL_TOKEN.test(candidate)
+  );
+}
+
+/** Sanitize a potential assignment label and reject opaque machine values. */
+export function deriveAssignmentSummary(value) {
+  if (isOpaqueSummaryValue(value)) {
+    return null;
+  }
+  const summary = deriveTaskSummary(value);
+  return summary && !isOpaqueSummaryValue(summary) ? summary : null;
+}
+
+function deriveSpawnTaskName(value) {
+  if (!isBoundedString(value, MAX_LABEL_LENGTH) || isOpaqueSummaryValue(value)) {
+    return null;
+  }
+  const sanitized = deriveAssignmentSummary(value);
+  if (!sanitized) {
+    return null;
+  }
+  const humanized = sanitized.replace(/[_-]+/gu, " ").replace(/\s+/gu, " ").trim();
+  return humanized && !isOpaqueSummaryValue(humanized) ? humanized : null;
+}
+
+/** Prefer a readable spawn message, then fall back to a safe task_name label. */
+export function deriveSpawnAssignmentSummary(toolInput) {
+  if (
+    !isObject(toolInput) ||
+    !isBoundedString(toolInput.task_name, MAX_LABEL_LENGTH) ||
+    typeof toolInput.message !== "string"
+  ) {
+    return null;
+  }
+  const taskName = deriveSpawnTaskName(toolInput.task_name);
+  const message = deriveAssignmentSummary(toolInput.message);
+  return message ?? taskName;
+}
+
 /**
  * Validate an untrusted Codex hook payload and retain only monitor-safe fields.
  * Raw prompts, tool input/output, paths, and assistant messages are never copied.
@@ -285,6 +337,29 @@ export function normalizeHookPayload(payload, options = {}) {
 
     event.tool_name = payload.tool_name;
     event.tool_use_id = payload.tool_use_id;
+
+    if (
+      type === "tool_started" &&
+      payload.tool_name === OBSERVED_SPAWN_AGENT_TOOL_NAME
+    ) {
+      event.spawn_assignment_observed = true;
+      let assignmentSummary = null;
+      if (
+        isObject(payload.tool_input) &&
+        isBoundedString(payload.tool_input.task_name, MAX_LABEL_LENGTH) &&
+        typeof payload.tool_input.message === "string"
+      ) {
+        assignmentSummary = deriveSpawnAssignmentSummary(payload.tool_input);
+      } else if (
+        payload.spawn_assignment_observed === true &&
+        typeof payload.assignment_summary === "string"
+      ) {
+        assignmentSummary = deriveAssignmentSummary(payload.assignment_summary);
+      }
+      if (assignmentSummary) {
+        event.assignment_summary = assignmentSummary;
+      }
+    }
   }
 
   if (type === "permission_requested") {

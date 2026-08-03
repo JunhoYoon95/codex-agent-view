@@ -69,6 +69,61 @@ function loadStatusFilterHelper() {
   return Function(`"use strict"; ${source}; return sessionMatchesStatus;`)();
 }
 
+function loadQueryFilterHelper() {
+  const source = extractFunction("sessionMatchesQuery");
+  return Function(
+    "formatAgentRole",
+    "formatAgentCurrentActivity",
+    `"use strict"; ${source}; return sessionMatchesQuery;`,
+  )(
+    (agentType) => agentType,
+    () => "",
+  );
+}
+
+function loadSafeSummaryHelper() {
+  const source = extractFunction("safeSummary");
+  return Function(
+    "safeString",
+    "CONTROL_CHARACTERS",
+    `"use strict"; ${source}; return safeSummary;`,
+  )(
+    (value, fallback) => (typeof value === "string" && value.trim() ? value.trim() : fallback),
+    /[\u0000-\u001f\u007f-\u009f]/g,
+  );
+}
+
+function loadAgentCurrentActivityFormatter() {
+  const source = extractFunction("formatAgentCurrentActivity");
+  const templates = {
+    agentWorkEnded: "agent work ended",
+    agentLastActivityCompletionUnconfirmed: "last activity unconfirmed",
+    completionNotObservedExplanation: "completion unconfirmed",
+    agentCurrentStatusUnverified: "status unverified",
+    agentToolRunning: "{tool} running",
+    agentToolRunningObserved: "{tool} running at {time}",
+    agentToolCompletedRecently: "recent {tool} completed",
+    agentToolCompletedRecentlyObserved: "recent {tool} completed at {time}",
+    agentWaitingForNextStep: "waiting",
+    agentCurrentActivityUnavailable: "unavailable",
+  };
+  return Function(
+    "t",
+    "formatToolLabel",
+    "formatRelativeTime",
+    "STATUS_EXPLANATION_KEYS",
+    `"use strict"; ${source}; return formatAgentCurrentActivity;`,
+  )(
+    (key, values = {}) => Object.entries(values).reduce(
+      (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
+      templates[key] ?? key,
+    ),
+    (toolName) => `tool:${toolName}`,
+    (timestampMs) => `time:${timestampMs}`,
+    { completion_not_observed: "completionNotObservedExplanation" },
+  );
+}
+
 function createRefreshStateHarness(responses, options = {}) {
   const calls = [];
   const connectionStates = [];
@@ -767,12 +822,93 @@ test("legacy viewer state preserves canonical self-exclusion while signed access
   );
 });
 
-test("labels verified agent_type as role/profile without claiming an assignment description", () => {
+test("renders optional assigned-work summaries without guessing when details are unavailable", () => {
   assert.match(app, /agentProfile: "Role\/profile · \{profile\}"/);
-  assert.match(app, /Codex currently provides each agent's role, but not its full assignment description/);
+  assert.match(app, /agentAssignment: "Assigned work"/);
+  assert.match(app, /agentCurrentActivity: "Current activity"/);
+  assert.match(app, /agentAssignment: "할당된 작업"/);
+  assert.match(app, /agentCurrentActivity: "현재 작업"/);
+  assert.match(app, /agentAssignment: "Trabajo asignado"/);
+  assert.match(app, /agentCurrentActivity: "Actividad actual"/);
+  assert.match(app, /agentWorkEnded: "Agent work ended"/);
+  assert.match(app, /agentWorkEnded: "에이전트 작업 종료 확인됨"/);
+  assert.match(app, /agentWorkEnded: "Fin del trabajo del agente confirmado"/);
+  assert.match(app, /agentLastActivityCompletionUnconfirmed: "Agent work ended, but completion of its last activity was not confirmed\."/);
+  assert.doesNotMatch(app, /Assigned task completed|할당된 작업 완료|Tarea asignada completada/);
+  assert.match(app, /agentAssignmentUnavailable: "No assignment detail was observed for this agent\."/);
+  assert.match(app, /agentAssignmentUnavailable: "이 에이전트의 할당 작업 설명을 확인하지 못했습니다\."/);
+  assert.match(app, /agentAssignmentUnavailable: "No se observó información sobre el trabajo asignado de este agente\."/);
+  assert.match(app, /agentCurrentActivityUnavailable: "Current activity details are not available yet\."/);
   assert.match(app, /profileNote\.className = "agent-profile-note"/);
+  assert.match(app, /assignmentSummary: safeSummary\(agent\.assignment_summary\)/);
+  assert.match(app, /currentToolName: safeSummary\(agent\.current_tool_name\)/);
+  assert.match(app, /currentToolStatus: normalizeCoreStatus\(agent\.current_tool_status\)/);
+  assert.match(app, /currentToolObservedAtMs: safeTimestamp\(agent\.current_tool_observed_at_ms\)/);
+  assert.match(app, /workSummary\.className = "agent-work-summary"/);
+  assert.match(app, /agent\.assignmentSummary \|\| t\("agentAssignmentUnavailable"\)/);
+  assert.match(app, /\[t\("agentCurrentActivity"\), formatAgentCurrentActivity\(agent\)\]/);
+  assert.match(app, /description\.textContent = value/);
   assert.match(app, /technicalRows\.push\(\[t\("rawProfile"\), agent\.agentType\]\)/);
-  assert.doesNotMatch(app, /taskDescription|assignmentDescription|agent\.prompt/i);
+  assert.doesNotMatch(app, /current_activity_summary|taskDescription|assignmentDescription|agent\.prompt/i);
+  assert.match(styles, /\.agent-work-summary\s*\{/);
+  assert.doesNotMatch(app, /createElement\("details"\)|createElement\("summary"\)/);
+
+  const safeSummary = loadSafeSummaryHelper();
+  assert.equal(safeSummary("  테마\n\t조회 쿼리 수정 중  "), "테마 조회 쿼리 수정 중");
+  assert.equal(safeSummary(null), "");
+  assert.equal(safeSummary("x".repeat(300)).length, 240);
+
+  const sessionMatchesQuery = loadQueryFilterHelper();
+  const searchableSession = {
+    sessionId: "session",
+    workspaceLabel: "workspace",
+    taskSummary: "parent request",
+    status: "running",
+    agents: [{
+      agentId: "agent",
+      agentType: "worker",
+      assignmentSummary: "테마 가져오기 쿼리 수정",
+      status: "running",
+    }],
+    recentActivities: [],
+  };
+  assert.equal(sessionMatchesQuery(searchableSession, "테마 가져오기"), true);
+  assert.equal(sessionMatchesQuery(searchableSession, "unrelated"), false);
+
+  const formatCurrentActivity = loadAgentCurrentActivityFormatter();
+  assert.equal(formatCurrentActivity({ status: "completed" }), "agent work ended");
+  assert.equal(
+    formatCurrentActivity({ status: "completed", currentToolStatus: "completion_not_observed" }),
+    "last activity unconfirmed",
+  );
+  assert.equal(
+    formatCurrentActivity({ status: "completed", currentToolStatus: "interrupted" }),
+    "last activity unconfirmed",
+  );
+  assert.equal(
+    formatCurrentActivity({
+      status: "running",
+      currentToolName: "apply_patch",
+      currentToolStatus: "running",
+      currentToolObservedAtMs: 42,
+    }),
+    "tool:apply_patch running at time:42",
+  );
+  assert.equal(
+    formatCurrentActivity({
+      status: "running",
+      currentToolName: "exec_command",
+      currentToolStatus: "completed",
+      currentToolObservedAtMs: null,
+    }),
+    "recent tool:exec_command completed",
+  );
+  assert.equal(
+    formatCurrentActivity({ status: "completion_not_observed" }),
+    "completion unconfirmed",
+  );
+  assert.equal(formatCurrentActivity({ status: "waiting" }), "waiting");
+  assert.equal(formatCurrentActivity({ status: "running" }), "unavailable");
 });
 
 test("keeps two-second polling and preserves the last good state across transient failures", async () => {

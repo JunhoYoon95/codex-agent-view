@@ -291,6 +291,191 @@ test("derives task summaries only for UserPromptSubmit and never copies raw prom
   assert(!JSON.stringify(unrelated).includes(rawPrompt));
 });
 
+test("derives a safe assignment summary only from the observed spawn tool input", () => {
+  const rawMessage = [
+    "결제 테마 쿼리 수정과 관련 테스트를 맡아 주세요.",
+    "담당자 person@example.com",
+    "파일 /Users/private/customer/theme.ts",
+    "token=private-spawn-token",
+    "추가 조건 ".repeat(80),
+  ].join("\n");
+  const result = normalizeHookPayload(
+    {
+      ...common,
+      hook_event_name: "PreToolUse",
+      tool_name: "collaborationspawn_agent",
+      tool_use_id: "spawn-1",
+      tool_input: {
+        task_name: "theme_query",
+        message: rawMessage,
+        fork_turns: "all",
+      },
+      tool_response: "private spawn response",
+    },
+    { receivedAtMs: 128 },
+  );
+
+  assert.equal(result.status, "accepted");
+  assert.equal(result.event.spawn_assignment_observed, true);
+  assert.match(result.event.assignment_summary, /^결제 테마 쿼리 수정/);
+  assert(Array.from(result.event.assignment_summary).length <= 180);
+  const serialized = JSON.stringify(result);
+  for (const privateValue of [
+    rawMessage,
+    "person@example.com",
+    "/Users/private/customer/theme.ts",
+    "private-spawn-token",
+    "private spawn response",
+    '"tool_input"',
+    '"tool_response"',
+  ]) {
+    assert(!serialized.includes(privateValue));
+  }
+});
+
+test("does not infer assignments from unobserved spawn aliases or incomplete input", () => {
+  const base = {
+    ...common,
+    hook_event_name: "PreToolUse",
+    tool_use_id: "spawn-1",
+    tool_input: {
+      task_name: "worker",
+      message: "테마 수정 작업",
+    },
+  };
+  for (const payload of [
+    { ...base, tool_name: "Agent" },
+    { ...base, tool_name: "spawn_agent" },
+    {
+      ...base,
+      tool_name: "collaborationspawn_agent",
+      tool_input: { message: "테마 수정 작업" },
+    },
+    {
+      ...base,
+      tool_name: "collaborationspawn_agent",
+      tool_input: { task_name: "worker" },
+    },
+    {
+      ...base,
+      hook_event_name: "PostToolUse",
+      tool_name: "collaborationspawn_agent",
+    },
+  ]) {
+    const result = normalizeHookPayload(payload, { receivedAtMs: 129 });
+    assert.equal(result.status, "accepted");
+    assert(!("assignment_summary" in result.event));
+    assert.equal(
+      "spawn_assignment_observed" in result.event,
+      payload.tool_name === "collaborationspawn_agent" &&
+        payload.hook_event_name === "PreToolUse",
+    );
+  }
+});
+
+test("re-sanitizes sender-derived assignment metadata before accepting it", () => {
+  const result = normalizeHookPayload(
+    {
+      ...common,
+      hook_event_name: "PreToolUse",
+      tool_name: "collaborationspawn_agent",
+      tool_use_id: "spawn-minimized",
+      tool_input: { redacted: true, type: "object", keys: ["message", "task_name"] },
+      spawn_assignment_observed: true,
+      assignment_summary: [
+        "테마 수정 작업",
+        "person@example.com /Users/private/customer/theme.ts",
+        "token=malicious-top-level-token",
+        "추가 내용 ".repeat(80),
+      ].join("\n"),
+    },
+    { receivedAtMs: 130 },
+  );
+
+  assert.equal(result.status, "accepted");
+  assert.equal(result.event.spawn_assignment_observed, true);
+  assert.match(result.event.assignment_summary, /^테마 수정 작업/);
+  assert(Array.from(result.event.assignment_summary).length <= 180);
+  const serialized = JSON.stringify(result);
+  for (const privateValue of [
+    "person@example.com",
+    "/Users/private/customer/theme.ts",
+    "malicious-top-level-token",
+    '"tool_input"',
+  ]) {
+    assert(!serialized.includes(privateValue));
+  }
+});
+
+test("uses a humanized task name when the spawn message is opaque", () => {
+  const opaqueMessage = `gAAAAAB${"A".repeat(172)}`;
+  const result = normalizeHookPayload(
+    {
+      ...common,
+      hook_event_name: "PreToolUse",
+      tool_name: "collaborationspawn_agent",
+      tool_use_id: "spawn-opaque",
+      tool_input: {
+        task_name: "assignment_e2e",
+        message: opaqueMessage,
+      },
+    },
+    { receivedAtMs: 131 },
+  );
+
+  assert.equal(result.status, "accepted");
+  assert.equal(result.event.assignment_summary, "assignment e2e");
+  assert(!JSON.stringify(result).includes(opaqueMessage));
+});
+
+test("prefers a readable spawn message over its task name fallback", () => {
+  const result = normalizeHookPayload(
+    {
+      ...common,
+      hook_event_name: "PreToolUse",
+      tool_name: "collaborationspawn_agent",
+      tool_use_id: "spawn-readable",
+      tool_input: {
+        task_name: "assignment_e2e",
+        message: "결제 테마 조회 쿼리를 수정하고 관련 테스트를 실행합니다.",
+      },
+    },
+    { receivedAtMs: 132 },
+  );
+
+  assert.equal(
+    result.event.assignment_summary,
+    "결제 테마 조회 쿼리를 수정하고 관련 테스트를 실행합니다.",
+  );
+});
+
+test("does not use a private or opaque task name as an assignment fallback", () => {
+  const opaqueMessage = `gAAAAAB${"B".repeat(172)}`;
+  for (const taskName of [
+    "/Users/private/customer/assignment",
+    "token=private-task-token",
+    `a${"B".repeat(90)}`,
+    "sk-privatecredentialvalue123456789",
+  ]) {
+    const result = normalizeHookPayload(
+      {
+        ...common,
+        hook_event_name: "PreToolUse",
+        tool_name: "collaborationspawn_agent",
+        tool_use_id: `spawn-${taskName.length}`,
+        tool_input: { task_name: taskName, message: opaqueMessage },
+      },
+      { receivedAtMs: 133 },
+    );
+    assert.equal(result.status, "accepted");
+    assert.equal(result.event.spawn_assignment_observed, true);
+    assert(!("assignment_summary" in result.event));
+    const serialized = JSON.stringify(result);
+    assert(!serialized.includes(opaqueMessage));
+    assert(!serialized.includes(taskName));
+  }
+});
+
 test("omits empty or fully private task summaries", () => {
   for (const prompt of [
     null,

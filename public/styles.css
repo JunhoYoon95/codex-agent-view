@@ -810,6 +810,32 @@ h1 {
   margin-top: var(--space-2);
 }
 
+.agent-work-summary {
+  display: grid;
+  margin: var(--space-3) 0 0;
+  gap: var(--space-2);
+}
+
+.agent-work-summary div {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 0.28fr) minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.agent-work-summary dt {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.agent-work-summary dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
 .agent-profile-note {
   margin: calc(-1 * var(--space-2)) 0 var(--space-3);
   color: var(--text-muted);
@@ -1018,6 +1044,11 @@ footer p {
   .activity-metadata {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .agent-work-summary div {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
   }
 }
 

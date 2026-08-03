@@ -5,7 +5,10 @@ import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { minimizePayload } from "./capture-hook.mjs";
-import { deriveTaskSummary } from "../src/core/normalize-hook-payload.mjs";
+import {
+  deriveSpawnAssignmentSummary,
+  deriveTaskSummary,
+} from "../src/core/normalize-hook-payload.mjs";
 import { readRuntimeInfo } from "../src/runtime/config.mjs";
 
 const MAX_STDIN_BYTES = 2 * 1024 * 1024;
@@ -13,6 +16,7 @@ const SEND_TIMEOUT_MS = 500;
 const AUTO_START_WAIT_MS = 1_600;
 const AUTO_START_POLL_MS = 40;
 const MAX_WORKSPACE_LABEL_LENGTH = 120;
+const OBSERVED_SPAWN_AGENT_TOOL_NAME = "collaborationspawn_agent";
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/g;
 
 async function readStdin() {
@@ -59,10 +63,18 @@ function monitorEnvelope(payload) {
     payload.hook_event_name === "UserPromptSubmit"
       ? deriveTaskSummary(payload.prompt)
       : null;
+  const spawnAssignmentObserved =
+    payload.hook_event_name === "PreToolUse" &&
+    payload.tool_name === OBSERVED_SPAWN_AGENT_TOOL_NAME;
+  const assignmentSummary = spawnAssignmentObserved
+    ? deriveSpawnAssignmentSummary(payload.tool_input)
+    : null;
   return {
     ...minimized,
     ...(workspaceLabel ? { workspace_label: workspaceLabel } : {}),
     ...(taskSummary ? { task_summary: taskSummary } : {}),
+    ...(spawnAssignmentObserved ? { spawn_assignment_observed: true } : {}),
+    ...(assignmentSummary ? { assignment_summary: assignmentSummary } : {}),
   };
 }
 
