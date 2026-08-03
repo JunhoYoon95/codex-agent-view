@@ -190,9 +190,8 @@ assert(
   "skill successful path must invoke codex-agent-view open exactly once",
 );
 assert(
-  typeof manifest.interface?.defaultPrompt === "string" &&
-    manifest.interface.defaultPrompt.includes("default browser"),
-  "plugin must expose one short external-browser Quick start prompt",
+  !Object.hasOwn(manifest.interface ?? {}, "defaultPrompt"),
+  "plugin interface must stay promptless so invocation does not append a starter sentence",
 );
 assert(
   typeof manifest.interface?.longDescription === "string" &&

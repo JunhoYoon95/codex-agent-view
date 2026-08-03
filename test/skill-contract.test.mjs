@@ -36,18 +36,16 @@ test("ships one direct plugin skill without a separate show-agents action", asyn
   assert.doesNotMatch(skill, /prepare-live-view/);
 });
 
-test("Quick start asks the one skill to open the default external browser", async () => {
+test("promptless invocation routes through the one external-browser skill", async () => {
   const [skill, manifestText] = await Promise.all([
     readFile(skillUrl, "utf8"),
     readFile(manifestUrl, "utf8"),
   ]);
   const manifest = JSON.parse(manifestText);
 
-  assert.equal(
-    manifest.interface.defaultPrompt,
-    "Open the Codex Agent View live monitor in my default browser.",
-  );
-  assert.match(manifest.interface.longDescription, /Invoke @codex-agent-view or choose Quick start/);
+  assert.equal(Object.hasOwn(manifest.interface, "defaultPrompt"), false);
+  assert.match(manifest.interface.longDescription, /Invoke @codex-agent-view directly/);
+  assert.doesNotMatch(manifest.interface.longDescription, /Quick start/i);
   assert.match(manifest.interface.longDescription, /no separate skill picker or \$ command is required/);
   assert.match(skill, /Run\n`codex-agent-view open` exactly once/);
   assert.match(skill, /Do not call an in-app Browser or open a Codex side panel/);
