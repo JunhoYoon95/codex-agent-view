@@ -75,7 +75,7 @@ test("documents the current live-view UX and evidence boundary", async () => {
   assert.match(privacy, /do not enable CORS and no authentication cookie is set/);
 });
 
-test("keeps public 0.4.7 evidence while marking 0.4.8 as an unverified release candidate", async () => {
+test("records public 0.4.8 acceptance while preserving historical 0.4.7 evidence", async () => {
   const [packageText, manifestText, english, korean, distribution, findings, submission] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -92,50 +92,49 @@ test("keeps public 0.4.7 evidence while marking 0.4.8 as an unverified release c
   assert.equal(manifest.version, "0.4.8");
   assert.match(english, /npm install --global codex-agent-view@0\.4\.8/);
   assert.match(korean, /npm install --global codex-agent-view@0\.4\.8/);
-  assert.match(english, /Version `0\.4\.8` is a release candidate/);
-  assert.match(korean, /`0\.4\.8`은 .*release candidate/);
+  assert.match(english, /Public version `0\.4\.8`/);
+  assert.match(korean, /Public `0\.4\.8`/);
+  assert.doesNotMatch(english, /0\.4\.8.*release candidate/i);
+  assert.doesNotMatch(korean, /0\.4\.8.*release candidate/i);
   for (const document of [english, korean, distribution, findings, submission]) {
     assert.match(document, /60-second|60초/);
     assert.match(document, /bootstrap grant/);
-    assert.match(document, /not claimed|미확인|주장하지 않는다/);
   }
   for (const document of [distribution, findings, submission]) {
     assert.match(
       document,
-      /(?:public npm `latest`\/version|public npm `latest` \/ version \|).*`0\.4\.7`/i,
+      /(?:public npm `latest`\/version|public npm `latest` \/ version \|).*`0\.4\.8`/i,
     );
-    assert.match(document, /5fc4c73ba16fe1bef79c468f0a0be3d3850a7ce7/);
-    assert.match(document, /sha512-kdwpnKc21i7iW6kpIg2ogUmDsTp8QGMhIif0yIh3n\/mpmdiB\+AEsy6hjzzO56clLbCpgejkKhqJfDSG4txkN2g==/);
+    assert.match(document, /4ede86be395a7175335cb1a016b67afbb2617606/);
+    assert.match(document, /sha512-bYdPvclbT6oD2fnX3TNy30D4g3bMN24dfZ\+D5PyekiUlNybBNLxSPr6bjXwQiVEFpW9Q9J7dc1DkdaMstvkszw==/);
     assert.match(document, /registry signature/);
     assert.match(document, /25 files/);
-    assert.match(document, /78\.0 kB/);
-    assert.match(document, /278\.8 kB/);
-    assert.match(document, /d2ac82fde4b038aa301b776f78546d9f8a4136f7677090b2263a3aeb9081876c/);
+    assert.match(document, /311488/);
+    assert.match(document, /402c25286dff47dd590ec4ea128a45fde70e76719abbdb990b8ed61c36a08fc1/);
     assert.match(document, /byte-identical/);
-    assert.match(document, /public exact reinstall/i);
-    assert.match(document, /CLI\/plugin `0\.4\.7`/);
+    assert.match(document, /public exact (?:global )?install/i);
+    assert.match(document, /CLI\/plugin `0\.4\.8`/);
     assert.match(document, /installed\/enabled/);
     assert.match(document, /hook wiring 9종/);
-    assert.match(document, /126\/126/);
-    assert.match(document, /30763034343/);
-    assert.match(document, /30763153320/);
-    assert.match(document, /f001168/);
-    assert.match(document, /https:\/\/github\.com\/JunhoYoon95\/codex-agent-view\/releases\/tag\/v0\.4\.7/);
-    assert.match(document, /initial none observed/i);
-    assert.match(document, /later actual hooks/i);
-    assert.match(document, /2 tasks\/3 subagents/i);
-    assert.match(document, /public_047_final_app_e2e/);
-    assert.match(document, /bad terminal agent start rows 0/i);
-    assert.match(document, /bad terminal tool start rows 0/i);
-    assert.match(document, /48\/48/);
-    assert.match(document, /42\/42/);
-    assert.match(document, /exact hot-reload timing.*미확인/i);
-    assert.match(document, /recent .*row.*running/i);
-    assert.match(document, /installed public runtime E2E/i);
-    assert.match(document, /false running rows 0/i);
-    assert.match(document, /monitor restart 뒤 QA session 제거와 0 tasks/i);
+    assert.match(document, /healthy `doctor`/);
+    assert.match(document, /153\/153/);
+    assert.match(document, /30806601086/);
+    assert.match(document, /30811300042/);
+    assert.match(document, /ed6561e929d3b2237acb223de037596663f4dc45/);
+    assert.match(document, /e81e40704da05421515a4f78e84726857fbd0ba3/);
+    assert.match(document, /https:\/\/github\.com\/JunhoYoon95\/codex-agent-view\/releases\/tag\/v0\.4\.8/);
+    assert.match(document, /ordered timestamp/i);
+    assert.match(document, /agent 상태는 stopped/i);
+    assert.match(document, /grant 인증/i);
+    assert.match(document, /fragment 제거/i);
+    assert.match(document, /same-tab bare-root recovery button 성공/i);
+    assert.match(document, /new-tab recovery button 부재/i);
+    assert.match(document, /앱 process 재시작 없이/i);
+    assert.match(document, /일반화하지 않는다/i);
     assert.match(document, /prerelease: false/);
-    assert.doesNotMatch(document, /`?0\.4\.7`? release candidate/i);
+    assert.match(document, /Universal Directory.*(?:미확인|주장하지 않는다|뜻하지 않는다)/is);
+    assert.doesNotMatch(document, /0\.4\.8.*release candidate/i);
+    assert.match(document, /5fc4c73ba16fe1bef79c468f0a0be3d3850a7ce7/);
   }
 });
 

@@ -4,28 +4,32 @@
 
 릴리스 증거 갱신일: 2026-08-03
 
-이 문서는 Codex Agent View의 배포 경계를 정리한다. Repository/package는 `0.4.8` release candidate이고, 마지막으로 확인한 public npm `latest`/version은 `0.4.7`이다. `0.2.0`부터 `0.4.7`까지의 public evidence를 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
+이 문서는 Codex Agent View의 배포 경계를 정리한다. Repository/package와 public npm `latest`/version은 `0.4.8`이다. `0.2.0`부터 `0.4.8`까지의 public evidence를 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
 
 ## 현재 상태
 
-- package 이름은 `codex-agent-view`다. Repository/package는 `0.4.8` release candidate이고 public npm `latest`는 아직 `0.4.7`로 기록한다.
+- package 이름은 `codex-agent-view`다. Repository/package와 public npm `latest`는 `0.4.8`이다.
 - Public `0.4.2`의 push, main CI Node.js 18/20/22, npm metadata/signature, release/registry tarball byte 일치, annotated tag/GitHub Release, this-device exact reinstall/artifact match, plugin installed/enabled, hook wiring 9종과 official Codex in-app Browser visual E2E를 확인했다.
 - Public `0.3.2`는 immutable packaged README의 잘못된 release-state 안내를 수정한 patch다. Registry metadata/digest/signature, tag/GitHub Release, main/tag CI, this-device exact install과 registry/install artifact match를 확인했다. App-native snapshot은 worker activity 3개를 확인했지만 live hook E2E는 앱 restart/new-task 전이라 미완료다.
 - Node.js `>=18`을 요구하며 production dependency가 없다.
 - `package.json`은 `codex-agent-view` executable을 `bin/codex-agent-view.mjs`로 노출한다.
-- `0.4.8` candidate bundle에는 plugin manifest/catalog, logo assets, hooks, CLI, local runtime/server, static monitor UI, scripts, bundled Codex skill 2개, README, LICENSE, NOTICE가 포함된다.
+- Public `0.4.8` bundle에는 plugin manifest/catalog, logo assets, hooks, CLI, local runtime/server, static monitor UI, scripts, bundled Codex skill 2개, README, LICENSE, NOTICE가 포함된다.
 - `postinstall`과 다른 npm lifecycle installer는 없다. npm package를 받는 것만으로 Codex 설정을 바꾸지 않는다.
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
 - Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Public exact `codex-agent-view@0.4.7`의 this-device global reinstall, registry-extracted artifact 일치, CLI/plugin version, installed/enabled와 hook wiring 9종을 확인했다. 같은 현재 공식 앱 process는 초기 none observed 뒤 later actual hooks 전달을 시작했고 최종 public `0.4.7` official-app hook E2E도 완료했다.
 
-### `0.4.8` release candidate
+### Public `0.4.8` release evidence
 
-`0.4.8` candidate는 `$show-agents` 정상 경로를 내부 `prepare-live-view` command 1회와 Codex in-app Browser open 요청 1회로 줄인다. CLI는 fresh nonce/HMAC ownership proof를 먼저 검증한 뒤에만 exact `127.0.0.1:<port>` authority의 origin-form request로 process-scoped runtime bearer를 보낸다. 그 runtime token이 서명한 1회용 60초 bootstrap grant만 Browser target에 넣고 persistent viewer/runtime token은 URL과 일반 출력에 넣지 않는다. Bootstrap은 issuing process에서만 1회 사용할 수 있고 monitor restart 시 즉시 무효다.
+`0.4.8`은 `$show-agents` 정상 경로를 내부 `prepare-live-view` command 1회와 Codex in-app Browser open 요청 1회로 줄인다. CLI는 fresh nonce/HMAC ownership proof를 먼저 검증한 뒤에만 exact `127.0.0.1:<port>` authority의 origin-form request로 process-scoped runtime bearer를 보낸다. 그 runtime token이 서명한 1회용 60초 bootstrap grant만 Browser target에 넣고 persistent viewer/runtime token은 URL과 일반 출력에 넣지 않는다. Bootstrap은 issuing process에서만 1회 사용할 수 있고 monitor restart 시 즉시 무효다.
 
 Bootstrap은 최초 signed `family_exp`를 30분으로 고정한다. 15분 access는 같은 family 안에서만 자동 갱신되어 family 끝까지 view를 유지하며 access/recovery/refresh는 deadline을 절대 연장하지 않는다. Recovery는 `localStorage`가 아니라 tab-scoped `sessionStorage`에만 둔다. 같은 tab은 family 안에서 **Reconnect**할 수 있지만 다른 tab과 인증 이력이 없는 tab에는 button이 없다. Monitor restart는 아직 교환하지 않은 old-process bootstrap만 무효화한다. Exchange가 끝난 family는 persistent viewer signing으로 original deadline까지 같은 fixed origin의 새 in-memory observation window에 재연결할 수 있다. Family 만료 뒤에는 actual `$show-agents` skill을 다시 호출해야 한다. Live task/event state는 계속 bounded process-local memory뿐이며 SQLite나 persistent event history를 추가하지 않는다.
 
-Source candidate `npm run check`는 전체 153/153 tests, plugin validation과 `npm pack --dry-run`을 통과했다. 공식 Codex 앱 내 Browser에서는 grant 인증, visible URL fragment 제거, 같은 tab을 bare root로 이동한 뒤 recovery button을 통한 재연결 성공, 새 tab에는 recovery button이 없는 격리를 확인했다. 이는 live-view 인증/browser 범위의 candidate evidence다. 업데이트된 hook bundle의 실제 공식 앱 event 전달은 현재 앱 process 재시작 전이라 아직 미확인이다. npm publish/metadata/artifact, this-device public exact install, CI, tag와 GitHub Release도 아직 완료로 표시하지 않는다.
+`npm run check`는 전체 153/153 tests, plugin validation과 `npm pack --dry-run`을 통과했다. Public npm `latest`/version `0.4.8`, shasum `4ede86be395a7175335cb1a016b67afbb2617606`, integrity `sha512-bYdPvclbT6oD2fnX3TNy30D4g3bMN24dfZ+D5PyekiUlNybBNLxSPr6bjXwQiVEFpW9Q9J7dc1DkdaMstvkszw==`, registry signature, 25 files와 unpacked `311488` bytes를 확인했다. 검증 release tarball과 registry tarball의 SHA-256은 `402c25286dff47dd590ec4ea128a45fde70e76719abbdb990b8ed61c36a08fc1`로 같고 byte-identical이다.
+
+Main CI `30806601086`은 Node.js 18/20/22에서 성공했다. Annotated `v0.4.8` tag object `ed6561e929d3b2237acb223de037596663f4dc45`는 commit `e81e40704da05421515a4f78e84726857fbd0ba3`을 가리키고 tag CI `30811300042`도 성공했다. [GitHub Release v0.4.8](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.4.8)은 public, `draft: false`, `prerelease: false`다.
+
+This-device public exact global install은 registry artifact와 byte-identical이고 CLI/plugin `0.4.8`, installed/enabled, hook wiring 9종과 healthy `doctor`를 확인했다. 공식 Codex 앱은 새 subagent start/stop을 ordered timestamp로 전달했고 최종 agent 상태는 stopped였다. 공식 앱 내 Browser에서도 grant 인증, visible URL fragment 제거, same-tab bare-root recovery button 성공과 new-tab recovery button 부재를 확인했다. 이 실행에서는 앱 process 재시작 없이 새 hook이 전달됐지만 이 관찰을 다른 upgrade나 app process에 일반화하지 않는다. 이 evidence는 Universal Directory 제출·승인·검색 노출이나 별도 npm provenance attestation 완료를 뜻하지 않는다.
 
 ### Public `0.4.7` release evidence
 
@@ -358,7 +362,7 @@ Release candidate 검증에서는 `npm pack`으로 만든 exact tarball을 임�
 
 ## Public npm 사용자 경로
 
-다음 명령은 공개가 완료된 뒤 public registry의 exact `0.4.8` release를 최초 설치한다. Mutable `latest`보다 문서와 일치하는 exact version을 우선한다.
+다음 명령은 public registry의 exact `0.4.8` release를 최초 설치한다. Mutable `latest`보다 문서와 일치하는 exact version을 우선한다.
 
 ```bash
 npm install --global codex-agent-view@0.4.8
@@ -535,10 +539,10 @@ codex plugin marketplace remove codex-agent-view
 - [x] Public exact `0.4.7` this-device CLI/plugin installed/enabled, registry/global diff 0과 hook wiring 9종 valid 확인
 - [x] `v0.4.7` annotated tag, public non-draft GitHub Release와 main/tag CI 성공 확인
 - [x] Public exact `0.4.7` official-app hook E2E: initial none observed 뒤 same-process later actual hooks, 2 tasks/3 subagents, worker start/stop와 actual tool pair false-running 0 확인
-- [x] `0.4.8` source candidate `npm run check`: 전체 153/153 tests, plugin validation, `npm pack --dry-run`
-- [x] `0.4.8` official Codex in-app Browser 인증 범위: grant 인증, fragment 제거, same-tab bare-root recovery 성공, new-tab recovery button 부재
-- [ ] `0.4.8` updated official-app hook 실제 전달: 앱 process 재시작 뒤 새 task에서 확인
-- [ ] `0.4.8` npm publish/registry artifact, this-device exact install, main/tag CI, annotated tag와 GitHub Release
+- [x] Public `0.4.8` `npm run check`: 전체 153/153 tests, plugin validation, `npm pack --dry-run`
+- [x] Public exact `0.4.8` official Codex in-app Browser: grant 인증, fragment 제거, same-tab bare-root recovery 성공, new-tab recovery button 부재
+- [x] Public exact `0.4.8` official-app actual new subagent ordered start/stop와 stopped status 확인. 이 실행에서 app restart가 필요 없었던 사실만 기록하고 일반화하지 않음
+- [x] Public `0.4.8` npm metadata/signature/digest/artifact, this-device exact install, main/tag CI, annotated tag와 public GitHub Release
 - [ ] Opt-in capture가 존재하는 경우의 보존·별도 정리 경로 확인
 
 Historical `0.2.0` public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `PreToolUse`, `PostToolUse`, `PermissionRequest` fixture event가 status/UI에 반영됐고 search/filter가 동작했으며 browser console error가 없었다. 별도의 `0.2.1` 공식 앱 E2E에서는 실제 `PermissionRequest` hook과 read-only waiting 표시를 포함한 위 8종 event를 확인했다.
@@ -569,9 +573,9 @@ Historical `0.2.0` public-artifact E2E에서 `SubagentStart`, `SubagentStop`, `P
 - [x] Historical public `0.4.4`: registry metadata/digest/signature와 artifact, this-device install, official in-app live E2E, main/tag CI와 release를 확인했다.
 - [x] Historical public `0.4.5`: registry metadata/digest/signature와 25-file artifact, this-device exact reinstall, CLI/plugin installed/enabled, hook wiring 9종, `doctor` events/sessions, official in-app E2E, main/tag CI, annotated tag와 public GitHub Release를 확인했다.
 - [x] Historical public `0.4.6`: registry metadata/digest/signature와 25-file artifact, release-source/registry tarball byte 일치, this-device exact reinstall, CLI/plugin installed/enabled, hook wiring 9종, installed lifecycle E2E, official in-app Browser E2E, 126/126 tests, plugin/pack validation, main/tag CI, annotated tag와 public GitHub Release를 확인했다. 후속 official-app E2E의 recent activity gap도 보존한다.
-- [x] Latest verified public `0.4.7`: registry metadata/digest/signature와 25-file artifact, release-source/registry tarball byte 일치, registry/global diff 0, this-device exact reinstall, CLI/plugin installed/enabled, hook wiring 9종, source candidate lifecycle regression tests, 126/126 tests, plugin/pack validation, main/tag CI, annotated tag와 public GitHub Release를 확인했다.
+- [x] Historical public `0.4.7`: registry metadata/digest/signature와 25-file artifact, release-source/registry tarball byte 일치, registry/global diff 0, this-device exact reinstall, CLI/plugin installed/enabled, hook wiring 9종, source candidate lifecycle regression tests, 126/126 tests, plugin/pack validation, main/tag CI, annotated tag와 public GitHub Release를 확인했다.
 - [x] Public exact `0.4.7` post-reinstall official-app hook E2E를 같은 app process의 later actual hook 전달로 완료했다. Exact hot-reload timing은 미확인이다.
-- [ ] Current source `0.4.8`는 release candidate다. Source check와 in-app Browser 인증 범위만 확인했으며 npm/GitHub/CI/this-device public exact install 및 updated hook delivery 완료를 선기록하지 않는다.
+- [x] Current public `0.4.8`: 153/153/plugin/pack, registry signature/digests와 25-file artifact, release/registry byte 일치, this-device exact install, CLI/plugin installed/enabled, hook wiring 9종, healthy doctor, actual new subagent ordered start/stop, in-app Browser auth/recovery isolation, main/tag CI, annotated tag와 public GitHub Release를 확인했다.
 - [ ] npm-backed marketplace catalog를 제공한다면 package, version range, registry와 authentication policy를 확정한다.
 - [x] Historical `0.2.1` 공식 앱에서 plugin installed/enabled와 새 task 핵심 lifecycle/permission 및 task ID 등록 없는 자동 표시를 실제 사용자 환경에서 검증했다.
 - [x] 후속 `0.3.0` source에서 실제 `SessionEnd`를 독립 검증했다.

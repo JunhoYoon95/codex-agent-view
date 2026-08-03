@@ -8,7 +8,7 @@ Codex Agent View gives you a clear, read-only view of what Codex is working on a
 
 ## Quick start: install once, then stay inside the Codex app
 
-This README documents the `codex-agent-view@0.4.8` release candidate. Use the exact-version command below for the one-time terminal installation after that version is published.
+This README documents the public `codex-agent-view@0.4.8` release. Use the exact-version command below for the one-time terminal installation.
 
 Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
@@ -40,7 +40,9 @@ In short: install once in a terminal; perform snapshot queries, status checks, l
 
 ## Status
 
-Version `0.4.8` is a release candidate focused on faster, recoverable, least-privilege live-view opening. Its normal `$show-agents` path is reduced to one internal preparation command followed by one in-app Browser open request. Ownership is proven before the runtime bearer is sent; the URL carries only a one-use, 60-second process-signed bootstrap grant. A fixed 30-minute signed family supports automatic 15-minute access refresh and tab-scoped recovery without extending the family deadline. Monitor restart invalidates only an unused bootstrap; an exchanged family can reconnect to the new in-memory observation window until its original expiry. Family expiry requires the actual skill again. Source `npm run check` passes all 153 tests plus plugin validation and package dry-run. In the official Codex in-app Browser, grant authentication, fragment removal, same-tab bare-root recovery, and absence of a recovery button in a new tab were observed. Updated official-app hook delivery remains unverified until the current app process is restarted. npm publication, GitHub Release, CI, and public exact installation are not yet claimed.
+Public version `0.4.8` provides faster, recoverable, least-privilege live-view opening. Its normal `$show-agents` path is one internal preparation command followed by one in-app Browser open request. Ownership is proven before the runtime bearer is sent; the URL carries only a one-use, 60-second process-signed bootstrap grant. A fixed 30-minute signed family supports automatic 15-minute access refresh and tab-scoped recovery without extending the family deadline. Monitor restart invalidates only an unused bootstrap; an exchanged family can reconnect to the new in-memory observation window until its original expiry. Family expiry requires the actual skill again.
+
+Release evidence: `npm run check` passed all 153 tests plus plugin validation and package dry-run. npm `latest` is `0.4.8`; the signed 25-file registry artifact, exact global installation, enabled plugin `0.4.8`, all nine hooks, healthy doctor result, main/tag CI, annotated tag, and public GitHub Release were verified. The official Codex app delivered an actual new subagent start/stop pair with ordered timestamps and final stopped status. The in-app Browser also verified grant authentication, fragment removal, same-tab bare-root recovery, and no recovery button in a new tab. This hook delivery happened without restarting the app in this run; that observation is not generalized to every upgrade or app process.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -166,7 +168,7 @@ After plugin enablement/trust and an app restart, the first trusted hook interna
 
 ## Install from npm
 
-The commands below install `0.4.8` by exact version after publication.
+The commands below install public `0.4.8` by exact version.
 
 ```bash
 npm install --global codex-agent-view@0.4.8

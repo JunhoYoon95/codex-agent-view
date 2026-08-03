@@ -10,7 +10,7 @@ Codex Agent View는 Codex가 지금 어떤 작업을 수행하고 있고 어떤 
 
 ### 빠른 시작: 설치 후에는 Codex 앱 안에서만 사용
 
-이 README는 `codex-agent-view@0.4.8` release candidate 사용법을 설명한다. 해당 version이 공개된 뒤 **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다.
+이 README는 public `codex-agent-view@0.4.8` 사용법을 설명한다. **최초 설치만** 일반 터미널에서 아래 exact-version 명령으로 진행한다.
 
 ```bash
 npm install --global codex-agent-view@0.4.8
@@ -40,7 +40,9 @@ Live UI의 기본 언어는 영어이며 language selector에서 **English**, **
 
 ### 현재 상태
 
-`0.4.8`은 더 빠르고 복구 가능하며 최소 권한인 live-view open을 목표로 하는 release candidate다. 정상 `$show-agents` 경로는 내부 준비 command 1회와 in-app Browser open 요청 1회로 줄어든다. Runtime bearer 전에는 ownership을 증명하고 URL에는 1회용 60초 process-signed bootstrap grant만 넣는다. Fixed 30분 signed family 안에서 15분 access를 자동 갱신하고 recovery는 tab-scoped이며 family deadline을 연장하지 않는다. Monitor restart는 사용 전 bootstrap만 무효화하고 이미 exchange된 family는 original expiry까지 새 in-memory 관찰 window에 재연결할 수 있다. Family 만료 뒤에는 actual skill을 다시 호출해야 한다. Source `npm run check`는 153개 test, plugin validation과 package dry-run을 통과했다. 공식 Codex in-app Browser에서는 grant 인증, fragment 제거, 같은 tab bare-root recovery button 성공과 새 tab의 recovery button 부재를 확인했다. Updated 공식 앱 hook의 실제 전달은 현재 app process 재시작 전이라 아직 미확인이다. npm publish, GitHub Release, CI와 public exact install은 아직 주장하지 않는다.
+Public `0.4.8`은 더 빠르고 복구 가능하며 최소 권한인 live-view open을 제공한다. 정상 `$show-agents` 경로는 내부 준비 command 1회와 in-app Browser open 요청 1회다. Runtime bearer 전에는 ownership을 증명하고 URL에는 1회용 60초 process-signed bootstrap grant만 넣는다. Fixed 30분 signed family 안에서 15분 access를 자동 갱신하고 recovery는 tab-scoped이며 family deadline을 연장하지 않는다. Monitor restart는 사용 전 bootstrap만 무효화하고 이미 exchange된 family는 original expiry까지 새 in-memory 관찰 window에 재연결할 수 있다. Family 만료 뒤에는 actual skill을 다시 호출해야 한다.
+
+Release evidence로 `npm run check` 153개 test, plugin validation과 package dry-run을 통과했다. npm `latest` `0.4.8`, signature가 있는 25-file registry artifact, exact global install, installed/enabled plugin `0.4.8`, hook 9종, healthy doctor, main/tag CI, annotated tag와 public GitHub Release를 확인했다. 공식 Codex 앱에서는 새 subagent start/stop이 ordered timestamp와 최종 stopped 상태로 실제 전달됐다. In-app Browser에서도 grant 인증, fragment 제거, 같은 tab bare-root recovery 성공과 새 tab의 recovery button 부재를 확인했다. 이 실행에서는 앱 재시작 없이 hook이 전달됐지만 모든 upgrade/app process에 일반화하지 않는다.
 
 - 공식 Codex 앱의 내장 thread tools를 우선 사용하는 app-native active-task snapshot skill
 - `.codex-plugin/plugin.json`, local marketplace catalog, genuine Codex skill
@@ -106,7 +108,7 @@ Codex Agent View는 historical audit이나 session replay 제품이 아니라 �
 - Plugin 카드의 **지금 사용해보기**는 `@codex-agent-view`만 선택한다. Starter text를 덧붙이거나 skill을 dispatch한다고 주장하지 않는다. Live view를 열거나 다시 열 때 Codex 앱에서 `$show-agents`를 명시 선택하며, 별도 monitor 실행이나 task ID 등록은 필요 없다.
 - npm은 plugin bundle, 내부 hook sender/runtime과 static UI를 사용자 machine에 배포하는 최초 설치 경로다.
 - Live view는 사용자가 앱 안에서 `$show-agents`를 명시 호출했을 때만 열린다. 외부 website나 telemetry dashboard가 아니다.
-- 공개 plugin API는 앱 시작 시 no-prompt sidebar/panel/Browser tab 생성을 제공하지 않는다. 최초 live view 열기에는 앱 안 skill 선택이 한 번 필요하다. Current candidate의 tab은 fixed 30분 credential family 안에서 access를 자동 갱신한다. Monitor restart는 아직 교환하지 않은 bootstrap만 무효화하고 이미 발급된 family는 original deadline까지 같은 port에서 재연결할 수 있다. Family 만료 뒤에는 actual skill을 다시 호출해야 한다.
+- 공개 plugin API는 앱 시작 시 no-prompt sidebar/panel/Browser tab 생성을 제공하지 않는다. 최초 live view 열기에는 앱 안 skill 선택이 한 번 필요하다. Public `0.4.8`의 tab은 fixed 30분 credential family 안에서 access를 자동 갱신한다. Monitor restart는 아직 교환하지 않은 bootstrap만 무효화하고 이미 발급된 family는 original deadline까지 같은 port에서 재연결할 수 있다. Family 만료 뒤에는 actual skill을 다시 호출해야 한다.
 - Universal Plugins Directory는 npm의 대체재가 아니다. 공개 directory의 in-app custom UI 경로는 public HTTPS MCP server와 domain verification이 필요해 local-only/no-external-server 원칙과 충돌한다. 현재는 별도의 listing/skills 제출 가능성만 검토하며, 심사·publish 전에는 Codex plugin 검색으로 설치할 수 있다고 안내하지 않는다.
 
 Hook event가 누락·중복·역순으로 올 수 있으므로 UI의 `unknown`, `stopped_without_start`, 빈 상태는 그대로 해석해야 한다. 빈 session 목록은 “이 monitor가 event를 관찰하지 못함”이며 “실행 중인 task가 없음”의 증거가 아니다.
@@ -214,7 +216,7 @@ Plugin enable/trust와 앱 재시작 뒤 생성되거나 재개되는 task는 tr
 
 ### npm 설치 명령 참고
 
-아래 명령은 공개 후 `0.4.8`을 exact version으로 설치한다.
+아래 명령은 public `0.4.8`을 exact version으로 설치한다.
 
 ```bash
 npm install --global codex-agent-view@0.4.8
