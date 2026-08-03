@@ -12,7 +12,7 @@
 - 상태 설계: live companion 상태는 의도적으로 bounded process-local memory만 사용하며 재시작은 새 관찰 window를 시작한다. 이는 완성된 제품 경계다.
 - 의도적 non-goal: 대체 Codex 클라이언트, 외부 서버, 외부 telemetry, 필수 SQLite/영구 event store, 원격 제어
 - 영구 history는 누락된 요구가 아니다. 실제 사용자 가치가 입증될 때만 retention/deletion/privacy 비용을 포함한 별도 explicit opt-in 제안으로 검토한다.
-- 현재 단계: public `0.5.3` npm/artifact/exact reinstall/main·tag CI/annotated tag/GitHub Release와 GitHub repository metadata 확인 완료. Public exact plugin `0.5.3` installed/enabled와 hook wiring 9종을 확인했지만 install 뒤 monitor는 `monitor_not_running`, hook trust는 CLI-unobservable `unknown`이다. Codex 앱 재시작/new task actual event와 public exact `@codex-agent-view` invocation E2E는 pending이다. Public `0.5.2` evidence는 historical fact로 보존한다. Universal Plugins Directory validator·portal/reviewer·검색 노출과 promptless plugin-card Quick start는 별도 미확인 상태로 유지한다.
+- 현재 단계: source/package `0.5.4` 제품 문구·metadata release 준비 중. npm publication, digest, exact reinstall, CI, tag와 GitHub Release는 성공 전까지 pending이다. Public `0.5.3` npm/artifact/exact reinstall/main·tag CI/annotated tag/GitHub Release와 GitHub repository metadata evidence는 historical fact로 보존한다. Universal Plugins Directory validator·portal/reviewer·검색 노출과 promptless plugin-card Quick start는 별도 미확인 상태로 유지한다.
 
 ## 명령어
 
@@ -48,8 +48,8 @@ npm run check
 
 ## 제품 가드레일
 
-- 설치 후 실행 시작은 공식 Codex 앱에서 `@codex-agent-view` 자체를 선택·전송해 수행한다. 별도 `$show-agents` 선택이나 Quick start starter text를 요구하지 않으며, 내부 single skill은 `open` 실행 capability로만 유지한다. Plugin-level `interface.defaultPrompt`는 skill dispatch contract가 아닌 starter-prompt UI metadata다. `0.5.2`와 `0.5.3`은 starter text를 제공하지 않는다. Promptless plugin-card Quick start 제공 여부는 공식 앱에서 관찰하기 전까지 미확인으로 둔다.
-- Live monitor refresh는 local hook data만 사용하고 monitoring을 위한 additional ongoing model/external API inference call을 만들지 않는다. 다만 사용자가 `@codex-agent-view`를 실행하는 최초 요청은 일반 Codex turn이므로 token을 사용할 수 있고, 관찰 대상 task/subagent도 정상 작업에 필요한 token을 계속 사용한다. `zero token usage`나 넓은 `no ongoing token usage`처럼 전체 사용 흐름에 token이 없다고 단정하지 않는다.
+- 설치 후 실행 시작은 공식 Codex 앱에서 `@codex-agent-view` 자체를 선택·전송해 수행한다. 별도 `$show-agents` 선택이나 Quick start starter text를 요구하지 않으며, 내부 single skill은 `open` 실행 capability로만 유지한다. Plugin-level `interface.defaultPrompt`는 skill dispatch contract가 아닌 starter-prompt UI metadata다. `0.5.2`부터 `0.5.4`까지 starter text를 제공하지 않는다. Promptless plugin-card Quick start 제공 여부는 공식 앱에서 관찰하기 전까지 미확인으로 둔다.
+- 사용자용 제품 문구는 `Open each view with one lightweight \`@codex-agent-view\` invocation. Once open, live monitoring runs locally with no additional model calls.`로 통일한다. 이어서 관찰 대상 task/subagent의 일반적인 model·token 사용은 계속됨을 명시한다.
 - Live UI 표시 surface는 OS 기본 외부 브라우저다. 사용자는 열린 탭에서 상태를 확인하고 일반 연결 오류를 다시 시도한다.
 - npm/터미널은 최초 설치, 명시적 제거, maintainer 진단에만 허용한다. `start`, `status`, `doctor`를 정상적인 사용자 사용 순서에 포함하지 않는다.
 - live hook detail은 plugin이 healthy local monitor를 재사용하거나 필요 시 내부적으로 시작한 뒤 OS 기본 브라우저에서 연다. localhost 주소나 tokenized/private URL을 사용자에게 복사·입력·관리하게 하지 않는다.

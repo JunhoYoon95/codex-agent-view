@@ -4,30 +4,34 @@
 
 릴리스 증거 갱신일: 2026-08-04
 
-이 문서는 Codex Agent View의 배포 경계를 정리한다. Public npm `latest`/version은 `0.5.3`이며 registry metadata·digest, source-pack identity, exact reinstall, main/tag CI, annotated tag와 GitHub Release를 확인했다. `0.2.0`부터 `0.5.2`까지의 public evidence는 historical fact로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
+이 문서는 Codex Agent View의 배포 경계를 정리한다. Public npm `latest`/version은 아직 `0.5.3`이며 registry metadata·digest, source-pack identity, exact reinstall, main/tag CI, annotated tag와 GitHub Release를 확인했다. Current source `0.5.4`의 publication, digest, exact reinstall, CI, tag와 GitHub Release는 성공 전까지 pending이다. `0.2.0`부터 `0.5.3`까지의 public evidence는 historical fact로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
 
 ## 현재 상태
 
-- Package 이름은 `codex-agent-view`이고 public npm `latest`는 `0.5.3`이다. Signed 23-file registry artifact, source-pack identity, exact reinstall, main/tag CI와 tag/Release를 확인했다. Actual Assigned work/Current activity evidence는 historical public `0.5.2`에서 확인했으며 public exact `0.5.3`의 앱 재시작/new task actual event는 pending이다.
+- Package 이름은 `codex-agent-view`이고 public npm `latest`는 아직 `0.5.3`이다. Signed 23-file registry artifact, source-pack identity, exact reinstall, main/tag CI와 tag/Release를 확인했다. `0.5.4`는 release preparation 상태이며 공개 성공을 주장하지 않는다.
 - Public `0.4.2`의 push, main CI Node.js 18/20/22, npm metadata/signature, release/registry tarball byte 일치, annotated tag/GitHub Release, this-device exact reinstall/artifact match, plugin installed/enabled, hook wiring 9종과 official Codex in-app Browser visual E2E를 확인했다.
 - Public `0.3.2`는 immutable packaged README의 잘못된 release-state 안내를 수정한 patch다. Registry metadata/digest/signature, tag/GitHub Release, main/tag CI, this-device exact install과 registry/install artifact match를 확인했다. App-native snapshot은 worker activity 3개를 확인했지만 live hook E2E는 앱 restart/new-task 전이라 미완료다.
 - Node.js `>=18`을 요구하며 production dependency가 없다.
 - `package.json`은 `codex-agent-view` executable을 `bin/codex-agent-view.mjs`로 노출한다.
-- Historical public `0.4.8` bundle에는 bundled Codex skill 2개가 있었다. Public `0.5.0`부터 current source `0.5.3`까지 사용자에게 드러나는 `$show-agents` 선택을 제거하고 plugin 실행용 내부 skill 하나만 유지한다.
+- Historical public `0.4.8` bundle에는 bundled Codex skill 2개가 있었다. Public `0.5.0`부터 current source `0.5.4`까지 사용자에게 드러나는 `$show-agents` 선택을 제거하고 plugin 실행용 내부 skill 하나만 유지한다.
 - `postinstall`과 다른 npm lifecycle installer는 없다. npm package를 받는 것만으로 Codex 설정을 바꾸지 않는다.
 - 사용자가 `codex-agent-view install`을 명시적으로 실행할 때만 local marketplace bundle 복사, marketplace 등록, plugin 등록이 수행된다. Hook trust는 자동화하지 않는다.
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
 - Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Public exact `codex-agent-view@0.4.7`의 this-device global reinstall, registry-extracted artifact 일치, CLI/plugin version, installed/enabled와 hook wiring 9종을 확인했다. 같은 현재 공식 앱 process는 초기 none observed 뒤 later actual hooks 전달을 시작했고 최종 public `0.4.7` official-app hook E2E도 완료했다.
 
-### Source/package `0.5.3`: public release contract
+### Source/package `0.5.4`: release target contract
 
-`0.5.3`의 일반 사용은 최초 npm 설치와 explicit `codex-agent-view install`까지만 terminal을 사용한다. 그 뒤 사용자는 공식 Codex 앱 task에서 `@codex-agent-view` 자체를 선택해 전송한다. 이 invocation이 내부 single skill을 통해 `codex-agent-view open`을 실행하고, owned loopback monitor를 준비하거나 재사용한 뒤 인증된 local live view를 운영체제 기본 browser에 연다. 사용자가 별도 `$show-agents` skill을 고르거나 localhost URL을 복사하거나 monitor CLI를 정상 사용 순서에서 실행하지 않는다.
+`0.5.4`의 일반 사용은 최초 npm 설치와 explicit `codex-agent-view install`까지만 terminal을 사용한다. 그 뒤 사용자는 공식 Codex 앱 task에서 `@codex-agent-view` 자체를 선택해 전송한다. 이 invocation이 내부 single skill을 통해 `codex-agent-view open`을 실행하고, owned loopback monitor를 준비하거나 재사용한 뒤 인증된 local live view를 운영체제 기본 browser에 연다. 사용자가 별도 `$show-agents` skill을 고르거나 localhost URL을 복사하거나 monitor CLI를 정상 사용 순서에서 실행하지 않는다.
 
-제품 설명은 “Codex의 live task와 subagent activity를 browser에서 local로 보여주는 lightweight read-only companion plugin”으로 통일한다. View가 열린 뒤 2초 refresh는 local hook state를 읽을 뿐 monitoring을 위한 additional ongoing model 또는 external API inference call을 만들지 않는다. 단 `@codex-agent-view` 최초 invocation은 일반 Codex turn이므로 token을 사용할 수 있고 관찰 대상 task/subagent도 정상 token을 계속 사용하므로 `zero token usage` 또는 넓은 `no ongoing token usage`라고 표현하지 않는다.
+README 사용자 문구는 `Open each view with one lightweight \`@codex-agent-view\` invocation. Once open, live monitoring runs locally with no additional model calls.`로 통일하고, 이어서 관찰 대상 task/subagent의 일반적인 model·token 사용은 계속됨을 명시한다. Package/plugin description은 `A read-only Codex plugin for monitoring live tasks and subagents in your browser. Open each view with one lightweight @codex-agent-view invocation. Once open, live monitoring runs locally with no additional model calls.`이다. 이와 구분되는 GitHub repository short Description은 `A lightweight, read-only dashboard plugin for monitoring Codex tasks and subagents in real time.`으로 실제 적용됐다.
 
-Plugin packaging상 실행 capability를 제공하기 위해 내부 skill 하나는 남아 있다. Plugin-level `interface.defaultPrompt`는 그 skill이 아니라 plugin 카드의 starter-prompt UI metadata다. `0.5.3`은 starter text를 제공하거나 요구하지 않는다. Plugin 카드가 promptless Quick start control을 계속 보여주는지는 Codex 앱 UI가 결정하며 official app 관찰 전에는 주장하지 않는다. Supported contract는 task에서 `@codex-agent-view` 자체를 선택·전송하는 것이다. 공개 Codex plugin API에서 app panel/in-app Browser open이 안정적으로 보장되지 않았던 실제 실패를 피하기 위해 표시 surface는 기본 browser이며, hook collection, loopback-only transport, read-only 권한과 bounded in-memory state 경계는 그대로다.
+Plugin packaging상 실행 capability를 제공하기 위해 내부 skill 하나는 남아 있다. Plugin-level `interface.defaultPrompt`는 그 skill이 아니라 plugin 카드의 starter-prompt UI metadata다. `0.5.4`는 starter text를 제공하거나 요구하지 않는다. Plugin 카드가 promptless Quick start control을 계속 보여주는지는 Codex 앱 UI가 결정하며 official app 관찰 전에는 주장하지 않는다. Supported contract는 task에서 `@codex-agent-view` 자체를 선택·전송하는 것이다. 공개 Codex plugin API에서 app panel/in-app Browser open이 안정적으로 보장되지 않았던 실제 실패를 피하기 위해 표시 surface는 기본 browser이며, hook collection, loopback-only transport, read-only 권한과 bounded in-memory state 경계는 그대로다.
 
-### Public `0.5.3` npm release evidence
+### `0.5.4` publication status
+
+`0.5.4`의 npm publication, registry metadata/digest/signature, exact public reinstall, CI, annotated tag와 GitHub Release는 아직 확인하지 않았다. GitHub remote는 `PUBLIC`, 위 exact dashboard Description, `https://www.npmjs.com/package/codex-agent-view` Website와 기존 Topics 13개를 재조회해 확인했다. 아래 `0.5.3` release evidence와 혼합하지 않는다.
+
+### Historical public `0.5.3` npm release evidence
 
 npm `latest`/version `0.5.3`, publish time `2026-08-03T19:29:03.590Z`, exact agreed description, keywords 13개와 `Apache-2.0` license를 확인했다. Registry shasum은 `94b60ff4662b829ca5853439e4da0cef4466927d`, integrity는 `sha512-r59F+z19gehSiKlhsRpcaPDiIwXFBtUXXjaUIVr1RiWotV4CBXGMI95Se8BmJ0g/gBPUOsvewm4NvVIv3IK0DQ==`이고 signature 1개가 있다. Artifact는 23 files, packed `62.9 kB`, unpacked `252.8 kB`이며 tarball SHA-256은 `125abefe16b600d12b5f81dc93f96da89c6742be76522a98d45f996b53805cbd`다.
 
@@ -387,7 +391,7 @@ Registry npm `gitHead`, annotated tag와 public GitHub Release는 같은 commit�
 | `codex-agent-view uninstall [--purge]` | plugin과 marketplace bundle 제거 | Codex 등록 및 local files 변경 |
 | `codex-agent-view --version` | package version 출력 | 없음 |
 
-`open`은 public `0.5.0`부터 사용하는 plugin-internal normal-use command이며 current source `0.5.3`에서도 동일하다. Internal skill이 options 없이 정확히 한 번 실행하며 private localhost target을 stdout이나 대화에 노출하지 않고 OS default browser launcher에 직접 전달한다. 사용자는 이 command를 terminal에서 실행하지 않는다. `start`는 maintainer용 장시간 foreground command이며 기본적으로 URL만 출력하고, `--open`만 명시적으로 browser를 여는 진단 action이다. `status`와 hook sender는 runtime file의 local bearer token으로 monitor API에 접근한다. Historical in-app Browser workflow는 public `0.4.8` evidence로만 보존하며 current normal flow가 아니다.
+`open`은 public `0.5.0`부터 사용하는 plugin-internal normal-use command이며 current source `0.5.4`에서도 동일하다. Internal skill이 options 없이 정확히 한 번 실행하며 private localhost target을 stdout이나 대화에 노출하지 않고 OS default browser launcher에 직접 전달한다. 사용자는 이 command를 terminal에서 실행하지 않는다. `start`는 maintainer용 장시간 foreground command이며 기본적으로 URL만 출력하고, `--open`만 명시적으로 browser를 여는 진단 action이다. `status`와 hook sender는 runtime file의 local bearer token으로 monitor API에 접근한다. Historical in-app Browser workflow는 public `0.4.8` evidence로만 보존하며 current normal flow가 아니다.
 
 ## 서로 다른 세 가지 배포 개념
 
@@ -439,7 +443,7 @@ codex-agent-view install
 2. 앱의 **Plugins** 화면에서 `Codex Agent View`가 설치·활성화됐는지 확인한다.
 3. 앱의 hook review 화면에서 현재 hook definition을 검토하고 trust한다. 앱 version이 hook review UI를 제공하지 않을 때만 설치 절차의 일부로 interactive Codex CLI `/hooks`를 사용한다.
 4. 앱에서 새 task를 만든다.
-5. Task에서 `@codex-agent-view` 자체를 선택해 전송한다. Internal launch skill이 `open` command를 한 번 실행해 기본 browser에 인증된 local page를 연다. 별도 `$show-agents` selection은 없다. 이 historical release의 plugin-level starter metadata와 current source `0.5.3`의 빈 starter 경계는 구분한다.
+5. Task에서 `@codex-agent-view` 자체를 선택해 전송한다. Internal launch skill이 `open` command를 한 번 실행해 기본 browser에 인증된 local page를 연다. 별도 `$show-agents` selection은 없다. 이 historical release의 plugin-level starter metadata와 current source `0.5.4`의 빈 starter 경계는 구분한다.
 6. Browser tab을 닫으면 `@codex-agent-view`를 다시 실행한다. 같은 tab의 transient failure는 page의 retry/**Reconnect**를 사용한다. Credential 없는 새 tab이나 family 만료는 page가 권한을 임의 발급하지 않으며 plugin을 다시 실행한다.
 
 `0.5.1` release acceptance는 registry/release artifact, exact install, CI, tag/Release와 actual subagent live UI E2E까지 완료됐다. Official task-summary live prompt만 이번 window에서 미확인이다.

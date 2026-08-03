@@ -4,7 +4,7 @@
 
 Codex Agent View는 Codex의 실시간 작업과 subagent 활동을 브라우저에서 로컬로 확인하는 가벼운 비공식 읽기 전용 companion plugin입니다. Codex가 처리하는 작업, 참여 중인 에이전트, 확인 가능한 할당 작업과 최근 관찰 활동을 보여줍니다. Hook 데이터는 이 기기의 제한된 process memory 안에만 유지되며, `@codex-agent-view` 한 번으로 운영체제 기본 브라우저에 실시간 화면을 엽니다.
 
-화면을 연 뒤의 실시간 갱신은 local hook data를 사용하며 모니터링을 위한 추가적인 지속 model 또는 외부 API inference call을 만들지 않습니다. 다만 `@codex-agent-view`를 실행하는 최초 요청은 일반 Codex turn이므로 token을 사용할 수 있고, 관찰 대상인 Codex task와 subagent도 작업 수행에 필요한 token을 평소처럼 사용합니다.
+각 화면은 가벼운 `@codex-agent-view` 실행 한 번으로 엽니다. 화면이 열린 뒤 실시간 모니터링은 추가 모델 호출 없이 로컬에서 작동합니다. 모니터링 중인 Codex task와 subagent의 일반적인 모델·token 사용은 계속됩니다.
 
 Codex를 대체하거나 작업·에이전트를 제어하지 않으며, 외부 서버·telemetry·영구 작업 기록을 사용하지 않습니다.
 
@@ -13,7 +13,7 @@ Codex를 대체하거나 작업·에이전트를 제어하지 않으며, 외부 
 일반 터미널에서 현재 릴리스를 설치합니다.
 
 ```bash
-npm install --global codex-agent-view@0.5.3
+npm install --global codex-agent-view@0.5.4
 codex-agent-view install
 ```
 

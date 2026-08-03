@@ -10,7 +10,7 @@ async function readProjectFile(path) {
   return readFile(resolve(projectRoot, path), "utf8");
 }
 
-test("documents the 0.5.3 install and one-invocation default-browser workflow", async () => {
+test("documents the 0.5.4 install and each-view invocation default-browser workflow", async () => {
   const [packageText, manifestText, english, korean] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -20,12 +20,12 @@ test("documents the 0.5.3 install and one-invocation default-browser workflow", 
   const packageMetadata = JSON.parse(packageText);
   const manifest = JSON.parse(manifestText);
 
-  assert.equal(packageMetadata.version, "0.5.3");
-  assert.equal(manifest.version, "0.5.3");
-  assert.match(english, /npm install --global codex-agent-view@0\.5\.3/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.5\.3/);
-  assert.doesNotMatch(english, /0\.5\.3[^\n]*(?:pending|release target|candidate|unpublished)/i);
-  assert.doesNotMatch(korean, /0\.5\.3[^\n]*(?:대기|목표|후보|미배포)/i);
+  assert.equal(packageMetadata.version, "0.5.4");
+  assert.equal(manifest.version, "0.5.4");
+  assert.match(english, /npm install --global codex-agent-view@0\.5\.4/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.5\.4/);
+  assert.doesNotMatch(english, /0\.5\.4[^\n]*(?:pending|release target|candidate|unpublished)/i);
+  assert.doesNotMatch(korean, /0\.5\.4[^\n]*(?:대기|목표|후보|미배포)/i);
   assert.doesNotMatch(english, /npm install --global codex-agent-view@0\.5\.1/);
   assert.doesNotMatch(korean, /npm install --global codex-agent-view@0\.5\.1/);
 
@@ -94,7 +94,7 @@ test("documents hook trust, local-only state, recovery, and safe removal", async
   assert.match(privacy, /Recovery is stored in browser `sessionStorage`, never `localStorage`/);
 });
 
-test("keeps current 0.5.3 source language separate from historical 0.5.2 evidence and Directory acceptance", async () => {
+test("keeps current 0.5.4 source language separate from historical 0.5.3 evidence and Directory acceptance", async () => {
   const [english, korean, agents, roadmap, distribution, findings, submission, privacy, terms] = await Promise.all([
     readProjectFile("README.md"),
     readProjectFile("README.ko.md"),
@@ -108,11 +108,11 @@ test("keeps current 0.5.3 source language separate from historical 0.5.2 evidenc
   ]);
 
   for (const document of [english, korean, agents, roadmap, distribution, findings, submission, privacy, terms]) {
-    assert.match(document, /0\.5\.3/);
+    assert.match(document, /0\.5\.4/);
   }
 
   for (const document of [english, korean]) {
-    assert.doesNotMatch(document, /0\.5\.3[^\n]*(?:pending|release target|candidate|unpublished|대기|목표|후보|미배포)/i);
+    assert.doesNotMatch(document, /0\.5\.4[^\n]*(?:pending|release target|candidate|unpublished|대기|목표|후보|미배포)/i);
   }
 
   assert.match(distribution, /Historical public `0\.5\.1`/);
@@ -135,8 +135,8 @@ test("records verified public 0.5.2 evidence without claiming Directory or Quick
     readProjectFile("docs/plugin-submission.md"),
   ]);
 
-  assert.match(english, /npm install --global codex-agent-view@0\.5\.3/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.5\.3/);
+  assert.match(english, /npm install --global codex-agent-view@0\.5\.4/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.5\.4/);
 
   for (const document of [distribution, findings, submission]) {
     assert.match(document, /2026-08-03T18:45:19\.094Z/);
@@ -166,7 +166,7 @@ test("records verified public 0.5.2 evidence without claiming Directory or Quick
   }
 });
 
-test("scopes the no-additional-monitoring-calls claim without promising zero token use", async () => {
+test("documents the approved lightweight invocation and local monitoring copy with normal observed-work usage", async () => {
   const [packageText, manifestText, english, korean, privacy, terms, distribution] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -179,25 +179,21 @@ test("scopes the no-additional-monitoring-calls claim without promising zero tok
   const packageMetadata = JSON.parse(packageText);
   const manifest = JSON.parse(manifestText);
   const expectedDescription =
-    "A lightweight, read-only Codex companion plugin for monitoring live tasks and subagent activity locally in your browser, without additional ongoing model calls for monitoring.";
+    "A read-only Codex plugin for monitoring live tasks and subagents in your browser. Open each view with one lightweight @codex-agent-view invocation. Once open, live monitoring runs locally with no additional model calls.";
 
   assert.equal(packageMetadata.description, expectedDescription);
   assert.equal(manifest.description, expectedDescription);
-  assert.match(english, /no additional ongoing model or external API inference calls for monitoring/);
-  assert.match(english, /normal Codex turn and can use tokens/);
-  assert.match(english, /tasks and subagents being observed continue their normal token usage/);
-  assert.match(korean, /모니터링을 위한 추가적인 지속 model 또는 외부 API inference call/);
-  assert.match(korean, /일반 Codex turn이므로 token을 사용할 수/);
-  assert.match(korean, /task와 subagent도 작업 수행에 필요한 token을 평소처럼 사용/);
+  assert.match(english, /Open each view with one lightweight `@codex-agent-view` invocation\. Once open, live monitoring runs locally with no additional model calls\./);
+  assert.match(english, /tasks and subagents being monitored continue their normal model and token usage/);
+  assert.match(korean, /각 화면은 가벼운 `@codex-agent-view` 실행 한 번으로 엽니다\. 화면이 열린 뒤 실시간 모니터링은 추가 모델 호출 없이 로컬에서 작동합니다\./);
+  assert.match(korean, /task와 subagent의 일반적인 모델·token 사용은 계속/);
   for (const document of [privacy, terms, distribution]) {
-    assert.match(document, /additional ongoing model|추가적인 지속 model/);
+    assert.match(document, /no additional model calls|추가 모델 호출 없이/);
     assert.match(document, /task|tasks/);
     assert.match(document, /subagent/);
     assert.match(document, /token/);
   }
-  for (const document of [packageText, manifestText, english, korean]) {
-    assert.doesNotMatch(document, /with no ongoing token usage|zero token usage/i);
-  }
+  assert.doesNotMatch(english, /normal Codex turn can use tokens|normal Codex turn and can use tokens/i);
 });
 
 test("records verified public 0.5.3 release evidence without claiming pending app or Directory acceptance", async () => {

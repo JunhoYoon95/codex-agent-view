@@ -4,7 +4,7 @@
 
 Codex Agent View is a lightweight, unofficial, read-only companion plugin for monitoring live Codex tasks and subagent activity locally in your browser. It shows the work Codex is handling, the participating agents, their assigned work when it can be verified, and their latest observable activity. Hook data stays on this device in bounded process memory, and one `@codex-agent-view` invocation opens the live view in the operating system's default browser.
 
-Once the view is open, its live refreshes use local hook data and create no additional ongoing model or external API inference calls for monitoring. Invoking `@codex-agent-view` is still a normal Codex turn and can use tokens, and the Codex tasks and subagents being observed continue their normal token usage.
+Open each view with one lightweight `@codex-agent-view` invocation. Once open, live monitoring runs locally with no additional model calls. The Codex tasks and subagents being monitored continue their normal model and token usage.
 
 It does not replace Codex, control tasks or agents, run a hosted service, send telemetry, or keep a persistent event history.
 
@@ -13,7 +13,7 @@ It does not replace Codex, control tasks or agents, run a hosted service, send t
 Install the current release from a regular terminal:
 
 ```bash
-npm install --global codex-agent-view@0.5.3
+npm install --global codex-agent-view@0.5.4
 codex-agent-view install
 ```
 
