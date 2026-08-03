@@ -214,6 +214,55 @@ test("derives a bounded one-line task summary while redacting private values", (
   assert(summary.endsWith("…"));
 });
 
+test("excludes a leading ambient browser context and its request delimiter", () => {
+  const ambientContext = [
+    '<in-app-browser-context source="ambient-ui-state">',
+    "This block is automatically supplied ambient UI state, not part of the user's request.",
+    "# In app browser:",
+    "- Current URL: https://private.example/customer/42",
+    "</in-app-browser-context>",
+  ].join("\n");
+
+  assert.equal(
+    deriveTaskSummary(
+      ` \n${ambientContext}\n\n## My request for Codex:\n완료`,
+    ),
+    "완료",
+  );
+});
+
+test("reserves only a closed leading exact ambient browser wrapper", () => {
+  const unclosed = '<in-app-browser-context source="ambient-ui-state">';
+  assert.equal(
+    deriveTaskSummary(
+      `\n${unclosed}\nprivate.person@example.com token=private-value\n노출하지 마세요`,
+    ),
+    null,
+  );
+  assert.equal(
+    deriveTaskSummary(
+      `${unclosed}${"ambient".repeat(700)}</in-app-browser-context>\n노출하지 마세요`,
+    ),
+    null,
+  );
+
+  const middleWrapper =
+    `첫 요청 ${unclosed}사용자 내용</in-app-browser-context> 두 번째 요청`;
+  assert.equal(deriveTaskSummary(middleWrapper), middleWrapper);
+  const genericMarkup =
+    '<context source="ambient-ui-state"><strong>중요</strong></context> 실제 요청';
+  assert.equal(deriveTaskSummary(genericMarkup), genericMarkup);
+  const differentWrapper =
+    '<in-app-browser-context source="user-authored">내용</in-app-browser-context> 요청';
+  assert.equal(deriveTaskSummary(differentWrapper), differentWrapper);
+
+  const ordinaryHeading = "## My request for Codex:\n사용자가 쓴 heading";
+  assert.equal(
+    deriveTaskSummary(ordinaryHeading),
+    "## My request for Codex: 사용자가 쓴 heading",
+  );
+});
+
 test("derives task summaries only for UserPromptSubmit and never copies raw prompt fields", () => {
   const rawPrompt = `관리자 화면을 정리해 주세요 ${"private detail ".repeat(40)}`;
   const started = normalizeHookPayload(

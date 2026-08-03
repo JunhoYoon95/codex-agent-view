@@ -23,6 +23,10 @@ const MAX_LABEL_LENGTH = 256;
 const MAX_WORKSPACE_LABEL_LENGTH = 120;
 const MAX_PROMPT_INSPECTION_LENGTH = 4_096;
 const MAX_TASK_SUMMARY_LENGTH = 180;
+const AMBIENT_BROWSER_CONTEXT_OPEN =
+  '<in-app-browser-context source="ambient-ui-state">';
+const AMBIENT_BROWSER_CONTEXT_CLOSE = "</in-app-browser-context>";
+const USER_REQUEST_DELIMITER = "## My request for Codex:";
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/;
 const CONTROL_CHARACTERS_GLOBAL = /[\u0000-\u001f\u007f-\u009f]/g;
 
@@ -120,6 +124,35 @@ function replaceAbsolutePaths(value) {
     .replace(POSIX_ABSOLUTE_PATH, (_match, prefix) => `${prefix}[path]`);
 }
 
+function stripLeadingAmbientBrowserContext(value) {
+  const withoutLeadingWhitespace = value.trimStart();
+  if (!withoutLeadingWhitespace.startsWith(AMBIENT_BROWSER_CONTEXT_OPEN)) {
+    return value;
+  }
+
+  const closeAt = withoutLeadingWhitespace.indexOf(
+    AMBIENT_BROWSER_CONTEXT_CLOSE,
+    AMBIENT_BROWSER_CONTEXT_OPEN.length,
+  );
+  if (closeAt === -1) {
+    return null;
+  }
+
+  const remainder = withoutLeadingWhitespace.slice(
+    closeAt + AMBIENT_BROWSER_CONTEXT_CLOSE.length,
+  );
+  const delimiterCandidate = remainder.trimStart();
+  if (!delimiterCandidate.startsWith(USER_REQUEST_DELIMITER)) {
+    return remainder;
+  }
+
+  const afterDelimiter = delimiterCandidate.slice(USER_REQUEST_DELIMITER.length);
+  if (afterDelimiter.length > 0 && !/^[\r\n]/u.test(afterDelimiter)) {
+    return remainder;
+  }
+  return afterDelimiter;
+}
+
 /**
  * Derive a short, display-safe hint from an untrusted UserPromptSubmit prompt.
  * The caller must discard the raw prompt after this synchronous derivation.
@@ -129,8 +162,14 @@ export function deriveTaskSummary(value) {
     return null;
   }
 
-  let summary = value
-    .slice(0, MAX_PROMPT_INSPECTION_LENGTH)
+  const summaryCandidate = stripLeadingAmbientBrowserContext(
+    value.slice(0, MAX_PROMPT_INSPECTION_LENGTH),
+  );
+  if (summaryCandidate === null) {
+    return null;
+  }
+
+  let summary = summaryCandidate
     .replace(PRIVATE_KEY_BLOCK, "[credential]")
     .replace(CONTROL_CHARACTERS_GLOBAL, " ")
     .replace(URL, "[link]")

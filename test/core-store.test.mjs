@@ -207,7 +207,16 @@ test("keeps the latest observed workspace label without retaining a full path", 
 
 test("keeps the first valid task summary across follow-ups and out-of-order prompts", () => {
   const store = createTestStore();
-  const originalRawPrompt = `검색 결과 필터를 고쳐 주세요 ${"private detail ".repeat(30)}`;
+  const originalRawPrompt = [
+    '<in-app-browser-context source="ambient-ui-state">',
+    "This block is automatically supplied ambient UI state, not part of the user's request.",
+    "# In app browser:",
+    "- Current URL: https://private.example/customer/42",
+    "</in-app-browser-context>",
+    "",
+    "## My request for Codex:",
+    `검색 결과 필터를 고쳐 주세요 ${"private detail ".repeat(30)}`,
+  ].join("\n");
 
   store.ingest(
     {

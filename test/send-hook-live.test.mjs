@@ -399,6 +399,45 @@ test("derives a safe task summary from UserPromptSubmit before transport", async
   assert(!serialized.includes('"prompt"'));
 });
 
+test("excludes ambient browser UI state from the transported task summary", async (t) => {
+  const { env } = await temporaryRuntime(t);
+  const monitor = await startMonitorServer({
+    host: "127.0.0.1",
+    port: 0,
+    env,
+    token: "a".repeat(43),
+    now: () => 575,
+  });
+  t.after(async () => monitor.close().catch(() => {}));
+
+  const ambientContext = [
+    '<in-app-browser-context source="ambient-ui-state">',
+    "This block is automatically supplied ambient UI state, not part of the user's request.",
+    "# In app browser:",
+    "- Current URL: https://private.example/customer/42",
+    "</in-app-browser-context>",
+  ].join("\n");
+  const rawPrompt = `${ambientContext}\n\n## My request for Codex:\n완료`;
+  const result = await runSender(
+    {
+      session_id: "session-ambient-summary",
+      turn_id: "turn-ambient-summary",
+      hook_event_name: "UserPromptSubmit",
+      prompt: rawPrompt,
+    },
+    env,
+  );
+
+  assert.deepEqual(result, { code: 0, stderr: "", stdout: "{}\n" });
+  const session = monitor.store.getSnapshot().sessions[0];
+  assert.equal(session.task_summary, "완료");
+  const serialized = JSON.stringify(session);
+  assert(!serialized.includes(rawPrompt));
+  assert(!serialized.includes("ambient UI state"));
+  assert(!serialized.includes("private.example"));
+  assert(!serialized.includes('"prompt"'));
+});
+
 test("derives only a bounded sanitized workspace basename", async (t) => {
   const { env } = await temporaryRuntime(t);
   const monitor = await startMonitorServer({

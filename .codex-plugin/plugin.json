@@ -1,6 +1,6 @@
 {
   "name": "codex-agent-view",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Follow Codex work and participating agent progress in a clear, read-only live view opened from the official Codex app.",
   "author": {
     "name": "Junho Yoon",
