@@ -32,7 +32,7 @@ test("documents one plugin invocation that opens the default browser without a u
     assert.match(document, /current source|Current source/);
     assert.match(document, /internal (?:execution )?skill|내부 (?:execution )?skill|internal launch skill/);
     assert.match(document, /default browser|기본 browser/);
-    assert.match(document, /user-facing skill picker|사용자용 skill picker|별도 `\$show-agents` picker/);
+    assert.match(document, /user-facing skill picker|사용자용 skill picker|별도 `\$show-agents` picker|별도 `\$show-agents` skill/);
     assert.match(document, /0\.5\.1/);
   }
 
@@ -89,7 +89,7 @@ test("documents the current live-view UX and evidence boundary", async () => {
   assert.match(privacy, /do not enable CORS and no authentication cookie is set/);
 });
 
-test("records final public npm 0.5.1 acceptance while keeping only the official task-summary prompt unverified", async () => {
+test("records the promptless 0.5.2 candidate while preserving final public npm 0.5.1 evidence", async () => {
   const [packageText, manifestText, english, korean, roadmap, distribution, findings, submission, privacy] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -104,8 +104,9 @@ test("records final public npm 0.5.1 acceptance while keeping only the official 
   const packageMetadata = JSON.parse(packageText);
   const manifest = JSON.parse(manifestText);
 
-  assert.equal(packageMetadata.version, "0.5.1");
-  assert.equal(manifest.version, "0.5.1");
+  assert.equal(packageMetadata.version, "0.5.2");
+  assert.equal(manifest.version, "0.5.2");
+  assert.equal(Object.hasOwn(manifest.interface, "defaultPrompt"), false);
   assert.match(english, /npm install --global codex-agent-view@0\.5\.1/);
   assert.match(korean, /npm install --global codex-agent-view@0\.5\.1/);
   assert.match(english, /Historical public `0\.5\.0` evidence/);
@@ -152,12 +153,65 @@ test("records final public npm 0.5.1 acceptance while keeping only the official 
   for (const document of [english, korean, roadmap, distribution, findings, submission]) {
     const currentReleaseLines = document
       .split("\n")
-      .filter((line) => line.includes("0.5.1"))
+      .filter((line) => line.includes("0.5.1") && !line.includes("0.5.2"))
       .join("\n");
     assert.doesNotMatch(
       currentReleaseLines,
       /(?:GitHub|CI|registry.*tarball|exact.*reinstall|subagent.*E2E).*?(?:pending|아직 확인하지|완료하지|unverified)/i,
     );
+  }
+});
+
+test("documents direct @ invocation without promising a promptless plugin-card Quick start", async () => {
+  const [english, korean, roadmap, agents, distribution, findings, submission, privacy, terms] = await Promise.all([
+    readProjectFile("README.md"),
+    readProjectFile("README.ko.md"),
+    readProjectFile("ROADMAP.md"),
+    readProjectFile("AGENTS.md"),
+    readProjectFile("docs/distribution.md"),
+    readProjectFile("docs/phase-0-findings.md"),
+    readProjectFile("docs/plugin-submission.md"),
+    readProjectFile("docs/privacy.md"),
+    readProjectFile("docs/terms.md"),
+  ]);
+
+  for (const document of [english, korean, roadmap, agents, distribution, findings, submission, privacy, terms]) {
+    assert.match(document, /0\.5\.2/);
+    assert.match(document, /(?:candidate|후보)/i);
+    assert.match(document, /defaultPrompt/);
+    assert.match(document, /(?:optional UI metadata|optional `interface\.defaultPrompt` starter-text metadata|optional `defaultPrompt`|optional UI metadata였으며|optional UI metadata였던)/i);
+    assert.match(document, /@codex-agent-view/);
+    assert.match(document, /(?:internal single skill|내부 single skill|internal skill)/i);
+    assert.match(document, /(?:promptless plugin-card Quick start|promptless Quick start control|promptless \*\*지금 사용해보기\*\*|promptless plugin-card control).*?(?:unverified|미확인|not claimed|not promised|주장하지)/is);
+    assert.match(document, /(?:pending|unpublished|미배포|배포되지 않은)/i);
+  }
+
+  assert.match(english, /select `@codex-agent-view` and send that invocation by itself/);
+  assert.match(korean, /`@codex-agent-view` 자체를 선택해 전송/);
+  assert.match(distribution, /Quick start 문구 자동 삽입을 더 이상 제공하거나 요구하지 않는다/);
+  assert.match(terms, /no longer provides or requires automatic Quick start wording/);
+});
+
+test("keeps the promptless validator conflict as a release and Directory blocker", async () => {
+  const [roadmap, distribution, findings, submission] = await Promise.all([
+    readProjectFile("ROADMAP.md"),
+    readProjectFile("docs/distribution.md"),
+    readProjectFile("docs/phase-0-findings.md"),
+    readProjectFile("docs/plugin-submission.md"),
+  ]);
+
+  for (const document of [roadmap, distribution, findings, submission]) {
+    assert.match(document, /Repository validator\/tests/);
+    assert.match(document, /local Codex CLI install\/cache ingestion/);
+    assert.match(document, /installed\/enabled/);
+    assert.match(document, /bundled plugin-creator.*`validate_plugin\.py`/is);
+    assert.match(document, /interface\.defaultPrompt or interface\.default_prompt is required/);
+    assert.match(document, /Current public manual/);
+    assert.match(document, /optional.*defaultPrompt.*starter prompt|optional-field\/starter-prompt/is);
+    assert.match(document, /public publish/);
+    assert.match(document, /Directory acceptance/);
+    assert.match(document, /(?:app UI E2E|앱 UI E2E|official-app E2E|official app UI.*E2E)/i);
+    assert.match(document, /(?:blocker|미확인)/i);
   }
 });
 

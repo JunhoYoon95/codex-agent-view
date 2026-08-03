@@ -7,12 +7,12 @@
 - 제품: 공식 Codex 앱을 그대로 사용하는 read-only companion monitor
 - 목표: 실행 중인 부모 task와 subagent 상태를 가볍게 시각화
 - 배포 목표: npm package로 설치한 뒤 공식 Codex 앱에서 실행하고 OS 기본 브라우저에서 live 상태를 보는 Codex plugin
-- 사용자 실행 surface: 설치 후 실행 시작은 공식 Codex 앱의 `@codex-agent-view` 또는 plugin Quick start에서 수행하고, live UI는 OS 기본 외부 브라우저에 표시한다.
+- 사용자 실행 surface: 설치 후 공식 Codex 앱에서 `@codex-agent-view` 자체를 선택·전송하면 internal single skill이 `open`을 실행하고, live UI는 OS 기본 외부 브라우저에 표시한다. Promptless plugin-card Quick start 제공 여부는 앱 UI에 달려 있으며 검증 전에는 제품 계약으로 주장하지 않는다.
 - 로컬 monitor와 CLI는 plugin이 내부적으로 사용하는 구현·진단 수단이다. 일반 사용자에게 터미널 실행이나 localhost URL 관리를 제품 사용법으로 요구하지 않는다.
 - 상태 설계: live companion 상태는 의도적으로 bounded process-local memory만 사용하며 재시작은 새 관찰 window를 시작한다. 이는 완성된 제품 경계다.
 - 의도적 non-goal: 대체 Codex 클라이언트, 외부 서버, 외부 telemetry, 필수 SQLite/영구 event store, 원격 제어
 - 영구 history는 누락된 요구가 아니다. 실제 사용자 가치가 입증될 때만 retention/deletion/privacy 비용을 포함한 별도 explicit opt-in 제안으로 검토한다.
-- 현재 단계: public `0.5.1` release acceptance 완료, official task-summary live prompt evidence만 미확인
+- 현재 단계: public `0.5.1` release evidence 보존, promptless source/package `0.5.2` candidate acceptance pending
 
 ## 명령어
 
@@ -48,7 +48,7 @@ npm run check
 
 ## 제품 가드레일
 
-- 설치 후 실행 시작은 공식 Codex 앱의 `@codex-agent-view` 또는 plugin Quick start에서 수행한다. 별도 `$show-agents` 선택을 사용자에게 요구하지 않으며, 내부 single skill은 이 실행을 구현하는 capability로만 유지한다.
+- 설치 후 실행 시작은 공식 Codex 앱에서 `@codex-agent-view` 자체를 선택·전송해 수행한다. 별도 `$show-agents` 선택이나 Quick start starter text를 요구하지 않으며, 내부 single skill은 `open` 실행 capability로만 유지한다. `interface.defaultPrompt`는 optional UI metadata일 뿐 skill dispatch contract가 아니며 current `0.5.2` candidate에서 제거한다. Promptless plugin-card Quick start 제공 여부는 공식 앱에서 관찰하기 전까지 미확인으로 둔다.
 - Live UI 표시 surface는 OS 기본 외부 브라우저다. 사용자는 열린 탭에서 상태를 확인하고 일반 연결 오류를 다시 시도한다.
 - npm/터미널은 최초 설치, 명시적 제거, maintainer 진단에만 허용한다. `start`, `status`, `doctor`를 정상적인 사용자 사용 순서에 포함하지 않는다.
 - live hook detail은 plugin이 healthy local monitor를 재사용하거나 필요 시 내부적으로 시작한 뒤 OS 기본 브라우저에서 연다. localhost 주소나 tokenized/private URL을 사용자에게 복사·입력·관리하게 하지 않는다.

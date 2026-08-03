@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-현재 source/package와 public npm `latest`는 `0.5.1`이다. Registry/release artifact, public exact reinstall, main/tag CI, annotated tag/GitHub Release와 actual subagent live UI E2E를 확인했다. Official task-summary live prompt는 monitor가 `UserPromptSubmit` 이후 시작되어 미확인이며 automated ambient-fixture tests와 구분한다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. 기존 public release evidence를 보존한다.
+현재 source/package는 unpublished candidate `0.5.2`이고 public npm `latest`는 `0.5.1`이다. Public `0.5.1`의 registry/release artifact, exact reinstall, main/tag CI, annotated tag/GitHub Release와 actual subagent live UI E2E evidence를 보존한다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다.
 
 ## 제품 원칙
 
@@ -13,7 +13,20 @@
 - 설치, hook trust, 제거는 사용자가 명시적으로 수행하고 복구 경로를 제공한다.
 - task/subagent control과 permission 자동 처리 기능을 제공하지 않는다.
 
-## Current — public `0.5.1` release acceptance
+## Current — promptless `0.5.2` candidate
+
+`interface.defaultPrompt`는 plugin 실행 기능이 아니라 plugin 카드에서 starter text를 붙이는 optional UI metadata였다. Candidate `0.5.2`는 이 field를 제거해 Quick start 문구 자동 삽입을 더 이상 제공하거나 요구하지 않는다. 사용자는 Codex task에서 `@codex-agent-view` 자체를 선택·전송하고 내부 single skill이 `open`을 실행한다. Plugin 카드가 promptless Quick start control을 제공하는지는 앱 UI가 결정하므로 실제 확인 전에는 지원을 주장하지 않는다.
+
+- [x] Package/plugin manifest version을 `0.5.2`로 동기화한다.
+- [x] Optional `interface.defaultPrompt`를 제거하고 internal single skill/`open` contract는 유지한다.
+- [x] README와 배포·privacy·terms 문서에서 promptless invocation 경계를 설명한다.
+- [x] Repository validator/tests와 local Codex CLI install/cache ingestion에서 promptless `0.5.2`가 installed/enabled로 수락됨을 확인한다.
+- [ ] Bundled plugin-creator `validate_plugin.py`는 `interface.defaultPrompt or interface.default_prompt is required`로 실패한다. Current public manual이 다른 manifest field를 optional로 설명하고 `defaultPrompt`를 starter prompt control로 설명하는 것과 충돌하므로 해결 전에는 전체 plugin/Directory validation 완료로 표시하지 않는다.
+- [ ] 공식 Codex 앱에서 `@codex-agent-view` 자체 선택·전송 → internal single skill → `open` → default browser E2E를 확인한다.
+- [ ] Plugin 카드의 promptless Quick start 제공 여부를 실제 앱에서 관찰하고 결과만 기록한다.
+- [ ] Validator contract 충돌을 해소한 뒤 npm publish, exact reinstall, artifact comparison, CI, tag/GitHub Release와 Directory acceptance를 진행한다. 그 전에는 public publish/Directory acceptance와 앱 UI E2E의 blocker/미확인 상태를 유지한다.
+
+## Historical current public — `0.5.1` release acceptance
 
 Public `0.5.0`은 공식 Codex 앱에서 실행을 시작하고 OS 기본 외부 브라우저에 live UI를 표시하는 설계를 배포했다. 공식 E2E에서 Codex가 자동 첨부한 `in-app-browser-context` block이 task summary에 섞이는 문제를 확인했다. `0.5.1`은 그 ambient wrapper만 summary 입력에서 제거하며 launch, read-only와 bounded-memory 경계는 바꾸지 않는다.
 
@@ -29,7 +42,7 @@ Public `0.5.0`은 공식 Codex 앱에서 실행을 시작하고 OS 기본 외부
 - [ ] Official task-summary live prompt를 monitor가 `UserPromptSubmit` 전부터 실행된 새 관찰 window에서 확인한다. Automated actual ambient fixture tests는 이미 통과했지만 공식 event 관찰을 대체하지 않는다.
 - [ ] 누락된 `v0.5.0` tag/GitHub Release를 만들지는 release owner가 별도로 결정하고, 생성 전에는 완료로 기록하지 않는다.
 
-현재 다음 작업: 새 관찰 window에서 official `UserPromptSubmit` task-summary live prompt만 확인한다. 나머지 `0.5.1` release acceptance는 완료됐다.
+`0.5.1` release acceptance는 완료됐다. Official `UserPromptSubmit` task-summary live prompt는 해당 monitor가 event 뒤에 시작되어 미확인이며 automated fixture evidence와 구분한다. 현재 다음 작업은 위 `0.5.2` candidate acceptance다.
 
 ## 제품 구현 상태
 
