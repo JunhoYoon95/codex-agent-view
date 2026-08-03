@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { createHmac } from "node:crypto";
 import {
   access,
   chmod,
@@ -22,6 +23,7 @@ import {
   ensureViewerToken,
   readRuntimeInfo,
   readViewerToken,
+  removeRuntimeInfo,
   runtimeFile,
   viewerCredentialFile,
   writeRuntimeInfo,
@@ -30,6 +32,21 @@ import { startMonitorServer } from "../src/runtime/server.mjs";
 
 const PACKAGE_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const CLI = join(PACKAGE_ROOT, "bin", "codex-agent-view.mjs");
+const OWNERSHIP_PROOF_DOMAIN = "codex-agent-view/runtime-ownership/v1";
+
+async function respondToOwnershipChallenge(request, response, runtimeToken) {
+  assert.equal(request.headers.authorization, undefined);
+  const chunks = [];
+  for await (const chunk of request) chunks.push(chunk);
+  const { nonce } = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  const proof = createHmac("sha256", runtimeToken)
+    .update(OWNERSHIP_PROOF_DOMAIN)
+    .update("\0")
+    .update(nonce)
+    .digest("base64url");
+  response.writeHead(200, { "content-type": "application/json" });
+  response.end(`${JSON.stringify({ proof, status: "owned" })}\n`);
+}
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "codex-agent-view-cli-"));
@@ -54,7 +71,7 @@ if (args.join(" ") === "plugin marketplace list --json") {
   process.stdout.write(JSON.stringify({ installed: [{
     pluginId: "codex-agent-view@codex-agent-view",
     enabled: process.env.FAKE_PLUGIN_DISABLED !== "1",
-    version: "0.4.7",
+    version: "0.4.8",
     source: { source: "local", path: sourcePath }
   }] }) + "\\n");
 } else {
@@ -222,6 +239,445 @@ async function waitForBrowserCall(path) {
   return [];
 }
 
+async function stopPreparedMonitor(env) {
+  let runtime;
+  try {
+    runtime = await readRuntimeInfo(env);
+  } catch {
+    return;
+  }
+  await fetch(`http://${runtime.host}:${runtime.port}/api/internal/shutdown`, {
+    headers: { authorization: `Bearer ${runtime.token}` },
+    method: "POST",
+  }).catch(() => {});
+}
+
+test("prepare-live-view reuses one healthy owned runtime and returns only the private viewer target", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  const viewerToken = await readViewerToken(env);
+  const runtimeToken = "r".repeat(43);
+  const bootstrapCredential = `bootstrap.${"g".repeat(43)}`;
+  const grantRequests = [];
+  const owned = createServer(async (request, response) => {
+    if (request.url === "/api/internal/ownership-proof") {
+      await respondToOwnershipChallenge(request, response, runtimeToken);
+      return;
+    }
+    if (request.url === "/api/internal/viewer-grant" && request.method === "POST") {
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      grantRequests.push({
+        authorization: request.headers.authorization,
+        body: JSON.parse(Buffer.concat(chunks).toString("utf8")),
+      });
+      response.writeHead(201, { "content-type": "application/json" });
+      response.end(`${JSON.stringify({
+        status: "granted",
+        bootstrap_credential: bootstrapCredential,
+        expires_in_ms: 60_000,
+      })}\n`);
+      return;
+    }
+    response.writeHead(404).end();
+  });
+  await new Promise((resolvePromise, reject) => {
+    owned.once("error", reject);
+    owned.listen(0, LOOPBACK_HOST, resolvePromise);
+  });
+  t.after(() => new Promise((resolvePromise) => owned.close(resolvePromise)));
+  const address = owned.address();
+  assert(address && typeof address !== "string");
+  await writeRuntimeInfo(
+    {
+      host: LOOPBACK_HOST,
+      pid: process.pid,
+      port: address.port,
+      schema_version: RUNTIME_SCHEMA_VERSION,
+      started_at_ms: Date.now(),
+      token: runtimeToken,
+      viewer_token: viewerToken,
+    },
+    env,
+  );
+  await writeFile(setup.log, "");
+
+  const threadId = "ABCDEF12-3456-7890-ABCD-EF1234567890";
+  const result = await runCli(setup, runtimeRoot, ["prepare-live-view"], {
+    env: { CODEX_THREAD_ID: threadId },
+  });
+
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(result.stderr, "");
+  assert.deepEqual(JSON.parse(result.stdout), {
+    ok: true,
+    reused: true,
+    target: `http://127.0.0.1:${address.port}/#grant=${encodeURIComponent(bootstrapCredential)}`,
+  });
+  assert.deepEqual(grantRequests, [
+    {
+      authorization: `Bearer ${runtimeToken}`,
+      body: { exclude_session_id: threadId.toLowerCase() },
+    },
+  ]);
+  assert(!result.stdout.includes(runtimeToken));
+  assert(!result.stdout.includes(viewerToken));
+  assert(!result.stdout.includes("#token="));
+  assert(!result.stdout.includes("exclude="));
+  assert.deepEqual(await readCalls(setup.log), []);
+  assert.deepEqual(await readCalls(setup.browserLog), []);
+  assert.equal((await readRuntimeInfo(env)).token, runtimeToken);
+});
+
+test("prepare-live-view starts a missing monitor internally and omits an invalid inherited task ID", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("detached monitor fixture uses POSIX process behavior");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  await writeFile(setup.log, "");
+  t.after(async () => stopPreparedMonitor(env));
+
+  let port;
+  let result;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    port = await reserveLoopbackPort();
+    await writeRuntimeInfo(
+      {
+        host: LOOPBACK_HOST,
+        pid: process.pid,
+        port,
+        schema_version: RUNTIME_SCHEMA_VERSION,
+        started_at_ms: Date.now(),
+        token: "s".repeat(43),
+      },
+      env,
+    );
+    result = await runCli(setup, runtimeRoot, ["prepare-live-view"], {
+      env: {
+        CODEX_AGENT_VIEW_AUTO_START_PORT: String(port),
+        CODEX_THREAD_ID: "not-a-canonical-thread-id",
+      },
+    });
+    if (result.code === 0) break;
+    const failureCode = JSON.parse(result.stdout).error?.code;
+    if (!["monitor_start_timeout", "unowned_runtime"].includes(failureCode)) break;
+  }
+
+  assert.equal(result?.code, 0, result?.stdout || result?.stderr);
+  const prepared = JSON.parse(result.stdout);
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.reused, false);
+  assert.match(prepared.target, new RegExp(`^http://127\\.0\\.0\\.1:${port}/#grant=[^&?#]+$`));
+  const grant = decodeURIComponent(new URL(prepared.target).hash.slice("#grant=".length));
+  const grantPayload = JSON.parse(
+    Buffer.from(grant.split(".", 1)[0], "base64url").toString("utf8"),
+  );
+  assert.equal(grantPayload.exclude_session_id, null);
+  const startedRuntime = await readRuntimeInfo(env);
+  assert(!result.stdout.includes(startedRuntime.token));
+  assert(!result.stdout.includes(startedRuntime.viewer_token));
+  assert(!prepared.target.includes("token="));
+  assert(!prepared.target.includes("exclude="));
+  assert.deepEqual(await readCalls(setup.log), []);
+  assert.deepEqual(await readCalls(setup.browserLog), []);
+});
+
+test("prepare-live-view fails with bounded structured codes for unsafe bundle and runtime states", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+
+  const mismatchRoot = join(setup.root, "mismatch-runtime");
+  const mismatchInstall = await runCli(setup, mismatchRoot, ["install"]);
+  assert.equal(mismatchInstall.code, 0, mismatchInstall.stderr);
+  const invalidArguments = await runCli(setup, mismatchRoot, [
+    "prepare-live-view",
+    "unexpected",
+  ]);
+  assert.equal(invalidArguments.code, 1);
+  assert.deepEqual(JSON.parse(invalidArguments.stdout), {
+    ok: false,
+    error: { code: "invalid_arguments" },
+  });
+  assert.equal(invalidArguments.stderr, "");
+  const manifestPath = join(mismatchRoot, "marketplace", ".codex-plugin", "plugin.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  await writeFile(manifestPath, `${JSON.stringify({ ...manifest, version: "0.0.0" })}\n`);
+  const mismatch = await runCli(setup, mismatchRoot, ["prepare-live-view"]);
+  assert.equal(mismatch.code, 1);
+  assert.deepEqual(JSON.parse(mismatch.stdout), {
+    ok: false,
+    error: { code: "plugin_version_mismatch" },
+  });
+  assert.equal(mismatch.stderr, "");
+
+  const malformedRoot = join(setup.root, "malformed-runtime");
+  const malformedInstall = await runCli(setup, malformedRoot, ["install"]);
+  assert.equal(malformedInstall.code, 0, malformedInstall.stderr);
+  await writeFile(runtimeFile({ CODEX_AGENT_VIEW_RUNTIME_DIR: malformedRoot }), "not-json\n");
+  const malformed = await runCli(setup, malformedRoot, ["prepare-live-view"]);
+  assert.equal(malformed.code, 1);
+  assert.deepEqual(JSON.parse(malformed.stdout), {
+    ok: false,
+    error: { code: "runtime_record_invalid" },
+  });
+  assert.equal(malformed.stderr, "");
+
+  const unownedRoot = join(setup.root, "unowned-runtime");
+  const unownedInstall = await runCli(setup, unownedRoot, ["install"]);
+  assert.equal(unownedInstall.code, 0, unownedInstall.stderr);
+  const unrelated = createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end("{}\n");
+  });
+  await new Promise((resolvePromise, reject) => {
+    unrelated.once("error", reject);
+    unrelated.listen(0, LOOPBACK_HOST, resolvePromise);
+  });
+  t.after(() => new Promise((resolvePromise) => unrelated.close(resolvePromise)));
+  const address = unrelated.address();
+  assert(address && typeof address !== "string");
+  await writeRuntimeInfo(
+    {
+      host: LOOPBACK_HOST,
+      pid: process.pid,
+      port: address.port,
+      schema_version: RUNTIME_SCHEMA_VERSION,
+      started_at_ms: Date.now(),
+      token: "c".repeat(43),
+      viewer_token: "v".repeat(43),
+    },
+    { CODEX_AGENT_VIEW_RUNTIME_DIR: unownedRoot },
+  );
+  const unowned = await runCli(setup, unownedRoot, ["prepare-live-view"]);
+  assert.equal(unowned.code, 1);
+  assert.deepEqual(JSON.parse(unowned.stdout), {
+    ok: false,
+    error: { code: "unowned_runtime" },
+  });
+  assert.equal(unowned.stderr, "");
+});
+
+test("prepare-live-view safely reports rejected and timed-out viewer grants without exposing credentials", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+
+  for (const failure of ["rejected", "timeout"]) {
+    const runtimeRoot = join(setup.root, `${failure}-grant-runtime`);
+    const install = await runCli(setup, runtimeRoot, ["install"]);
+    assert.equal(install.code, 0, install.stderr);
+    const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+    const runtimeToken = failure === "rejected" ? "j".repeat(43) : "k".repeat(43);
+    const viewerToken = await readViewerToken(env);
+    const owned = createServer(async (request, response) => {
+      if (request.url === "/api/internal/ownership-proof") {
+        await respondToOwnershipChallenge(request, response, runtimeToken);
+        return;
+      }
+      if (request.url === "/api/internal/viewer-grant") {
+        assert.equal(request.headers.authorization, `Bearer ${runtimeToken}`);
+        if (failure === "rejected") {
+          response.writeHead(403, { "content-type": "application/json" });
+          response.end('{"error":"denied"}\n');
+          return;
+        }
+        setTimeout(() => {
+          if (!response.writableEnded) {
+            response.writeHead(201, { "content-type": "application/json" });
+            response.end('{"status":"granted","bootstrap_credential":"too-late","expires_in_ms":60000}\n');
+          }
+        }, 1_200);
+        return;
+      }
+      response.writeHead(404).end();
+    });
+    await new Promise((resolvePromise, reject) => {
+      owned.once("error", reject);
+      owned.listen(0, LOOPBACK_HOST, resolvePromise);
+    });
+    t.after(() => new Promise((resolvePromise) => owned.close(resolvePromise)));
+    const address = owned.address();
+    assert(address && typeof address !== "string");
+    await writeRuntimeInfo(
+      {
+        host: LOOPBACK_HOST,
+        pid: process.pid,
+        port: address.port,
+        schema_version: RUNTIME_SCHEMA_VERSION,
+        started_at_ms: Date.now(),
+        token: runtimeToken,
+        viewer_token: viewerToken,
+      },
+      env,
+    );
+
+    const result = await runCli(setup, runtimeRoot, ["prepare-live-view"]);
+    assert.equal(result.code, 1);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      ok: false,
+      error: {
+        code: failure === "rejected" ? "viewer_grant_rejected" : "viewer_grant_timeout",
+      },
+    });
+    assert.equal(result.stderr, "");
+    assert(!result.stdout.includes(runtimeToken));
+    assert(!result.stdout.includes(viewerToken));
+  }
+});
+
+test("prepare-live-view rejects malformed signed grants before constructing a target", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "invalid-grant-runtime");
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const runtimeToken = "i".repeat(43);
+  const viewerToken = await readViewerToken(env);
+  const invalidCredentials = [
+    "not-signed",
+    `payload.${"a".repeat(42)}#`,
+    `payload.${"b".repeat(42)} `,
+  ];
+  let grantIndex = 0;
+  const owned = createServer(async (request, response) => {
+    if (request.url === "/api/internal/ownership-proof") {
+      await respondToOwnershipChallenge(request, response, runtimeToken);
+      return;
+    }
+    if (request.url === "/api/internal/viewer-grant") {
+      assert.equal(request.headers.authorization, `Bearer ${runtimeToken}`);
+      response.writeHead(201, { "content-type": "application/json" });
+      response.end(`${JSON.stringify({
+        status: "granted",
+        bootstrap_credential: invalidCredentials[grantIndex],
+        expires_in_ms: 60_000,
+      })}\n`);
+      grantIndex += 1;
+      return;
+    }
+    response.writeHead(404).end();
+  });
+  await new Promise((resolvePromise, reject) => {
+    owned.once("error", reject);
+    owned.listen(0, LOOPBACK_HOST, resolvePromise);
+  });
+  t.after(() => new Promise((resolvePromise) => owned.close(resolvePromise)));
+  const address = owned.address();
+  assert(address && typeof address !== "string");
+  await writeRuntimeInfo(
+    {
+      host: LOOPBACK_HOST,
+      pid: process.pid,
+      port: address.port,
+      schema_version: RUNTIME_SCHEMA_VERSION,
+      started_at_ms: Date.now(),
+      token: runtimeToken,
+      viewer_token: viewerToken,
+    },
+    env,
+  );
+
+  for (const invalidCredential of invalidCredentials) {
+    const result = await runCli(setup, runtimeRoot, ["prepare-live-view"]);
+    assert.equal(result.code, 1);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      ok: false,
+      error: { code: "viewer_grant_invalid_response" },
+    });
+    assert.equal(result.stderr, "");
+    assert(!result.stdout.includes(invalidCredential));
+    assert(!result.stdout.includes("#grant="));
+  }
+  assert.equal(grantIndex, invalidCredentials.length);
+  assert.deepEqual(await readCalls(setup.browserLog), []);
+});
+
+test("prepare-live-view sends no bearer or grant request to a service that spoofs monitor responses", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "spoofed-runtime");
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  const runtimeToken = "q".repeat(43);
+  const seen = [];
+  const spoof = createServer(async (request, response) => {
+    seen.push({ authorization: request.headers.authorization, url: request.url });
+    if (request.url === "/api/internal/ownership-proof") {
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(`${JSON.stringify({ proof: "z".repeat(43), status: "owned" })}\n`);
+      return;
+    }
+    if (request.url === "/api/state") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end('{"schema_version":1,"source_of_truth":"hook"}\n');
+      return;
+    }
+    if (request.url === "/api/internal/viewer-grant") {
+      response.writeHead(201, { "content-type": "application/json" });
+      response.end(`${JSON.stringify({
+        bootstrap_credential: `payload.${"g".repeat(43)}`,
+        expires_in_ms: 60_000,
+        status: "granted",
+      })}\n`);
+      return;
+    }
+    response.writeHead(404).end();
+  });
+  await new Promise((resolvePromise, reject) => {
+    spoof.once("error", reject);
+    spoof.listen(0, LOOPBACK_HOST, resolvePromise);
+  });
+  t.after(() => new Promise((resolvePromise) => spoof.close(resolvePromise)));
+  const address = spoof.address();
+  assert(address && typeof address !== "string");
+  await writeRuntimeInfo({
+    host: LOOPBACK_HOST,
+    pid: process.pid,
+    port: address.port,
+    schema_version: RUNTIME_SCHEMA_VERSION,
+    started_at_ms: Date.now(),
+    token: runtimeToken,
+    viewer_token: await readViewerToken({ CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot }),
+  }, { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot });
+
+  const result = await runCli(setup, runtimeRoot, ["prepare-live-view"]);
+  assert.equal(result.code, 1);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    ok: false,
+    error: { code: "unowned_runtime" },
+  });
+  assert(!result.stdout.includes("#grant="));
+  assert.deepEqual(seen, [
+    { authorization: undefined, url: "/api/internal/ownership-proof" },
+  ]);
+});
+
 test("refuses to replace or uninstall an unmanaged marketplace directory", async (t) => {
   if (process.platform === "win32") {
     t.skip("fake executable fixture uses a POSIX shebang");
@@ -282,6 +738,195 @@ test("install seeds a missing viewer credential from a legacy runtime token", as
   assert.equal(result.code, 0, result.stderr);
   assert.equal(await readViewerToken(env), legacy.token);
   assert(!`${result.stdout}${result.stderr}`.includes(legacy.token));
+});
+
+test("install stops an already running owned monitor before replacing the bundle", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "upgrade-runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const monitor = await startMonitorServer({ env, port: 0 });
+  t.after(async () => monitor.close().catch(() => {}));
+
+  const result = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(result.code, 0, result.stderr);
+  const deadline = Date.now() + 1_000;
+  while (monitor.server.address() !== null && Date.now() < deadline) {
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 10));
+  }
+  assert.equal(monitor.server.address(), null);
+  await assert.rejects(access(runtimeFile(env)), { code: "ENOENT" });
+});
+
+test("current managed lifecycle commands never send bearer auth after a failed ownership proof", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "current-spoof-runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  assert.equal((await runCli(setup, runtimeRoot, ["install"])).code, 0);
+  const seen = [];
+  const spoof = createServer((_request, response) => {
+    seen.push({
+      authorization: _request.headers.authorization,
+      url: _request.url,
+    });
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(`${JSON.stringify({ proof: "z".repeat(43), status: "owned" })}\n`);
+  });
+  await new Promise((resolvePromise, reject) => {
+    spoof.once("error", reject);
+    spoof.listen(0, LOOPBACK_HOST, resolvePromise);
+  });
+  t.after(() => new Promise((resolvePromise) => spoof.close(resolvePromise)));
+  const address = spoof.address();
+  assert(address && typeof address !== "string");
+  const runtimeToken = "w".repeat(43);
+  await writeRuntimeInfo({
+    host: LOOPBACK_HOST,
+    pid: process.pid,
+    port: address.port,
+    schema_version: RUNTIME_SCHEMA_VERSION,
+    started_at_ms: Date.now(),
+    token: runtimeToken,
+    viewer_token: await readViewerToken(env),
+  }, env);
+
+  for (const args of [["status", "--json"], ["install"], ["uninstall"]]) {
+    const result = await runCli(setup, runtimeRoot, args);
+    assert.equal(result.code, 1);
+    assert(!`${result.stdout}${result.stderr}`.includes(runtimeToken));
+  }
+  assert.equal(seen.length, 3);
+  assert(seen.every((entry) => (
+    entry.authorization === undefined &&
+    entry.url === "/api/internal/ownership-proof"
+  )));
+  await access(runtimeFile(env));
+  await access(join(runtimeRoot, "marketplace", ".codex-agent-view-owned.json"));
+});
+
+test("install uses bearer fallback only for a known managed pre-proof bundle", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "legacy-upgrade-runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  assert.equal((await runCli(setup, runtimeRoot, ["install"])).code, 0);
+  const manifestPath = join(runtimeRoot, "marketplace", ".codex-plugin", "plugin.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  await writeFile(manifestPath, `${JSON.stringify({ ...manifest, version: "0.4.7" })}\n`);
+
+  const runtimeToken = "y".repeat(43);
+  const seen = [];
+  let legacy;
+  legacy = createServer((request, response) => {
+    seen.push({ authorization: request.headers.authorization, url: request.url });
+    if (request.url === "/api/internal/ownership-proof") {
+      response.writeHead(404).end();
+      return;
+    }
+    if (request.url === "/api/state") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end('{"schema_version":1,"source_of_truth":"hook"}\n');
+      return;
+    }
+    if (request.url === "/api/internal/shutdown") {
+      response.once("finish", () => {
+        void removeRuntimeInfo(runtimeToken, env).then(() => legacy.close());
+      });
+      response.writeHead(202, { "content-type": "application/json" });
+      response.end('{"status":"shutting_down"}\n');
+      return;
+    }
+    response.writeHead(404).end();
+  });
+  await new Promise((resolvePromise, reject) => {
+    legacy.once("error", reject);
+    legacy.listen(0, LOOPBACK_HOST, resolvePromise);
+  });
+  t.after(() => {
+    if (!legacy.listening) return undefined;
+    return new Promise((resolvePromise) => legacy.close(resolvePromise));
+  });
+  const address = legacy.address();
+  assert(address && typeof address !== "string");
+  await writeRuntimeInfo({
+    host: LOOPBACK_HOST,
+    pid: process.pid,
+    port: address.port,
+    schema_version: RUNTIME_SCHEMA_VERSION,
+    started_at_ms: Date.now(),
+    token: runtimeToken,
+    viewer_token: await readViewerToken(env),
+  }, env);
+
+  const result = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(result.code, 0, result.stderr);
+  assert.deepEqual(seen, [
+    { authorization: undefined, url: "/api/internal/ownership-proof" },
+    { authorization: `Bearer ${runtimeToken}`, url: "/api/state" },
+    { authorization: `Bearer ${runtimeToken}`, url: "/api/internal/shutdown" },
+  ]);
+  assert.equal(
+    JSON.parse(await readFile(manifestPath, "utf8")).version,
+    JSON.parse(await readFile(join(PACKAGE_ROOT, "package.json"), "utf8")).version,
+  );
+});
+
+test("an unknown managed version gets no legacy bearer fallback and is preserved", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "unknown-version-runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  assert.equal((await runCli(setup, runtimeRoot, ["install"])).code, 0);
+  const manifestPath = join(runtimeRoot, "marketplace", ".codex-plugin", "plugin.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  await writeFile(manifestPath, `${JSON.stringify({ ...manifest, version: "9.9.9" })}\n`);
+  const seen = [];
+  const spoof = createServer((request, response) => {
+    seen.push({ authorization: request.headers.authorization, url: request.url });
+    if (request.url === "/api/state") {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end('{"schema_version":1,"source_of_truth":"hook"}\n');
+      return;
+    }
+    response.writeHead(404).end();
+  });
+  await new Promise((resolvePromise, reject) => {
+    spoof.once("error", reject);
+    spoof.listen(0, LOOPBACK_HOST, resolvePromise);
+  });
+  t.after(() => new Promise((resolvePromise) => spoof.close(resolvePromise)));
+  const address = spoof.address();
+  assert(address && typeof address !== "string");
+  await writeRuntimeInfo({
+    host: LOOPBACK_HOST,
+    pid: process.pid,
+    port: address.port,
+    schema_version: RUNTIME_SCHEMA_VERSION,
+    started_at_ms: Date.now(),
+    token: "u".repeat(43),
+    viewer_token: await readViewerToken(env),
+  }, env);
+
+  const result = await runCli(setup, runtimeRoot, ["uninstall"]);
+  assert.equal(result.code, 1);
+  assert.deepEqual(seen, [
+    { authorization: undefined, url: "/api/internal/ownership-proof" },
+  ]);
+  assert.equal(JSON.parse(await readFile(manifestPath, "utf8")).version, "9.9.9");
+  await access(runtimeFile(env));
 });
 
 test("refuses a symbolic-link runtime root without touching its target", async (t) => {
@@ -745,7 +1390,7 @@ test("doctor distinguishes valid registration from unobservable hook trust and n
     enabled: true,
     installed: true,
     source_path: join(runtimeRoot, "marketplace"),
-    version: "0.4.7",
+    version: "0.4.8",
   });
   assert.equal(report.hook.wiring_ok, true);
   assert.equal(report.hook.trust, "unknown");

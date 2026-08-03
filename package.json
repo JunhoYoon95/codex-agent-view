@@ -1,6 +1,6 @@
 {
   "name": "codex-agent-view",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "description": "Follow Codex work and participating agent progress in a clear, read-only live view inside the official Codex app.",
   "type": "module",
   "main": "./src/core/index.mjs",

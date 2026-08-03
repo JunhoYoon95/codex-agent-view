@@ -223,15 +223,14 @@ assert(
 );
 for (const requiredText of [
   "Show Agents",
-  "codex-agent-view status --json",
-  "codex-agent-view start --no-open",
+  "codex-agent-view prepare-live-view",
   "codex_app__open_in_codex",
   'placement: "right"',
   "127.0.0.1",
   "CODEX_THREAD_ID",
-  "&exclude=<thread-id>",
+  "#grant=<urlencoded-bootstrap-credential>",
   "Never\n   reopen by `tabId` alone",
-  "tokenized localhost URL",
+  "grant-bearing localhost URL",
   "site permission is denied",
   "visible retry button",
   "performs a real state fetch",
@@ -242,6 +241,20 @@ for (const requiredText of [
     `Show Agents skill contract must include ${requiredText}`,
   );
 }
+assert(
+  (showAgentsSkillText.match(/codex-agent-view prepare-live-view/g) || []).length === 1,
+  "Show Agents successful fast path must use exactly one CLI invocation",
+);
+assert(
+  !showAgentsSkillText.includes("codex-agent-view status --json") &&
+    !showAgentsSkillText.includes("codex-agent-view start --no-open"),
+  "Show Agents fast path must not use separate status or start CLI calls",
+);
+assert(
+  showAgentsSkillText.includes("codex-agent-view doctor --json") &&
+    showAgentsSkillText.includes("diagnostic fallback"),
+  "Show Agents may use doctor only as a failure diagnostic fallback",
+);
 assert(
   showAgentsMetadataText.includes('display_name: "Show Agents"') &&
     showAgentsMetadataText.includes(

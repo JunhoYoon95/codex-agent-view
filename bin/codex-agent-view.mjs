@@ -10,6 +10,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { spawn } from "node:child_process";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { startMonitorServer } from "../src/runtime/server.mjs";
 import {
   DEFAULT_PORT,
+  LOOPBACK_HOST,
   ensureViewerToken,
   readRuntimeInfo,
   readViewerToken,
@@ -32,6 +34,21 @@ const PLUGIN_ID = "codex-agent-view@codex-agent-view";
 const MARKETPLACE_NAME = "codex-agent-view";
 const BUNDLE_MARKER = ".codex-agent-view-owned.json";
 const BUNDLE_MARKER_SCHEMA_VERSION = 1;
+const PREPARE_LIVE_VIEW_WAIT_MS = 2_000;
+const PREPARE_LIVE_VIEW_POLL_MS = 40;
+const VIEWER_GRANT_TIMEOUT_MS = 1_000;
+const MAX_BOOTSTRAP_CREDENTIAL_LENGTH = 1_024;
+const SIGNED_BOOTSTRAP_CREDENTIAL_PATTERN =
+  /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/;
+const OWNERSHIP_PROOF_DOMAIN = "codex-agent-view/runtime-ownership/v1";
+const OWNERSHIP_PROOF_TIMEOUT_MS = 1_000;
+const KNOWN_PRE_PROOF_MANAGED_VERSIONS = new Set([
+  "0.2.0", "0.2.1",
+  "0.3.0", "0.3.1", "0.3.2",
+  "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7",
+]);
+const CANONICAL_THREAD_ID_PATTERN =
+  /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 const INSTALL_ENTRIES = [
   ".agents",
   ".codex-plugin",
@@ -66,6 +83,13 @@ Usage:
 The monitor is read-only and binds only to 127.0.0.1.
 Start prints the local URL without opening an external browser unless --open is set.
 `);
+}
+
+class LiveViewPreparationError extends Error {
+  constructor(code) {
+    super(code);
+    this.code = code;
+  }
 }
 
 function parseStartArgs(args) {
@@ -195,6 +219,9 @@ async function start(args) {
 
 async function fetchState() {
   const runtime = await readRuntimeInfo();
+  if ((await runtimeEndpointState(runtime)) !== "owned") {
+    throw new Error("the runtime endpoint was not identified as an owned monitor");
+  }
   const response = await fetch(`http://${runtime.host}:${runtime.port}/api/state`, {
     headers: { authorization: `Bearer ${runtime.token}` },
     signal: AbortSignal.timeout(1_500),
@@ -483,7 +510,7 @@ async function revokeViewerCredential(preflight) {
   };
 }
 
-async function runtimeEndpointState(runtime) {
+async function legacyRuntimeEndpointState(runtime) {
   try {
     const response = await fetch(`http://${runtime.host}:${runtime.port}/api/state`, {
       headers: { authorization: `Bearer ${runtime.token}` },
@@ -502,15 +529,254 @@ async function runtimeEndpointState(runtime) {
   }
 }
 
-async function runtimeResponds(runtime) {
-  return (await runtimeEndpointState(runtime)) === "owned";
+async function runtimeEndpointState(
+  runtime,
+  { allowLegacyBearerProbe = false } = {},
+) {
+  const ownership = await runtimeOwnershipState(runtime);
+  if (ownership !== "unrelated" || !allowLegacyBearerProbe) {
+    return ownership;
+  }
+  return legacyRuntimeEndpointState(runtime);
 }
 
-async function stopRunningRuntime(preflight) {
+async function runtimeResponds(runtime, options) {
+  return (await runtimeEndpointState(runtime, options)) === "owned";
+}
+
+function expectedOwnershipProof(nonce, runtimeToken) {
+  return createHmac("sha256", runtimeToken)
+    .update(OWNERSHIP_PROOF_DOMAIN)
+    .update("\0")
+    .update(nonce)
+    .digest("base64url");
+}
+
+async function runtimeOwnershipState(runtime) {
+  const nonce = randomBytes(32).toString("base64url");
+  let response;
+  try {
+    response = await fetch(
+      `http://${runtime.host}:${runtime.port}/api/internal/ownership-proof`,
+      {
+        body: JSON.stringify({ nonce }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+        signal: AbortSignal.timeout(OWNERSHIP_PROOF_TIMEOUT_MS),
+      },
+    );
+  } catch {
+    return "absent";
+  }
+  if (response.status !== 200) {
+    await response.body?.cancel();
+    return "unrelated";
+  }
+  const payload = await response.json().catch(() => null);
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    Array.isArray(payload) ||
+    Object.keys(payload).sort().join(",") !== "proof,status" ||
+    payload.status !== "owned" ||
+    typeof payload.proof !== "string" ||
+    !/^[A-Za-z0-9_-]{43}$/.test(payload.proof)
+  ) {
+    return "unrelated";
+  }
+  const supplied = Buffer.from(payload.proof);
+  const expected = Buffer.from(expectedOwnershipProof(nonce, runtime.token));
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected)
+    ? "owned"
+    : "unrelated";
+}
+
+async function inspectInstalledBundleForLiveView() {
+  const destination = join(runtimeDirectory(), "marketplace");
+  const stats = await pathExists(destination);
+  if (!stats) {
+    throw new LiveViewPreparationError("plugin_not_installed");
+  }
+  if (!stats.isDirectory() || stats.isSymbolicLink()) {
+    throw new LiveViewPreparationError("plugin_bundle_unowned");
+  }
+
+  const marker = await readJsonRegularFile(join(destination, BUNDLE_MARKER));
+  if (
+    marker?.schema_version !== BUNDLE_MARKER_SCHEMA_VERSION ||
+    marker?.package !== MARKETPLACE_NAME ||
+    marker?.plugin_id !== PLUGIN_ID
+  ) {
+    throw new LiveViewPreparationError("plugin_bundle_unowned");
+  }
+
+  const manifest = await readJsonRegularFile(
+    join(destination, ".codex-plugin", "plugin.json"),
+  );
+  if (manifest?.name !== MARKETPLACE_NAME || typeof manifest.version !== "string") {
+    throw new LiveViewPreparationError("plugin_bundle_invalid");
+  }
+  if (manifest.version !== (await packageVersion())) {
+    throw new LiveViewPreparationError("plugin_version_mismatch");
+  }
+}
+
+function autoStartEnvironment() {
+  const env = {};
+  for (const key of [
+    "CODEX_AGENT_VIEW_AUTO_START_PORT",
+    "CODEX_AGENT_VIEW_RUNTIME_DIR",
+    "SystemRoot",
+  ]) {
+    if (typeof process.env[key] === "string") {
+      env[key] = process.env[key];
+    }
+  }
+  return env;
+}
+
+function startMonitorDetached() {
+  const child = spawn(
+    process.execPath,
+    [fileURLToPath(new URL("../scripts/auto-start-monitor.mjs", import.meta.url))],
+    {
+      detached: true,
+      env: autoStartEnvironment(),
+      shell: false,
+      stdio: "ignore",
+    },
+  );
+  child.on("error", () => {});
+  child.unref();
+}
+
+async function liveViewRuntimeState() {
+  const runtime = await inspectRuntime();
+  if (runtime.kind === "unknown") {
+    throw new LiveViewPreparationError("runtime_record_invalid");
+  }
+  if (runtime.kind === "absent") {
+    return { kind: "not_running" };
+  }
+  const endpoint = await runtimeOwnershipState(runtime.info);
+  if (endpoint === "owned") {
+    return { info: runtime.info, kind: "owned" };
+  }
+  if (endpoint === "absent") {
+    return { kind: "not_running" };
+  }
+  throw new LiveViewPreparationError("unowned_runtime");
+}
+
+function inheritedExcludedSessionId() {
+  const inheritedThreadId = process.env.CODEX_THREAD_ID;
+  return (
+    typeof inheritedThreadId === "string" &&
+    CANONICAL_THREAD_ID_PATTERN.test(inheritedThreadId)
+      ? inheritedThreadId.toLowerCase()
+      : null
+  );
+}
+
+async function requestViewerGrant(runtime, excludeSessionId) {
+  let response;
+  try {
+    response = await fetch(
+      `http://${runtime.host}:${runtime.port}/api/internal/viewer-grant`,
+      {
+        body: JSON.stringify({ exclude_session_id: excludeSessionId }),
+        headers: {
+          authorization: `Bearer ${runtime.token}`,
+          "content-type": "application/json",
+        },
+        method: "POST",
+        signal: AbortSignal.timeout(VIEWER_GRANT_TIMEOUT_MS),
+      },
+    );
+  } catch (error) {
+    throw new LiveViewPreparationError(
+      error?.name === "TimeoutError" || error?.name === "AbortError"
+        ? "viewer_grant_timeout"
+        : "viewer_grant_unavailable",
+    );
+  }
+  if (response.status !== 201) {
+    await response.body?.cancel();
+    throw new LiveViewPreparationError("viewer_grant_rejected");
+  }
+  const payload = await response.json().catch(() => null);
+  const credential = payload?.bootstrap_credential;
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    Array.isArray(payload) ||
+    Object.keys(payload).sort().join(",") !==
+      "bootstrap_credential,expires_in_ms,status" ||
+    payload.status !== "granted" ||
+    payload.expires_in_ms !== 60_000 ||
+    typeof credential !== "string" ||
+    credential.length > MAX_BOOTSTRAP_CREDENTIAL_LENGTH ||
+    !SIGNED_BOOTSTRAP_CREDENTIAL_PATTERN.test(credential) ||
+    credential === runtime.token ||
+    credential === runtime.viewer_token
+  ) {
+    throw new LiveViewPreparationError("viewer_grant_invalid_response");
+  }
+  return credential;
+}
+
+function liveViewTarget(runtime, bootstrapCredential) {
+  return `http://${LOOPBACK_HOST}:${runtime.port}/#grant=${encodeURIComponent(bootstrapCredential)}`;
+}
+
+async function prepareLiveView(args) {
+  try {
+    if (args.length > 0) {
+      throw new LiveViewPreparationError("invalid_arguments");
+    }
+    await inspectInstalledBundleForLiveView();
+    let runtime = await liveViewRuntimeState();
+    let reused = runtime.kind === "owned";
+    if (!reused) {
+      startMonitorDetached();
+      const deadline = Date.now() + PREPARE_LIVE_VIEW_WAIT_MS;
+      do {
+        await new Promise((resolvePromise) =>
+          setTimeout(resolvePromise, PREPARE_LIVE_VIEW_POLL_MS),
+        );
+        runtime = await liveViewRuntimeState();
+        if (runtime.kind === "owned") break;
+      } while (Date.now() < deadline);
+    }
+    if (runtime.kind !== "owned") {
+      throw new LiveViewPreparationError("monitor_start_timeout");
+    }
+    const bootstrapCredential = await requestViewerGrant(
+      runtime.info,
+      inheritedExcludedSessionId(),
+    );
+    process.stdout.write(
+      `${JSON.stringify({
+        ok: true,
+        reused,
+        target: liveViewTarget(runtime.info, bootstrapCredential),
+      })}\n`,
+    );
+  } catch (error) {
+    const code =
+      error instanceof LiveViewPreparationError
+        ? error.code
+        : "live_view_preparation_failed";
+    process.stdout.write(`${JSON.stringify({ ok: false, error: { code } })}\n`);
+    process.exitCode = 1;
+  }
+}
+
+async function stopRunningRuntime(preflight, options = {}) {
   if (preflight.kind !== "valid") {
     return false;
   }
-  const endpointState = await runtimeEndpointState(preflight.info);
+  const endpointState = await runtimeEndpointState(preflight.info, options);
   if (endpointState === "absent") {
     return false;
   }
@@ -560,7 +826,7 @@ async function stopRunningRuntime(preflight) {
         "runtime ownership changed during uninstall; new or unrecognized runtime data was preserved",
       );
     }
-    if (!(await runtimeResponds(current.info))) {
+    if (!(await runtimeResponds(current.info, options))) {
       await removeRuntimeInfo(current.info.token);
       return true;
     }
@@ -590,7 +856,15 @@ async function inspectPluginBundle(destination) {
   ) {
     return { kind: "unmanaged" };
   }
-  return { kind: "managed" };
+  return { kind: "managed", version: manifest.version };
+}
+
+function legacyBearerProbeOptions(bundle) {
+  return {
+    allowLegacyBearerProbe:
+      bundle.kind === "managed" &&
+      KNOWN_PRE_PROOF_MANAGED_VERSIONS.has(bundle.version),
+  };
 }
 
 function unmanagedBundleError(destination) {
@@ -670,6 +944,9 @@ async function install() {
     ? runtime.info.viewer_token || runtime.info.token
     : undefined;
   await ensureViewerToken(process.env, { seedToken });
+  if (runtime.kind === "valid") {
+    await stopRunningRuntime(runtime, legacyBearerProbeOptions(bundle));
+  }
   await copyPluginBundle(destination);
   if (!existing) {
     await run("codex", ["plugin", "marketplace", "add", destination, "--json"]);
@@ -711,7 +988,7 @@ function isBroadRuntimeRoot(root) {
   );
 }
 
-async function purgeStaleRuntime(preflight) {
+async function purgeStaleRuntime(preflight, options = {}) {
   if (preflight.kind !== "valid") {
     return preflight.kind === "unknown";
   }
@@ -723,7 +1000,7 @@ async function purgeStaleRuntime(preflight) {
   if (current.kind !== "valid" || current.info.token !== preflight.info.token) {
     return true;
   }
-  const endpointState = await runtimeEndpointState(current.info);
+  const endpointState = await runtimeEndpointState(current.info, options);
   if (endpointState === "owned") {
     throw new Error("the Codex Agent View monitor started during uninstall; runtime data was preserved");
   }
@@ -790,7 +1067,11 @@ async function uninstall(args) {
 
   const runtimePreflight = await inspectRuntime();
   const viewerPreflight = await inspectViewerCredential();
-  const stoppedMonitor = await stopRunningRuntime(runtimePreflight);
+  const lifecycleProbeOptions = legacyBearerProbeOptions(bundlePreflight);
+  const stoppedMonitor = await stopRunningRuntime(
+    runtimePreflight,
+    lifecycleProbeOptions,
+  );
 
   await run("codex", ["plugin", "remove", PLUGIN_ID, "--json"], { allowFailure: true });
   await run("codex", ["plugin", "marketplace", "remove", MARKETPLACE_NAME, "--json"], {
@@ -799,7 +1080,10 @@ async function uninstall(args) {
   await removeManagedPluginBundle(bundle);
   const viewerCredential = await revokeViewerCredential(viewerPreflight);
   if (purge) {
-    const preservedRuntimeFile = await purgeStaleRuntime(runtimePreflight);
+    const preservedRuntimeFile = await purgeStaleRuntime(
+      runtimePreflight,
+      lifecycleProbeOptions,
+    );
     const removedRoot = await removeRuntimeRootIfEmpty(root);
     if (removedRoot) {
       process.stdout.write(`Removed plugin, marketplace, and runtime data from ${root}.\n`);
@@ -842,6 +1126,8 @@ async function main() {
     await status(args);
   } else if (command === "doctor") {
     await doctor(args);
+  } else if (command === "prepare-live-view") {
+    await prepareLiveView(args);
   } else if (command === "install") {
     await install(args);
   } else if (command === "uninstall") {

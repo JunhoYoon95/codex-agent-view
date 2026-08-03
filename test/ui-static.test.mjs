@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import vm from "node:vm";
 
 const [html, app, styles] = await Promise.all([
   readFile(new URL("../public/index.html", import.meta.url), "utf8"),
@@ -12,7 +13,18 @@ function extractFunction(name, { async = false } = {}) {
   const prefix = async ? `async function ${name}(` : `function ${name}(`;
   const start = app.indexOf(prefix);
   assert.notEqual(start, -1, `${name} must exist`);
-  const bodyStart = app.indexOf("{", start);
+  const parametersStart = app.indexOf("(", start);
+  let parameterDepth = 0;
+  let bodyStart = -1;
+  for (let index = parametersStart; index < app.length; index += 1) {
+    if (app[index] === "(") parameterDepth += 1;
+    if (app[index] === ")") parameterDepth -= 1;
+    if (parameterDepth === 0) {
+      bodyStart = app.indexOf("{", index + 1);
+      break;
+    }
+  }
+  assert.notEqual(bodyStart, -1, `${name} body must exist`);
   let depth = 0;
   for (let index = bodyStart; index < app.length; index += 1) {
     if (app[index] === "{") depth += 1;
@@ -57,7 +69,7 @@ function loadStatusFilterHelper() {
   return Function(`"use strict"; ${source}; return sessionMatchesStatus;`)();
 }
 
-function createRefreshStateHarness(responses) {
+function createRefreshStateHarness(responses, options = {}) {
   const calls = [];
   const connectionStates = [];
   const queue = [...responses];
@@ -85,6 +97,13 @@ function createRefreshStateHarness(responses) {
         errorMessage: "", errorKey: "", canRetry: true,
         authenticationFailed: false, requestInFlight: false,
       };
+      const VIEWER_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+      const CANONICAL_SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+      let excludedSessionId = ${JSON.stringify(options.excludedSessionId || "")};
+      let recoveredAccessToken = "";
+      const clearRejectedViewerToken = () => { accessToken = ""; recoveredAccessToken = ""; };
+      const storeRecoveryCredential = () => {};
+      const refreshRecoveredAccess = () => {};
       ${source}
       return { refreshState, viewState };
     `,
@@ -104,7 +123,7 @@ function createRefreshStateHarness(responses) {
         (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
         translations[key] ?? key,
       ),
-      "v".repeat(43),
+      options.accessToken || "v".repeat(43),
       "/api/state",
     ),
     calls,
@@ -112,8 +131,14 @@ function createRefreshStateHarness(responses) {
   };
 }
 
-function stateResponse(state) {
-  return { body: { cancel: async () => {} }, json: async () => state, ok: true, status: 200 };
+function stateResponse(state, { headers = {} } = {}) {
+  return {
+    body: { cancel: async () => {} },
+    headers: { get: (name) => headers[name.toLowerCase()] ?? null },
+    json: async () => state,
+    ok: true,
+    status: 200,
+  };
 }
 
 function errorResponse(status, onCancel = () => {}) {
@@ -123,6 +148,149 @@ function errorResponse(status, onCancel = () => {}) {
     ok: false,
     status,
   };
+}
+
+function signedCredential(label) {
+  return `${Buffer.from(label).toString("base64url")}.${"s".repeat(43)}`;
+}
+
+function exchangeResponse({
+  accessExpiresInMs = 15 * 60 * 1_000,
+  excludedSessionId = null,
+  recoveryExpiresInMs = 30 * 60 * 1_000,
+} = {}) {
+  return {
+    body: { cancel: async () => {} },
+    json: async () => ({
+      access_credential: signedCredential("access"),
+      access_expires_in_ms: accessExpiresInMs,
+      excluded_session_id: excludedSessionId,
+      recovery_credential: signedCredential("recovery"),
+      recovery_expires_in_ms: recoveryExpiresInMs,
+      status: "exchanged",
+    }),
+    ok: true,
+    status: 200,
+  };
+}
+
+function createAuthVmHarness(responses, {
+  accessToken: initialAccessToken = "",
+  bootstrapCredential = "",
+  excludedSessionId: initialExcludedSessionId = "",
+  sessionStorage: storage = new Map(),
+} = {}) {
+  const queue = [...responses];
+  const fetchCalls = [];
+  const localStorage = new Map();
+  const stateMessage = {
+    children: [],
+    className: "",
+    append(...children) { this.children.push(...children); },
+    replaceChildren(...children) { this.children = [...children]; },
+  };
+  const document = {
+    createElement(tagName) {
+      return {
+        tagName,
+        children: [],
+        listeners: {},
+        append(...children) { this.children.push(...children); },
+        addEventListener(type, listener) { this.listeners[type] = listener; },
+      };
+    },
+  };
+  const window = {
+    localStorage: {
+      getItem: (key) => localStorage.get(key) ?? null,
+      removeItem: (key) => localStorage.delete(key),
+      setItem: (key, value) => localStorage.set(key, value),
+    },
+    sessionStorage: {
+      getItem: (key) => storage.get(key) ?? null,
+      removeItem: (key) => storage.delete(key),
+      setItem: (key, value) => storage.set(key, value),
+    },
+    setInterval() {},
+  };
+  const context = vm.createContext({
+    Date,
+    JSON,
+    Object,
+    document,
+    fetch: async (...args) => {
+      fetchCalls.push(args);
+      return queue.shift();
+    },
+    window,
+  });
+  const sources = [
+    extractFunction("readRecoveryCredential"),
+    extractFunction("persistRecoveryCredential"),
+    extractFunction("clearRejectedViewerToken"),
+    extractFunction("clearRecoveryCredential"),
+    extractFunction("validateExchangePayload"),
+    extractFunction("exchangeViewerCredential", { async: true }),
+    extractFunction("storeRecoveryCredential"),
+    extractFunction("refreshRecoveredAccess"),
+    extractFunction("setStateMessage"),
+    extractFunction("retryAuthentication", { async: true }),
+    extractFunction("refreshState", { async: true }),
+    extractFunction("initializeLiveView", { async: true }),
+  ].join("\n");
+  const initialBootstrap = JSON.stringify(bootstrapCredential);
+  new vm.Script(`
+    const API_EXCHANGE_URL = "/api/viewer/exchange";
+    const API_STATE_URL = "/api/state";
+    const ACCESS_HEADER = "x-codex-agent-view-access";
+    const RECOVERY_HEADER = "x-codex-agent-view-recovery";
+    const POLL_INTERVAL_MS = 2_000;
+    const RECOVERY_CREDENTIAL_KEY = "recovery";
+    const ACCESS_CLIENT_TTL_MS = 15 * 60 * 1_000;
+    const RECOVERY_CLIENT_TTL_MS = 30 * 60 * 1_000;
+    const RECOVERY_REFRESH_THRESHOLD_MS = 5 * 60 * 1_000;
+    const SESSION_TOKEN_KEY = "session";
+    const EXCLUDED_SESSION_KEY = "exclude";
+    const VIEWER_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+    const SIGNED_CREDENTIAL_PATTERN = /^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43}$/;
+    const CANONICAL_SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    let accessToken = ${JSON.stringify(initialAccessToken)};
+    let bootstrapCredential = ${initialBootstrap};
+    let recoveredAccessToken = "";
+    let excludedSessionId = ${JSON.stringify(initialExcludedSessionId)};
+    let authenticationExchangeInFlight = false;
+    const viewState = {
+      updatedAtMs: null, sessions: [], diagnostics: [], hasLoaded: false,
+      errorMessage: "", errorKey: "", canRetry: false,
+      authenticationFailed: false, requestInFlight: false,
+    };
+    const elements = { stateMessage: globalThis.stateMessage };
+    const t = (key) => key;
+    const render = () => {};
+    const setConnectionStatus = () => {};
+    const consumeLiveContext = () => ({
+      accessToken: "", bootstrapCredential: "", excludedSessionId: "",
+    });
+    const normalizeState = (value) => value;
+    const applyStaticTranslations = () => {};
+    ${sources}
+    globalThis.authHarness = {
+      exchangeViewerCredential,
+      initializeLiveView,
+      refreshState,
+      retryAuthentication,
+      setStateMessage,
+      state: () => ({
+        authenticationExchangeInFlight,
+        accessToken,
+        bootstrapCredential,
+        excludedSessionId,
+        recoveredAccessToken,
+        viewState: { ...viewState },
+      }),
+    };
+  `).runInContext(Object.assign(context, { stateMessage }));
+  return { auth: context.authHarness, fetchCalls, localStorage, stateMessage, storage };
 }
 
 test("uses a CSP-friendly static shell with English as the default locale", () => {
@@ -188,15 +356,24 @@ test("provides landmarks, form labels, live status, and keyboard navigation", ()
   assert.match(styles, /:focus-visible/);
 });
 
-test("accepts only the exact token and optional canonical exclusion fragment contract", () => {
+test("accepts only an exact one-time grant or the legacy token fragment contract", () => {
   const source = extractFunction("isExactLiveFragment");
   const validate = Function(
     "VIEWER_TOKEN_PATTERN",
+    "SIGNED_CREDENTIAL_PATTERN",
     "CANONICAL_SESSION_ID_PATTERN",
     `"use strict"; ${source}; return isExactLiveFragment;`,
-  )(/^[A-Za-z0-9_-]{43}$/, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  )(
+    /^[A-Za-z0-9_-]{43}$/,
+    /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+  );
   const token = "v".repeat(43);
+  const grant = `${"g".repeat(60)}.${"s".repeat(43)}`;
   const session = "019fbcf3-19d4-7062-988d-f4e7a65e3e86";
+  assert.equal(validate([["grant", grant]]), true);
+  assert.equal(validate([["grant", grant], ["exclude", session]]), false);
+  assert.equal(validate([["grant", grant], ["token", token]]), false);
   assert.equal(validate([["token", token]]), true);
   assert.equal(validate([["token", token], ["exclude", session]]), true);
   assert.equal(validate([["exclude", session], ["token", token]]), true);
@@ -215,7 +392,9 @@ test("a valid new fragment refreshes or clears stale self-exclusion before being
       "use strict";
       const SESSION_TOKEN_KEY = "token-key";
       const EXCLUDED_SESSION_KEY = "exclude-key";
+      const RECOVERY_CREDENTIAL_KEY = "recovery-key";
       const VIEWER_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+      const SIGNED_CREDENTIAL_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/;
       const CANONICAL_SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
       ${validatorSource}
       ${consumerSource}
@@ -224,7 +403,11 @@ test("a valid new fragment refreshes or clears stale self-exclusion before being
   );
   const token = "v".repeat(43);
   const oldSession = "019fbcf3-19d4-7062-988d-f4e7a65e3e86";
-  const storage = new Map([["token-key", "o".repeat(43)], ["exclude-key", oldSession]]);
+  const storage = new Map([
+    ["token-key", "o".repeat(43)],
+    ["exclude-key", oldSession],
+    ["recovery-key", JSON.stringify({ credential: signedCredential("old-family") })],
+  ]);
   const window = {
     location: { hash: `#token=${token}`, pathname: "/", search: "" },
     history: { state: null, replaceState(_state, _unused, url) { this.url = url; } },
@@ -235,10 +418,30 @@ test("a valid new fragment refreshes or clears stale self-exclusion before being
     },
   };
   const context = buildConsumer(window)();
-  assert.deepEqual(context, { accessToken: token, excludedSessionId: "" });
+  assert.deepEqual(context, {
+    accessToken: token,
+    bootstrapCredential: "",
+    excludedSessionId: "",
+  });
   assert.equal(storage.get("token-key"), token);
   assert.equal(storage.has("exclude-key"), false);
+  assert.equal(storage.has("recovery-key"), false);
   assert.equal(window.history.url, "/");
+
+  const grant = signedCredential("new-family-grant");
+  storage.set("token-key", token);
+  storage.set("exclude-key", oldSession);
+  storage.set("recovery-key", JSON.stringify({ credential: signedCredential("token-family") }));
+  window.location.hash = `#grant=${grant}`;
+  const grantContext = buildConsumer(window)();
+  assert.deepEqual(grantContext, {
+    accessToken: "",
+    bootstrapCredential: grant,
+    excludedSessionId: "",
+  });
+  assert.equal(storage.has("token-key"), false);
+  assert.equal(storage.has("exclude-key"), false);
+  assert.equal(storage.has("recovery-key"), false);
 });
 
 test("strips live credentials from the URL and keeps auth separate from language preference", () => {
@@ -249,7 +452,7 @@ test("strips live credentials from the URL and keeps auth separate from language
   assert.match(app, /window\.sessionStorage\.removeItem\(EXCLUDED_SESSION_KEY\)/);
   assert.match(app, /window\.sessionStorage\.getItem\(SESSION_TOKEN_KEY\)/);
   assert.match(app, /window\.sessionStorage\.getItem\(EXCLUDED_SESSION_KEY\)/);
-  assert.match(app, /Authorization: `Bearer \$\{accessToken\}`/);
+  assert.match(app, /Authorization: `Bearer \$\{stateAccessCredential\}`/);
   assert.match(app, /fetch\(API_STATE_URL/);
   assert.match(app, /cache: "no-store"/);
   assert.doesNotMatch(app, /tool_input|tool_response|last_assistant_message|\bprompt\b/i);
@@ -295,44 +498,253 @@ test("provides honest authentication recovery guidance and a working credential 
   assert.match(app, /retryMode === "authentication" \? retryAuthentication : refreshState/);
   assert.match(app, /retryMode === "authentication"[\s\S]*?recovery-guidance/);
   assert.match(styles, /\.recovery-guidance/);
+  assert.match(app, /const API_EXCHANGE_URL = "\/api\/viewer\/exchange"/);
+  assert.match(app, /window\.sessionStorage\.setItem\(RECOVERY_CREDENTIAL_KEY/);
+  assert.match(app, /body: JSON\.stringify\(\{ credential \}\)/);
+  assert.match(app, /payload\.status === "exchanged"/);
+  assert.match(app, /recoveredAccessToken = payload\.access_credential/);
+  assert.match(app, /excludedSessionId = payload\.excluded_session_id \|\| ""/);
+  assert.match(app, /authenticationExchangeInFlight/);
+  assert.match(app, /retryMode && \(retryMode !== "authentication" \|\| recoveryAvailable\)/);
+  assert.doesNotMatch(app, /localStorage\.setItem\(SESSION_TOKEN_KEY/);
+  assert.doesNotMatch(app, /localStorage\.(?:getItem|setItem)\(RECOVERY_CREDENTIAL_KEY/);
+  assert.doesNotMatch(app, /document\.cookie|Set-Cookie/i);
+});
 
-  const source = extractFunction("retryAuthentication");
-  const createHarness = (context) => Function(
-    "consumeLiveContext",
-    `
-      "use strict";
-      let accessToken = "stale-token";
-      let excludedSessionId = "stale-session";
-      const viewState = {
-        hasLoaded: true, canRetry: false, authenticationFailed: true,
-        errorKey: "expiredToken", errorMessage: "Expired",
-      };
-      const connectionStates = [];
-      let renders = 0;
-      let refreshes = 0;
-      const t = (key) => key;
-      const setConnectionStatus = (...args) => connectionStates.push(args);
-      const render = () => { renders += 1; };
-      const refreshState = () => { refreshes += 1; };
-      ${source}
-      return {
-        retryAuthentication,
-        result: () => ({ accessToken, excludedSessionId, viewState, connectionStates, renders, refreshes }),
-      };
-    `,
-  )(() => context);
+test("startup exchanges a fragment grant before the first state request", async () => {
+  const sessionId = "019fbcf3-19d4-7062-988d-f4e7a65e3e86";
+  const harness = createAuthVmHarness([
+    exchangeResponse({ excludedSessionId: sessionId }),
+    stateResponse({ updatedAtMs: 1, sessions: [], diagnostics: [] }),
+  ], { bootstrapCredential: signedCredential("bootstrap") });
 
-  const restored = createHarness({ accessToken: "v".repeat(43), excludedSessionId: "new-session" });
-  restored.retryAuthentication();
-  assert.equal(restored.result().viewState.authenticationFailed, false);
-  assert.equal(restored.result().refreshes, 1);
-  assert.equal(restored.result().accessToken, "v".repeat(43));
+  await harness.auth.initializeLiveView();
 
-  const missing = createHarness({ accessToken: "", excludedSessionId: "" });
-  missing.retryAuthentication();
-  assert.equal(missing.result().viewState.authenticationFailed, true);
-  assert.equal(missing.result().viewState.errorKey, "missingToken");
-  assert.equal(missing.result().refreshes, 0);
+  assert.deepEqual(
+    harness.fetchCalls.map(([url]) => url),
+    ["/api/viewer/exchange", "/api/state"],
+  );
+  assert.equal(harness.auth.state().bootstrapCredential, "");
+  assert.equal(harness.auth.state().excludedSessionId, sessionId);
+  assert.match(harness.auth.state().recoveredAccessToken, /\.[A-Za-z0-9_-]{43}$/);
+  const persisted = JSON.parse(harness.storage.get("recovery"));
+  assert.match(persisted.credential, /\.[A-Za-z0-9_-]{43}$/);
+  assert.equal(harness.localStorage.has("recovery"), false);
+});
+
+test("exchange accepts bounded remaining TTLs and rejects expired or oversized values", async () => {
+  const remaining = createAuthVmHarness([
+    exchangeResponse({ accessExpiresInMs: 12_345, recoveryExpiresInMs: 67_890 }),
+  ]);
+  assert.equal(await remaining.auth.exchangeViewerCredential(
+    signedCredential("remaining"),
+    { source: "recovery" },
+  ), true);
+
+  for (const response of [
+    exchangeResponse({ accessExpiresInMs: 0 }),
+    exchangeResponse({ accessExpiresInMs: 15 * 60 * 1_000 + 1 }),
+    exchangeResponse({ recoveryExpiresInMs: 0 }),
+    exchangeResponse({ recoveryExpiresInMs: 30 * 60 * 1_000 + 1 }),
+  ]) {
+    const harness = createAuthVmHarness([response]);
+    await assert.rejects(
+      harness.auth.exchangeViewerCredential(signedCredential("invalid-ttl"), {
+        source: "recovery",
+      }),
+      /invalidState/,
+    );
+  }
+});
+
+test("recovery credentials are isolated to one tab's session storage", () => {
+  const firstTabStorage = new Map();
+  const secondTabStorage = new Map();
+  const firstTab = createAuthVmHarness([], { sessionStorage: firstTabStorage });
+  const secondTab = createAuthVmHarness([], { sessionStorage: secondTabStorage });
+  const recovery = signedCredential("first-tab-only");
+
+  firstTab.storage.set("recovery", JSON.stringify({
+    credential: recovery,
+    expires_at_ms: Date.now() + 60_000,
+  }));
+  firstTab.auth.setStateMessage("error", "auth", "expired", "authentication");
+  secondTab.auth.setStateMessage("error", "auth", "expired", "authentication");
+
+  assert.equal(
+    firstTab.stateMessage.children.some(({ tagName }) => tagName === "button"),
+    true,
+  );
+  assert.equal(
+    secondTab.stateMessage.children.some(({ tagName }) => tagName === "button"),
+    false,
+  );
+  assert.equal(firstTab.localStorage.has("recovery"), false);
+  assert.equal(secondTab.localStorage.has("recovery"), false);
+});
+
+test("a successful legacy root request transitions the tab to signed credentials", async () => {
+  const rootToken = "v".repeat(43);
+  const sessionId = "019fbcf3-19d4-7062-988d-f4e7a65e3e86";
+  const accessCredential = signedCredential("response-access");
+  const recoveryCredential = signedCredential("response-recovery");
+  const storage = new Map([
+    ["session", rootToken],
+    ["exclude", sessionId],
+  ]);
+  const harness = createAuthVmHarness([
+    stateResponse(
+      { updatedAtMs: 1, sessions: [], diagnostics: [] },
+      { headers: {
+        "x-codex-agent-view-access": accessCredential,
+        "x-codex-agent-view-recovery": recoveryCredential,
+      } },
+    ),
+    stateResponse({ updatedAtMs: 2, sessions: [], diagnostics: [] }),
+  ], {
+    accessToken: rootToken,
+    excludedSessionId: sessionId,
+    sessionStorage: storage,
+  });
+
+  await harness.auth.refreshState();
+  assert.equal(harness.auth.state().accessToken, "");
+  assert.equal(harness.auth.state().recoveredAccessToken, accessCredential);
+  assert.equal(storage.has("session"), false);
+  assert.equal(storage.has("exclude"), false);
+  assert.equal(JSON.parse(storage.get("recovery")).credential, recoveryCredential);
+
+  await harness.auth.refreshState();
+  assert.equal(harness.fetchCalls[0][1].headers.Authorization, `Bearer ${rootToken}`);
+  assert.equal(
+    harness.fetchCalls[0][1].headers["x-codex-agent-view-exclude-session"],
+    sessionId,
+  );
+  assert.equal(
+    harness.fetchCalls[1][1].headers.Authorization,
+    `Bearer ${accessCredential}`,
+  );
+  assert.equal(
+    Object.hasOwn(harness.fetchCalls[1][1].headers, "x-codex-agent-view-exclude-session"),
+    false,
+  );
+});
+
+test("a transient bootstrap exchange failure keeps a working retry button", async () => {
+  const bootstrap = signedCredential("bootstrap-retry");
+  const sessionId = "019fbcf3-19d4-7062-988d-f4e7a65e3e86";
+  const harness = createAuthVmHarness([
+    errorResponse(503),
+    exchangeResponse({ excludedSessionId: sessionId }),
+    stateResponse({ updatedAtMs: 2, sessions: [], diagnostics: [] }),
+  ], { bootstrapCredential: bootstrap });
+
+  await assert.rejects(
+    harness.auth.exchangeViewerCredential(bootstrap, { source: "bootstrap" }),
+    /requestFailed/,
+  );
+  assert.equal(harness.auth.state().bootstrapCredential, bootstrap);
+  harness.auth.setStateMessage("error", "auth", "failed", "authentication");
+  const button = harness.stateMessage.children.find(({ tagName }) => tagName === "button");
+  assert(button, "transient bootstrap failure must expose a retry button");
+
+  await button.listeners.click();
+
+  assert.equal(harness.fetchCalls.length, 3);
+  assert.equal(harness.auth.state().bootstrapCredential, "");
+  assert.equal(harness.auth.state().excludedSessionId, sessionId);
+});
+
+test("a stored recovery credential reconnects on click and a rejected one is cleared without a loop", async () => {
+  const recovery = signedCredential("stored-recovery");
+  const success = createAuthVmHarness([
+    exchangeResponse(),
+    stateResponse({ updatedAtMs: 3, sessions: [], diagnostics: [] }),
+  ]);
+  success.storage.set("recovery", JSON.stringify({
+    credential: recovery,
+    expires_at_ms: Date.now() + 60_000,
+  }));
+  success.auth.setStateMessage("error", "auth", "missing", "authentication");
+  const successButton = success.stateMessage.children.find(({ tagName }) => tagName === "button");
+  assert(successButton);
+  await successButton.listeners.click();
+  assert.deepEqual(success.fetchCalls.map(([url]) => url), [
+    "/api/viewer/exchange",
+    "/api/state",
+  ]);
+
+  const rejected = createAuthVmHarness([errorResponse(401)]);
+  rejected.storage.set("recovery", JSON.stringify({
+    credential: recovery,
+    expires_at_ms: Date.now() + 60_000,
+  }));
+  rejected.auth.setStateMessage("error", "auth", "expired", "authentication");
+  const rejectedButton = rejected.stateMessage.children.find(({ tagName }) => tagName === "button");
+  assert(rejectedButton);
+  await rejectedButton.listeners.click();
+  assert.equal(rejected.storage.has("recovery"), false);
+  await rejectedButton.listeners.click();
+  assert.equal(rejected.fetchCalls.length, 1);
+});
+
+test("authentication controls prevent duplicate exchange and hide the button without credentials", async () => {
+  let resolveExchange;
+  const pending = new Promise((resolve) => { resolveExchange = resolve; });
+  const bootstrap = signedCredential("one-flight");
+  const harness = createAuthVmHarness([pending], { bootstrapCredential: bootstrap });
+  const first = harness.auth.exchangeViewerCredential(bootstrap, { source: "bootstrap" });
+  const second = await harness.auth.exchangeViewerCredential(bootstrap, { source: "bootstrap" });
+  assert.equal(second, false);
+  assert.equal(harness.fetchCalls.length, 1);
+  assert.equal(harness.auth.state().authenticationExchangeInFlight, true);
+  resolveExchange(exchangeResponse());
+  assert.equal(await first, true);
+  assert.equal(harness.auth.state().authenticationExchangeInFlight, false);
+
+  const empty = createAuthVmHarness([]);
+  empty.auth.setStateMessage("error", "auth", "missing", "authentication");
+  assert.equal(
+    empty.stateMessage.children.some(({ tagName }) => tagName === "button"),
+    false,
+  );
+});
+
+test("an access 401 preserves recovery and exposes the reconnect button", async () => {
+  const harness = createAuthVmHarness([
+    exchangeResponse(),
+    errorResponse(401),
+  ], { bootstrapCredential: signedCredential("bootstrap-401") });
+  await harness.auth.initializeLiveView();
+  assert.equal(harness.auth.state().viewState.authenticationFailed, true);
+  assert.equal(harness.storage.has("recovery"), true);
+
+  harness.auth.setStateMessage("error", "auth", "expired", "authentication");
+  assert.equal(
+    harness.stateMessage.children.some(({ tagName }) => tagName === "button"),
+    true,
+  );
+});
+
+test("legacy viewer state preserves canonical self-exclusion while signed access does not send an override", async () => {
+  const sessionId = "019fbcf3-19d4-7062-988d-f4e7a65e3e86";
+  const legacy = createRefreshStateHarness([
+    stateResponse({ updatedAtMs: 1, sessions: [], diagnostics: [] }),
+  ], { excludedSessionId: sessionId });
+  await legacy.refreshState();
+  assert.equal(
+    legacy.calls[0][1].headers["x-codex-agent-view-exclude-session"],
+    sessionId,
+  );
+
+  const signed = createRefreshStateHarness([
+    stateResponse({ updatedAtMs: 1, sessions: [], diagnostics: [] }),
+  ], { accessToken: signedCredential("access"), excludedSessionId: sessionId });
+  await signed.refreshState();
+  assert.equal(
+    Object.hasOwn(signed.calls[0][1].headers, "x-codex-agent-view-exclude-session"),
+    false,
+  );
 });
 
 test("labels verified agent_type as role/profile without claiming an assignment description", () => {
@@ -345,7 +757,7 @@ test("labels verified agent_type as role/profile without claiming an assignment 
 
 test("keeps two-second polling and preserves the last good state across transient failures", async () => {
   assert.match(app, /const POLL_INTERVAL_MS = 2_000;/);
-  assert.match(app, /if \(accessToken\) \{\s*window\.setInterval\(refreshState, POLL_INTERVAL_MS\);\s*\}/);
+  assert.match(app, /async function initializeLiveView\(\)[\s\S]*?window\.setInterval\(refreshState, POLL_INTERVAL_MS\)/);
   const first = { updatedAtMs: 100, sessions: [{ sessionId: "one" }], diagnostics: [] };
   const recovered = { updatedAtMs: 200, sessions: [{ sessionId: "two" }], diagnostics: [] };
   const harness = createRefreshStateHarness([

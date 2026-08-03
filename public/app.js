@@ -1,6 +1,13 @@
 const API_STATE_URL = "/api/state";
+const API_EXCHANGE_URL = "/api/viewer/exchange";
 const POLL_INTERVAL_MS = 2_000;
 const SESSION_TOKEN_KEY = "codex-agent-view-access-token";
+const RECOVERY_CREDENTIAL_KEY = "codex-agent-view-recovery-credential";
+const RECOVERY_HEADER = "x-codex-agent-view-recovery";
+const ACCESS_HEADER = "x-codex-agent-view-access";
+const ACCESS_CLIENT_TTL_MS = 15 * 60 * 1_000;
+const RECOVERY_CLIENT_TTL_MS = 30 * 60 * 1_000;
+const RECOVERY_REFRESH_THRESHOLD_MS = 5 * 60 * 1_000;
 const EXCLUDED_SESSION_KEY = "codex-agent-view-excluded-session";
 const LANGUAGE_KEY = "codex-agent-view-language";
 const SUPPORTED_LANGUAGES = new Set(["en", "ko", "es"]);
@@ -14,6 +21,7 @@ const KNOWN_STATUSES = new Set([
   "unknown",
 ]);
 const VIEWER_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const SIGNED_CREDENTIAL_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/;
 const CANONICAL_SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const MESSAGES = Object.freeze({
@@ -89,7 +97,11 @@ const MESSAGES = Object.freeze({
     retry: "Retry connection",
     retryAuthentication: "Try this tab again",
     checkAuthentication: "Check authentication again",
-    recoveryTitle: "Open a newly authenticated view",
+    reconnectAuthentication: "Reconnect securely",
+    recoveryAvailableTitle: "Reconnect this live view",
+    recoveryAvailableStep: "This tab has a recent, read-only recovery credential.",
+    recoveryAvailableNote: "Select Reconnect securely to restore access without running the skill again.",
+    recoveryTitle: "New authentication is required",
     recoveryStep: "In the Codex app, select @codex-agent-view in the composer, then choose the actual $show-agents skill from the skill picker.",
     recoveryNote: "The skill opens a new live view with fresh authentication. No terminal command or external browser is needed.",
     resultsFiltered: "Showing {visible} of {total}",
@@ -228,7 +240,11 @@ const MESSAGES = Object.freeze({
     retry: "연결 다시 시도",
     retryAuthentication: "이 탭에서 다시 시도",
     checkAuthentication: "인증 정보 다시 확인",
-    recoveryTitle: "새 인증 화면 열기",
+    reconnectAuthentication: "안전하게 다시 연결",
+    recoveryAvailableTitle: "이 실시간 화면 다시 연결",
+    recoveryAvailableStep: "이 탭에 최근 발급된 읽기 전용 복구 인증 정보가 있습니다.",
+    recoveryAvailableNote: "안전하게 다시 연결을 누르면 스킬을 다시 실행하지 않고 접근을 복구합니다.",
+    recoveryTitle: "새 인증이 필요합니다",
     recoveryStep: "Codex 앱 입력창에서 @codex-agent-view를 선택한 다음, 스킬 선택기에서 실제 $show-agents 스킬을 선택하세요.",
     recoveryNote: "새 인증이 적용된 실시간 화면이 열립니다. 터미널 명령이나 외부 브라우저는 필요하지 않습니다.",
     resultsFiltered: "전체 {total}개 중 {visible}개 표시",
@@ -367,7 +383,11 @@ const MESSAGES = Object.freeze({
     retry: "Reintentar conexión",
     retryAuthentication: "Reintentar en esta pestaña",
     checkAuthentication: "Volver a comprobar la autenticación",
-    recoveryTitle: "Abrir una vista con autenticación nueva",
+    reconnectAuthentication: "Reconectar de forma segura",
+    recoveryAvailableTitle: "Reconectar esta vista en vivo",
+    recoveryAvailableStep: "Esta pestaña tiene una credencial reciente de recuperación de solo lectura.",
+    recoveryAvailableNote: "Selecciona Reconectar de forma segura para recuperar el acceso sin volver a ejecutar la skill.",
+    recoveryTitle: "Se necesita una autenticación nueva",
     recoveryStep: "En el cuadro de texto de Codex, selecciona @codex-agent-view y luego elige la skill real $show-agents en el selector de skills.",
     recoveryNote: "La skill abre una vista en vivo nueva con autenticación actualizada. No necesitas la terminal ni un navegador externo.",
     resultsFiltered: "Mostrando {visible} de {total}",
@@ -520,14 +540,20 @@ function t(key, replacements = {}) {
 
 function isExactLiveFragment(entries) {
   const tokenEntries = entries.filter(([key]) => key === "token");
+  const grantEntries = entries.filter(([key]) => key === "grant");
   const excludeEntries = entries.filter(([key]) => key === "exclude");
-  return (
+  const validGrant =
+    entries.length === 1 &&
+    grantEntries.length === 1 &&
+    SIGNED_CREDENTIAL_PATTERN.test(grantEntries[0][1]) &&
+    grantEntries[0][1].length <= 1_024;
+  const validLegacyToken =
     entries.length === tokenEntries.length + excludeEntries.length &&
     tokenEntries.length === 1 &&
     excludeEntries.length <= 1 &&
     VIEWER_TOKEN_PATTERN.test(tokenEntries[0][1]) &&
-    (excludeEntries.length === 0 || CANONICAL_SESSION_ID_PATTERN.test(excludeEntries[0][1]))
-  );
+    (excludeEntries.length === 0 || CANONICAL_SESSION_ID_PATTERN.test(excludeEntries[0][1]));
+  return validGrant || validLegacyToken;
 }
 
 function consumeLiveContext() {
@@ -536,8 +562,11 @@ function consumeLiveContext() {
     ? [...new URLSearchParams(window.location.hash.slice(1)).entries()]
     : [];
   const validFragment = hasFragment && isExactLiveFragment(entries);
+  const fragmentGrant = validFragment
+    ? entries.find(([key]) => key === "grant")?.[1] || ""
+    : "";
   const fragmentToken = validFragment
-    ? entries.find(([key]) => key === "token")[1]
+    ? entries.find(([key]) => key === "token")?.[1] || ""
     : "";
   const fragmentExclude = validFragment
     ? entries.find(([key]) => key === "exclude")?.[1] || ""
@@ -555,13 +584,19 @@ function consumeLiveContext() {
   let excludedSessionId = fragmentExclude;
   try {
     if (validFragment) {
+      window.sessionStorage.removeItem(RECOVERY_CREDENTIAL_KEY);
+    }
+    if (fragmentGrant) {
+      window.sessionStorage.removeItem(SESSION_TOKEN_KEY);
+      window.sessionStorage.removeItem(EXCLUDED_SESSION_KEY);
+    } else if (validFragment && fragmentToken) {
       window.sessionStorage.setItem(SESSION_TOKEN_KEY, fragmentToken);
       if (fragmentExclude) {
         window.sessionStorage.setItem(EXCLUDED_SESSION_KEY, fragmentExclude);
       } else {
         window.sessionStorage.removeItem(EXCLUDED_SESSION_KEY);
       }
-    } else {
+    } else if (!fragmentGrant) {
       token = window.sessionStorage.getItem(SESSION_TOKEN_KEY)?.trim() || "";
       excludedSessionId = window.sessionStorage.getItem(EXCLUDED_SESSION_KEY)?.trim() || "";
     }
@@ -572,13 +607,205 @@ function consumeLiveContext() {
 
   return {
     accessToken: VIEWER_TOKEN_PATTERN.test(token) ? token : "",
+    bootstrapCredential: SIGNED_CREDENTIAL_PATTERN.test(fragmentGrant)
+      ? fragmentGrant
+      : "",
     excludedSessionId: CANONICAL_SESSION_ID_PATTERN.test(excludedSessionId)
       ? excludedSessionId
       : "",
   };
 }
 
-let { accessToken, excludedSessionId } = consumeLiveContext();
+let { accessToken, bootstrapCredential, excludedSessionId } = consumeLiveContext();
+let recoveredAccessToken = "";
+let authenticationExchangeInFlight = false;
+
+function readRecoveryCredential() {
+  try {
+    const raw = window.sessionStorage.getItem(RECOVERY_CREDENTIAL_KEY);
+    if (!raw) return "";
+    const value = JSON.parse(raw);
+    if (
+      value === null ||
+      typeof value !== "object" ||
+      Array.isArray(value) ||
+      !SIGNED_CREDENTIAL_PATTERN.test(value.credential) ||
+      value.credential.length > 1_024 ||
+      !Number.isSafeInteger(value.expires_at_ms) ||
+      value.expires_at_ms <= Date.now()
+    ) {
+      window.sessionStorage.removeItem(RECOVERY_CREDENTIAL_KEY);
+      return "";
+    }
+    return value.credential;
+  } catch {
+    return "";
+  }
+}
+
+function persistRecoveryCredential(
+  credential,
+  expiresInMs = RECOVERY_CLIENT_TTL_MS,
+  { force = false } = {},
+) {
+  if (!SIGNED_CREDENTIAL_PATTERN.test(credential) || credential.length > 1_024) {
+    return false;
+  }
+  try {
+    if (!force) {
+      const existingRaw = window.sessionStorage.getItem(RECOVERY_CREDENTIAL_KEY);
+      if (existingRaw) {
+        const existing = JSON.parse(existingRaw);
+        if (
+          existing !== null &&
+          typeof existing === "object" &&
+          SIGNED_CREDENTIAL_PATTERN.test(existing.credential) &&
+          Number.isSafeInteger(existing.expires_at_ms) &&
+          existing.expires_at_ms - Date.now() > RECOVERY_REFRESH_THRESHOLD_MS
+        ) {
+          return false;
+        }
+      }
+    }
+    window.sessionStorage.setItem(RECOVERY_CREDENTIAL_KEY, JSON.stringify({
+      credential,
+      expires_at_ms: Date.now() + Math.min(expiresInMs, RECOVERY_CLIENT_TTL_MS),
+    }));
+    return true;
+  } catch {
+    // A valid live view remains usable when origin storage is unavailable.
+    return false;
+  }
+}
+
+function storeRecoveryCredential(response) {
+  const credential = response.headers?.get(RECOVERY_HEADER) || "";
+  persistRecoveryCredential(credential);
+  return credential;
+}
+
+function refreshRecoveredAccess(response, stateAccessCredential, recoveryCredential) {
+  const credential = response.headers?.get(ACCESS_HEADER) || "";
+  if (SIGNED_CREDENTIAL_PATTERN.test(credential) && credential.length <= 1_024) {
+    recoveredAccessToken = credential;
+    if (
+      stateAccessCredential === accessToken &&
+      VIEWER_TOKEN_PATTERN.test(accessToken) &&
+      SIGNED_CREDENTIAL_PATTERN.test(recoveryCredential) &&
+      recoveryCredential.length <= 1_024
+    ) {
+      accessToken = "";
+      try {
+        window.sessionStorage.removeItem(SESSION_TOKEN_KEY);
+        window.sessionStorage.removeItem(EXCLUDED_SESSION_KEY);
+      } catch {
+        // The signed credentials remain usable when storage is unavailable.
+      }
+    }
+  }
+}
+
+function clearRejectedViewerToken() {
+  accessToken = "";
+  recoveredAccessToken = "";
+  try {
+    window.sessionStorage.removeItem(SESSION_TOKEN_KEY);
+  } catch {
+    // Storage can be unavailable in hardened browser contexts.
+  }
+}
+
+function clearRecoveryCredential() {
+  try {
+    window.sessionStorage.removeItem(RECOVERY_CREDENTIAL_KEY);
+  } catch {
+    // Storage can be unavailable in hardened browser contexts.
+  }
+}
+
+function validateExchangePayload(payload) {
+  return Boolean(
+    payload !== null &&
+    typeof payload === "object" &&
+    !Array.isArray(payload) &&
+    Object.keys(payload).sort().join(",") ===
+      "access_credential,access_expires_in_ms,excluded_session_id,recovery_credential,recovery_expires_in_ms,status" &&
+    payload.status === "exchanged" &&
+    SIGNED_CREDENTIAL_PATTERN.test(payload.access_credential) &&
+    payload.access_credential.length <= 1_024 &&
+    Number.isSafeInteger(payload.access_expires_in_ms) &&
+    payload.access_expires_in_ms > 0 &&
+    payload.access_expires_in_ms <= ACCESS_CLIENT_TTL_MS &&
+    SIGNED_CREDENTIAL_PATTERN.test(payload.recovery_credential) &&
+    payload.recovery_credential.length <= 1_024 &&
+    Number.isSafeInteger(payload.recovery_expires_in_ms) &&
+    payload.recovery_expires_in_ms > 0 &&
+    payload.recovery_expires_in_ms <= RECOVERY_CLIENT_TTL_MS &&
+    (
+      payload.excluded_session_id === null ||
+      (
+        typeof payload.excluded_session_id === "string" &&
+        CANONICAL_SESSION_ID_PATTERN.test(payload.excluded_session_id)
+      )
+    )
+  );
+}
+
+async function exchangeViewerCredential(credential, { source }) {
+  if (
+    authenticationExchangeInFlight ||
+    !SIGNED_CREDENTIAL_PATTERN.test(credential) ||
+    credential.length > 1_024
+  ) {
+    return false;
+  }
+
+  authenticationExchangeInFlight = true;
+  try {
+    const response = await fetch(API_EXCHANGE_URL, {
+      body: JSON.stringify({ credential }),
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    });
+    if (!response.ok) {
+      await response.body?.cancel();
+      if (
+        (response.status === 401 || response.status === 403 || response.status === 409)
+      ) {
+        if (source === "recovery") {
+          clearRecoveryCredential();
+        } else if (source === "bootstrap") {
+          bootstrapCredential = "";
+        }
+      }
+      throw new Error(t("requestFailed", { status: response.status }));
+    }
+
+    const payload = await response.json();
+    if (!validateExchangePayload(payload)) {
+      throw new Error(t("invalidState"));
+    }
+
+    recoveredAccessToken = payload.access_credential;
+    if (source === "bootstrap") {
+      bootstrapCredential = "";
+    }
+    excludedSessionId = payload.excluded_session_id || "";
+    persistRecoveryCredential(
+      payload.recovery_credential,
+      payload.recovery_expires_in_ms,
+      { force: true },
+    );
+    return true;
+  } finally {
+    authenticationExchangeInFlight = false;
+  }
+}
 
 const elements = Object.freeze({
   connectionStatus: document.querySelector("#connection-status"),
@@ -1272,27 +1499,37 @@ function setStateMessage(kind, title, description, retryMode = "") {
   copy.textContent = description;
   elements.stateMessage.append(heading, copy);
 
+  const recoveryAvailable = retryMode === "authentication" && Boolean(
+    accessToken || recoveredAccessToken || bootstrapCredential || readRecoveryCredential(),
+  );
+
   if (retryMode === "authentication") {
     const recovery = document.createElement("div");
     recovery.className = "recovery-guidance";
 
     const recoveryTitle = document.createElement("strong");
-    recoveryTitle.textContent = t("recoveryTitle");
+    recoveryTitle.textContent = t(
+      recoveryAvailable ? "recoveryAvailableTitle" : "recoveryTitle",
+    );
     const recoveryStep = document.createElement("p");
-    recoveryStep.textContent = t("recoveryStep");
+    recoveryStep.textContent = t(
+      recoveryAvailable ? "recoveryAvailableStep" : "recoveryStep",
+    );
     const recoveryNote = document.createElement("p");
     recoveryNote.className = "recovery-note";
-    recoveryNote.textContent = t("recoveryNote");
+    recoveryNote.textContent = t(
+      recoveryAvailable ? "recoveryAvailableNote" : "recoveryNote",
+    );
     recovery.append(recoveryTitle, recoveryStep, recoveryNote);
     elements.stateMessage.append(recovery);
   }
 
-  if (retryMode) {
+  if (retryMode && (retryMode !== "authentication" || recoveryAvailable)) {
     const retry = document.createElement("button");
     retry.type = "button";
     retry.className = "retry-button";
     retry.textContent = retryMode === "authentication"
-      ? (accessToken ? t("retryAuthentication") : t("checkAuthentication"))
+      ? (accessToken ? t("retryAuthentication") : t("reconnectAuthentication"))
       : t("retry");
     retry.addEventListener(
       "click",
@@ -1302,12 +1539,30 @@ function setStateMessage(kind, title, description, retryMode = "") {
   }
 }
 
-function retryAuthentication() {
+async function retryAuthentication() {
   const refreshedContext = consumeLiveContext();
-  accessToken = refreshedContext.accessToken;
-  excludedSessionId = refreshedContext.excludedSessionId;
+  if (refreshedContext.accessToken) {
+    accessToken = refreshedContext.accessToken;
+    excludedSessionId = refreshedContext.excludedSessionId;
+  }
+  if (refreshedContext.bootstrapCredential) {
+    bootstrapCredential = refreshedContext.bootstrapCredential;
+  }
 
-  if (!accessToken) {
+  if (accessToken) {
+    viewState.authenticationFailed = false;
+    viewState.canRetry = true;
+    viewState.errorKey = "";
+    viewState.errorMessage = "";
+    setConnectionStatus("connecting");
+    render();
+    await refreshState();
+    return;
+  }
+
+  const credential = bootstrapCredential || readRecoveryCredential();
+  const source = bootstrapCredential ? "bootstrap" : "recovery";
+  if (!credential) {
     viewState.hasLoaded = true;
     viewState.canRetry = false;
     viewState.authenticationFailed = true;
@@ -1319,12 +1574,28 @@ function retryAuthentication() {
   }
 
   viewState.authenticationFailed = false;
-  viewState.canRetry = true;
+  viewState.canRetry = false;
   viewState.errorKey = "";
   viewState.errorMessage = "";
   setConnectionStatus("connecting");
   render();
-  void refreshState();
+
+  try {
+    const exchanged = await exchangeViewerCredential(credential, { source });
+    if (!exchanged) return;
+    viewState.canRetry = true;
+    await refreshState();
+  } catch (error) {
+    viewState.hasLoaded = true;
+    viewState.canRetry = false;
+    viewState.authenticationFailed = true;
+    viewState.errorKey = "expiredToken";
+    viewState.errorMessage = error instanceof Error
+      ? error.message
+      : t("unknownConnectionError");
+    setConnectionStatus("error", t("authenticationRequired"));
+    render();
+  }
 }
 
 function setEmptyObservationMessage() {
@@ -1472,7 +1743,8 @@ async function refreshState() {
     return;
   }
 
-  if (!accessToken) {
+  const stateAccessCredential = accessToken || recoveredAccessToken;
+  if (!stateAccessCredential) {
     viewState.hasLoaded = true;
     viewState.canRetry = false;
     viewState.authenticationFailed = true;
@@ -1489,17 +1761,26 @@ async function refreshState() {
   }
 
   try {
+    const stateHeaders = {
+      Accept: "application/json",
+      Authorization: `Bearer ${stateAccessCredential}`,
+    };
+    if (
+      stateAccessCredential === accessToken &&
+      VIEWER_TOKEN_PATTERN.test(accessToken) &&
+      CANONICAL_SESSION_ID_PATTERN.test(excludedSessionId)
+    ) {
+      stateHeaders["x-codex-agent-view-exclude-session"] = excludedSessionId;
+    }
     const response = await fetch(API_STATE_URL, {
       cache: "no-store",
       credentials: "same-origin",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: stateHeaders,
     });
 
     if (response.status === 401 || response.status === 403) {
       await response.body?.cancel();
+      clearRejectedViewerToken();
       viewState.hasLoaded = true;
       viewState.canRetry = false;
       viewState.authenticationFailed = true;
@@ -1513,6 +1794,8 @@ async function refreshState() {
       throw new Error(t("requestFailed", { status: response.status }));
     }
 
+    const recoveryCredential = storeRecoveryCredential(response);
+    refreshRecoveredAccess(response, stateAccessCredential, recoveryCredential);
     const nextState = normalizeState(await response.json());
     viewState.updatedAtMs = nextState.updatedAtMs;
     viewState.sessions = nextState.sessions;
@@ -1559,9 +1842,36 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-applyStaticTranslations();
-render();
-refreshState();
-if (accessToken) {
+async function initializeLiveView() {
+  applyStaticTranslations();
+  render();
+
+  if (bootstrapCredential) {
+    viewState.authenticationFailed = false;
+    setConnectionStatus("connecting");
+    try {
+      const exchanged = await exchangeViewerCredential(bootstrapCredential, {
+        source: "bootstrap",
+      });
+      if (exchanged) {
+        await refreshState();
+      }
+    } catch (error) {
+      viewState.hasLoaded = true;
+      viewState.canRetry = false;
+      viewState.authenticationFailed = true;
+      viewState.errorKey = "expiredToken";
+      viewState.errorMessage = error instanceof Error
+        ? error.message
+        : t("unknownConnectionError");
+      setConnectionStatus("error", t("authenticationRequired"));
+      render();
+    }
+  } else {
+    await refreshState();
+  }
+
   window.setInterval(refreshState, POLL_INTERVAL_MS);
 }
+
+void initializeLiveView();

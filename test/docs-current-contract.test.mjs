@@ -54,20 +54,28 @@ test("documents the current live-view UX and evidence boundary", async () => {
   assert.match(english, /bounds it to 180 characters/);
   assert.match(english, /does not invent an agent-specific assignment/);
   assert.match(english, /Session IDs are not shown/);
-  assert.match(english, /button to check the current tab again/);
+  assert.match(english, /Recovery is tab-scoped `sessionStorage`, not `localStorage`/);
+  assert.match(english, /Fifteen-minute access credentials refresh automatically only inside that family/);
   assert.match(korean, /한 줄·최대 180자로 제한/);
   assert.match(korean, /에이전트별 할당 내용을 추측하지 않는다/);
   assert.match(korean, /Session ID는 표시하지/);
-  assert.match(korean, /현재 tab의 인증을 다시 확인하는 버튼/);
+  assert.match(korean, /Recovery는 `localStorage`가 아니라 tab-scoped `sessionStorage`/);
+  assert.match(korean, /15분 access credential은 같은 family 안에서만 자동 갱신/);
   assert.match(findings, /전용 field가 실제 payload에서 관찰되기 전까지/);
   assert.match(findings, /첫 유효 작업 개요|`task_summary`/);
   assert.match(privacy, /first 4,096 characters/);
   assert.match(privacy, /limits the result to 180 Unicode characters/);
   assert.match(privacy, /not a guarantee that arbitrary sensitive text can never appear/);
-  assert.match(privacy, /page cannot mint, discover, or replace/);
+  assert.match(privacy, /fixed signed `family_exp` 30 minutes after issuance/);
+  assert.match(privacy, /Recovery is stored in browser `sessionStorage`, never `localStorage`/);
+  assert.match(privacy, /monitor restart rotates the signing token and invalidates every unused bootstrap/);
+  assert.match(privacy, /family that was already exchanged is signed under the persistent viewer signing key/);
+  assert.match(privacy, /reconnect to the new empty observation window/);
+  assert.match(privacy, /fresh nonce and verifies the HMAC ownership proof/);
+  assert.match(privacy, /do not enable CORS and no authentication cookie is set/);
 });
 
-test("records public 0.4.7 acceptance while preserving the 0.4.6 post-release gap", async () => {
+test("keeps public 0.4.7 evidence while marking 0.4.8 as an unverified release candidate", async () => {
   const [packageText, manifestText, english, korean, distribution, findings, submission] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -80,12 +88,17 @@ test("records public 0.4.7 acceptance while preserving the 0.4.6 post-release ga
   const packageMetadata = JSON.parse(packageText);
   const manifest = JSON.parse(manifestText);
 
-  assert.equal(packageMetadata.version, "0.4.7");
-  assert.equal(manifest.version, "0.4.7");
-  assert.match(english, /npm install --global codex-agent-view@0\.4\.7/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.4\.7/);
-  assert.match(english, /Version `0\.4\.7` completes the lifecycle-correctness patch/);
-  assert.match(korean, /`0\.4\.7`은 lifecycle 정확성 patch를 완성/);
+  assert.equal(packageMetadata.version, "0.4.8");
+  assert.equal(manifest.version, "0.4.8");
+  assert.match(english, /npm install --global codex-agent-view@0\.4\.8/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.4\.8/);
+  assert.match(english, /Version `0\.4\.8` is a release candidate/);
+  assert.match(korean, /`0\.4\.8`은 .*release candidate/);
+  for (const document of [english, korean, distribution, findings, submission]) {
+    assert.match(document, /60-second|60초/);
+    assert.match(document, /bootstrap grant/);
+    assert.match(document, /not claimed|미확인|주장하지 않는다/);
+  }
   for (const document of [distribution, findings, submission]) {
     assert.match(
       document,

@@ -52,11 +52,11 @@ function npmPackEnvironment() {
   return env;
 }
 
-test("keeps the npm 0.4.7 executable and publish surface intact", async () => {
+test("keeps the npm 0.4.8 executable and publish surface intact", async () => {
   const packageMetadata = await readJson("package.json");
 
   assert.equal(packageMetadata.name, "codex-agent-view");
-  assert.equal(packageMetadata.version, "0.4.7");
+  assert.equal(packageMetadata.version, "0.4.8");
   assert.match(packageMetadata.description, /participating agent progress/);
   assert.match(packageMetadata.description, /official Codex app/);
   assert.deepEqual(packageMetadata.bin, {
@@ -169,7 +169,7 @@ test("has no postinstall side effects or production dependencies", async () => {
 
 test("keeps legal links secure and branding assets local", async () => {
   const manifest = await readJson(".codex-plugin/plugin.json");
-  assert.equal(manifest.version, "0.4.7");
+  assert.equal(manifest.version, "0.4.8");
   assert.equal(
     Object.hasOwn(manifest.interface ?? {}, "defaultPrompt"),
     false,
