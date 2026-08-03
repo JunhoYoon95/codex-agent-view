@@ -12,7 +12,7 @@
 - 상태 설계: live companion 상태는 의도적으로 bounded process-local memory만 사용하며 재시작은 새 관찰 window를 시작한다. 이는 완성된 제품 경계다.
 - 의도적 non-goal: 대체 Codex 클라이언트, 외부 서버, 외부 telemetry, 필수 SQLite/영구 event store, 원격 제어
 - 영구 history는 누락된 요구가 아니다. 실제 사용자 가치가 입증될 때만 retention/deletion/privacy 비용을 포함한 별도 explicit opt-in 제안으로 검토한다.
-- 현재 단계: source/package `0.5.4` 제품 문구·metadata release 준비 중. npm publication, digest, exact reinstall, CI, tag와 GitHub Release는 성공 전까지 pending이다. Public `0.5.3` npm/artifact/exact reinstall/main·tag CI/annotated tag/GitHub Release와 GitHub repository metadata evidence는 historical fact로 보존한다. Universal Plugins Directory validator·portal/reviewer·검색 노출과 promptless plugin-card Quick start는 별도 미확인 상태로 유지한다.
+- 현재 단계: public `0.5.4` npm/artifact/exact reinstall/main·tag CI/annotated tag/GitHub Release와 GitHub repository metadata 확인 완료. Public exact plugin `0.5.4` installed/enabled와 hook bundle을 확인했지만 install 뒤 monitor는 stopped, hook trust는 CLI-unobservable `unknown`이다. 현재 Codex 앱 restart/new-task actual hook+assignment E2E는 pending이며 재시작 전 current-task canary의 event 부재를 성공이나 실패로 단정하지 않는다. Public `0.5.3` evidence는 historical fact로 보존한다. Universal Plugins Directory validator·portal/reviewer·검색 노출과 promptless plugin-card Quick start는 별도 미확인 상태로 유지한다.
 
 ## 명령어
 

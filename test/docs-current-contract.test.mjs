@@ -94,7 +94,7 @@ test("documents hook trust, local-only state, recovery, and safe removal", async
   assert.match(privacy, /Recovery is stored in browser `sessionStorage`, never `localStorage`/);
 });
 
-test("keeps current 0.5.4 source language separate from historical 0.5.3 evidence and Directory acceptance", async () => {
+test("keeps current public 0.5.4 language separate from historical 0.5.3 evidence and Directory acceptance", async () => {
   const [english, korean, agents, roadmap, distribution, findings, submission, privacy, terms] = await Promise.all([
     readProjectFile("README.md"),
     readProjectFile("README.ko.md"),
@@ -223,6 +223,37 @@ test("records verified public 0.5.3 release evidence without claiming pending ap
     assert.match(document, /monitor_not_running/);
     assert.match(document, /unknown/);
     assert.match(document, /actual event|Actual new event|actual live event/i);
+    assert.match(document, /pending/);
+    assert.match(document, /Directory/);
+  }
+});
+
+test("records verified public 0.5.4 release evidence while keeping app E2E and Directory acceptance pending", async () => {
+  const documents = await Promise.all([
+    readProjectFile("docs/distribution.md"),
+    readProjectFile("docs/phase-0-findings.md"),
+    readProjectFile("docs/plugin-submission.md"),
+  ]);
+
+  for (const document of documents) {
+    assert.match(document, /2026-08-03T20:24:33\.437Z/);
+    assert.match(document, /c77eb53a0f7d170bc0259a604dbbb8f6a85e4bb4/);
+    assert.match(document, /sha512-c0fhYlHJRHbFWbON2\+DhJVuBoLiXyW9Bp9bSZhZLKML\+a8MvhQxqSdTYr1fvwO3dESa1IO0WVZ4sLWucljsESA==/);
+    assert.match(document, /signature 1개/);
+    assert.match(document, /23 files/);
+    assert.match(document, /62\.9 kB/);
+    assert.match(document, /252\.8 kB/);
+    assert.match(document, /58ef4f976b1ee5cc255559a037dbe0ac0cefaa5c642084ddd123d1a6f272606c/);
+    assert.match(document, /3312be0bf7ebbeb5694a857089796903410d9b9c/);
+    assert.match(document, /byte-identical/);
+    assert.match(document, /30849631485/);
+    assert.match(document, /30850278542/);
+    assert.match(document, /Node\.js 18\/20\/22/);
+    assert.match(document, /releases\/tag\/v0\.5\.4/);
+    assert.match(document, /installed\/enabled/);
+    assert.match(document, /stopped/);
+    assert.match(document, /unknown/);
+    assert.match(document, /restart[-/]new-task|restart\/new-task/);
     assert.match(document, /pending/);
     assert.match(document, /Directory/);
   }

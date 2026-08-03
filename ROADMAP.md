@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-Public npm `latest`/version은 아직 `0.5.3`이다. Signed registry artifact와 source-pack identity, exact reinstall, main/tag CI, annotated tag/GitHub Release, installed plugin/enabled와 hook wiring 9종을 확인했다. Current source는 `0.5.4` 제품 문구·metadata release를 준비하며 publication/digest/exact reinstall/CI/tag/GitHub Release는 성공 전까지 pending이다. Public `0.5.3` evidence는 historical fact로 보존한다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다.
+Public npm `latest`/version은 `0.5.4`다. Signed registry artifact와 source-pack identity, exact reinstall, main/tag CI, annotated tag/GitHub Release, installed plugin/enabled와 valid hook bundle을 확인했다. Codex 앱 restart/new-task actual hook+assignment E2E는 pending이다. Public `0.5.3` evidence는 historical fact로 보존한다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다.
 
 ## 제품 원칙
 
@@ -14,16 +14,16 @@ Public npm `latest`/version은 아직 `0.5.3`이다. Signed registry artifact와
 - task/subagent control과 permission 자동 처리 기능을 제공하지 않는다.
 - Live monitor의 갱신은 local hook data만 사용하며 monitoring을 위한 additional ongoing model/external API inference call을 만들지 않는다. 최초 `@codex-agent-view` invocation은 일반 Codex turn이라 token을 사용할 수 있고 관찰 대상 task/subagent도 정상 token을 계속 사용하므로 zero-token 또는 넓은 no-ongoing-token 제품이라고 표현하지 않는다.
 
-## Current — `0.5.4` release preparation
+## Current — `0.5.4` public release
 
 `0.5.4`는 사용자용 제품 문구를 `Open each view with one lightweight \`@codex-agent-view\` invocation. Once open, live monitoring runs locally with no additional model calls.`로 통일하고, 관찰 대상 task/subagent의 일반적인 model·token 사용은 계속됨을 명시한다. Package/plugin은 detailed product copy를 사용하고 GitHub repository는 짧은 dashboard Description을 사용하며 기능·privacy 경계는 바꾸지 않는다.
 
 - [x] README EN/KO에 승인된 each-view invocation/local monitoring 문구와 exact `0.5.4` 설치 명령을 반영한다.
 - [x] Package/plugin version을 `0.5.4`로, description을 detailed product copy로 동기화한다.
 - [x] GitHub repository Description을 `A lightweight, read-only dashboard plugin for monitoring Codex tasks and subagents in real time.`으로 반영하고 PUBLIC visibility, npm Website와 Topics 13개를 remote에서 재조회한다.
-- [ ] `npm test`, `npm run validate:plugin`, `npm run check`와 exact tarball smoke를 통과한다.
-- [ ] `0.5.4`를 npm에 공개하고 registry metadata/digest/signature와 immutable README를 확인한다.
-- [ ] Public exact reinstall, main/tag CI, annotated tag와 GitHub Release를 확인한다.
+- [x] `npm test`, `npm run validate:plugin`, `npm run check`와 exact tarball smoke를 통과한다.
+- [x] `0.5.4`를 npm에 공개하고 registry metadata/digest/signature와 immutable README를 확인한다.
+- [x] Public exact reinstall, main/tag CI, annotated tag와 GitHub Release를 확인한다.
 - [ ] Codex 앱 restart/new-task actual event와 public exact invocation E2E를 확인한다.
 
 ## Historical current public — `0.5.3` release acceptance
