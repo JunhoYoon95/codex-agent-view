@@ -1,11 +1,11 @@
 # Codex Agent View Roadmap
 
-현재 source/package는 미배포 `0.5.0` default-browser launch release candidate다. Public npm `latest`는 historical `0.4.8`이며, `0.5.0`의 publish/CI/E2E 완료를 아직 주장하지 않는다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. 기존 public release evidence를 보존한다.
+현재 source/package는 미배포 `0.5.1` ambient-wrapper removal patch candidate다. Public npm `latest`는 historical `0.5.0`이며 registry/CI/this-device hook E2E는 확인했지만 `v0.5.0` tag와 GitHub Release는 아직 없다. `0.5.1`의 publish/tag/release와 수정 후 공식 E2E도 아직 주장하지 않는다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. 기존 public release evidence를 보존한다.
 
 ## 제품 원칙
 
 - 공식 Codex 앱을 대체하지 않는 read-only companion plugin이다.
-- Historical release의 app-native snapshot은 공식 앱 내장 thread tools의 explicit status와 `subAgentActivity`를 사용했다. `0.5.0` candidate는 hook 기반 browser monitor로 사용자 진입점을 통합한다.
+- Historical release의 app-native snapshot은 공식 앱 내장 thread tools의 explicit status와 `subAgentActivity`를 사용했다. Public `0.5.0`부터 hook 기반 browser monitor와 기본 browser 진입점으로 통합됐다.
 - Hook event는 trusted hook이 자동 준비하는 local live backend의 세부 lifecycle source of truth다.
 - 별도 App Server는 앱 내장 thread tools와 다른 process이며 공식 앱의 live source로 가정하지 않는다.
 - local-only, bounded in-memory, no external telemetry가 완성된 기본 architecture다.
@@ -13,20 +13,20 @@
 - 설치, hook trust, 제거는 사용자가 명시적으로 수행하고 복구 경로를 제공한다.
 - task/subagent control과 permission 자동 처리 기능을 제공하지 않는다.
 
-## Current — `0.5.0` default-browser launch release candidate
+## Current — `0.5.1` ambient-wrapper removal patch candidate
 
-사용자의 최신 제품 결정은 실행 시작과 표시 surface를 분리한다. 실행은 공식 Codex 앱에서 시작하지만 live UI는 OS 기본 외부 브라우저에 표시한다. 아래 항목은 과거 in-app Browser release evidence를 지우거나 당시 검증을 무효화하지 않는 후속 설계 변경이다.
+Public `0.5.0`은 공식 Codex 앱에서 실행을 시작하고 OS 기본 외부 브라우저에 live UI를 표시하는 설계를 배포했다. 공식 E2E에서 Codex가 자동 첨부한 `in-app-browser-context` block이 task summary에 섞이는 문제를 확인했다. `0.5.1`은 그 ambient wrapper만 summary 입력에서 제거하며 launch, read-only와 bounded-memory 경계는 바꾸지 않는다.
 
-- [x] 설치 후 실행 시작을 공식 Codex 앱의 `@codex-agent-view` 또는 plugin Quick start로 확정한다.
-- [x] 별도 `$show-agents` 선택과 Codex in-app panel requirement를 제거하고, 내부 single skill은 사용자에게 드러나는 추가 단계가 아닌 implementation capability로 유지한다.
-- [x] `@codex-agent-view`/Quick start가 healthy local monitor를 준비하고 OS 기본 브라우저에 새 authenticated live view를 직접 여는 source 구현을 완료한다.
-- [x] 일반 사용자에게 terminal command, localhost 주소 또는 tokenized/private URL 복사·입력을 요구하지 않는 package/skill/document contract를 구현한다.
-- [ ] transient connection retry와 같은 탭의 실제 recovery button을 E2E로 확인한다. 인증 이력이 없는 새 탭이나 만료 family에서는 페이지가 자격을 mint하지 않고 `@codex-agent-view` 재실행을 안내해야 한다.
-- [ ] Read-only scope, loopback-only transport, fragment 즉시 제거, tab-scoped recovery와 absolute fixed-family expiry가 유지되는지 보안 회귀 검증한다.
-- [ ] 팀장이 공식 Codex 앱 실행 → OS 기본 브라우저 open → live hook 상태 표시 → 연결 오류 복구 전체 E2E를 직접 확인한다.
-- [ ] 전체 test/plugin/package validation 후 후속 npm/GitHub release와 이 기기 exact public install을 완료한다.
+- [x] Public `0.5.0` npm latest, signed 23-file artifact, main CI Node.js 18/20/22와 this-device exact reinstall을 확인한다.
+- [x] Public exact `0.5.0` plugin/hook wiring 9종, `events_received: true`와 actual subagent start/stop의 최종 `stopped`를 확인한다.
+- [x] Official E2E에서 automatic `in-app-browser-context` wrapper가 task summary를 오염시키는 문제를 재현한다.
+- [x] Current source를 `0.5.1`로 올리고 summary 정규화 전에 해당 automatic wrapper를 제거한다.
+- [ ] 팀장이 source tests와 전체 test/plugin/package validation을 직접 재검증한다.
+- [ ] 팀장이 공식 Codex 앱 → OS 기본 browser에서 wrapper가 제거된 summary와 actual subagent lifecycle을 다시 확인한다.
+- [ ] `0.5.1` npm publish, main/tag CI, annotated tag, GitHub Release와 this-device exact public reinstall acceptance를 완료한다.
+- [ ] 누락된 `v0.5.0` tag/GitHub Release를 만들지는 release owner가 별도로 결정하고, 생성 전에는 완료로 기록하지 않는다.
 
-현재 다음 작업: 팀장이 `0.5.0` candidate의 공식 Codex 앱 직접 실행 → OS 기본 browser authenticated live view open과 recovery E2E를 검증한다. 그 뒤 전체 validation, publish/CI, public exact install acceptance를 별도로 완료한다.
+현재 다음 작업: 팀장이 `0.5.1` source validation 뒤 공식 Codex 앱 → OS 기본 browser에서 ambient wrapper 제거와 actual hook lifecycle을 직접 확인한다. 그 뒤 publish/tag/GitHub Release와 public exact install acceptance를 별도로 완료한다.
 
 ## 제품 구현 상태
 
