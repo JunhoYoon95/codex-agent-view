@@ -870,11 +870,20 @@ test("install uses bearer fallback only for a known managed pre-proof bundle", a
 
   const result = await runCli(setup, runtimeRoot, ["install"]);
   assert.equal(result.code, 0, result.stderr);
-  assert.deepEqual(seen, [
+  assert.deepEqual(seen.slice(0, 3), [
     { authorization: undefined, url: "/api/internal/ownership-proof" },
     { authorization: `Bearer ${runtimeToken}`, url: "/api/state" },
     { authorization: `Bearer ${runtimeToken}`, url: "/api/internal/shutdown" },
   ]);
+  for (let index = 3; index < seen.length; index += 1) {
+    const retryIndex = index - 3;
+    assert.deepEqual(
+      seen[index],
+      retryIndex % 2 === 0
+        ? { authorization: undefined, url: "/api/internal/ownership-proof" }
+        : { authorization: `Bearer ${runtimeToken}`, url: "/api/state" },
+    );
+  }
   assert.equal(
     JSON.parse(await readFile(manifestPath, "utf8")).version,
     JSON.parse(await readFile(join(PACKAGE_ROOT, "package.json"), "utf8")).version,
