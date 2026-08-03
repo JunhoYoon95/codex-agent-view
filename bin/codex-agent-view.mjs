@@ -42,6 +42,7 @@ const SIGNED_BOOTSTRAP_CREDENTIAL_PATTERN =
   /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/;
 const OWNERSHIP_PROOF_DOMAIN = "codex-agent-view/runtime-ownership/v1";
 const OWNERSHIP_PROOF_TIMEOUT_MS = 1_000;
+const EXTERNAL_BROWSER_OPEN_TIMEOUT_MS = 3_000;
 const KNOWN_PRE_PROOF_MANAGED_VERSIONS = new Set([
   "0.2.0", "0.2.1",
   "0.3.0", "0.3.1", "0.3.2",
@@ -74,6 +75,7 @@ function printHelp() {
 
 Usage:
   codex-agent-view start [--port <port>] [--open]
+  codex-agent-view open
   codex-agent-view status [--json]
   codex-agent-view doctor [--json]
   codex-agent-view install
@@ -82,6 +84,7 @@ Usage:
 
 The monitor is read-only and binds only to 127.0.0.1.
 Start prints the local URL without opening an external browser unless --open is set.
+Open prepares an authenticated live view and launches it in the default browser.
 `);
 }
 
@@ -166,20 +169,43 @@ function run(command, args, { allowFailure = false } = {}) {
   });
 }
 
-function openBrowser(url) {
-  const command =
-    process.platform === "darwin"
-      ? ["open", [url]]
-      : process.platform === "win32"
-        ? ["cmd", ["/c", "start", "", url]]
-        : ["xdg-open", [url]];
-  const child = spawn(command[0], command[1], {
-    detached: true,
-    shell: false,
-    stdio: "ignore",
+function externalBrowserCommand(url) {
+  if (process.platform === "darwin") return ["open", [url]];
+  if (process.platform === "win32") {
+    return ["rundll32.exe", ["url.dll,FileProtocolHandler", url]];
+  }
+  return ["xdg-open", [url]];
+}
+
+function openExternalBrowser(url) {
+  const [command, args] = externalBrowserCommand(url);
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(command, args, {
+      shell: false,
+      stdio: "ignore",
+    });
+    let settled = false;
+    const settle = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      callback(value);
+    };
+    const timeout = setTimeout(() => {
+      child.kill();
+      settle(reject, new LiveViewPreparationError("browser_open_timeout"));
+    }, EXTERNAL_BROWSER_OPEN_TIMEOUT_MS);
+    child.once("error", () => {
+      settle(reject, new LiveViewPreparationError("browser_open_failed"));
+    });
+    child.once("close", (code) => {
+      if (code === 0) {
+        settle(resolvePromise);
+        return;
+      }
+      settle(reject, new LiveViewPreparationError("browser_open_failed"));
+    });
   });
-  child.unref();
-  child.on("error", () => {});
 }
 
 async function start(args) {
@@ -213,7 +239,12 @@ async function start(args) {
   process.stdout.write(`Codex Agent View is running at ${monitor.url}\n`);
   process.stdout.write("Press Ctrl+C to stop the in-memory monitor.\n");
   if (options.open) {
-    openBrowser(monitor.url);
+    try {
+      await openExternalBrowser(monitor.url);
+    } catch (error) {
+      await monitor.close();
+      throw error;
+    }
   }
 }
 
@@ -729,45 +760,43 @@ function liveViewTarget(runtime, bootstrapCredential) {
   return `http://${LOOPBACK_HOST}:${runtime.port}/#grant=${encodeURIComponent(bootstrapCredential)}`;
 }
 
-async function prepareLiveView(args) {
+async function prepareLiveViewTarget(args) {
+  if (args.length > 0) {
+    throw new LiveViewPreparationError("invalid_arguments");
+  }
+  await inspectInstalledBundleForLiveView();
+  let runtime = await liveViewRuntimeState();
+  if (runtime.kind !== "owned") {
+    startMonitorDetached();
+    const deadline = Date.now() + PREPARE_LIVE_VIEW_WAIT_MS;
+    do {
+      await new Promise((resolvePromise) =>
+        setTimeout(resolvePromise, PREPARE_LIVE_VIEW_POLL_MS),
+      );
+      runtime = await liveViewRuntimeState();
+      if (runtime.kind === "owned") break;
+    } while (Date.now() < deadline);
+  }
+  if (runtime.kind !== "owned") {
+    throw new LiveViewPreparationError("monitor_start_timeout");
+  }
+  const bootstrapCredential = await requestViewerGrant(
+    runtime.info,
+    inheritedExcludedSessionId(),
+  );
+  return liveViewTarget(runtime.info, bootstrapCredential);
+}
+
+async function openLiveView(args) {
   try {
-    if (args.length > 0) {
-      throw new LiveViewPreparationError("invalid_arguments");
-    }
-    await inspectInstalledBundleForLiveView();
-    let runtime = await liveViewRuntimeState();
-    let reused = runtime.kind === "owned";
-    if (!reused) {
-      startMonitorDetached();
-      const deadline = Date.now() + PREPARE_LIVE_VIEW_WAIT_MS;
-      do {
-        await new Promise((resolvePromise) =>
-          setTimeout(resolvePromise, PREPARE_LIVE_VIEW_POLL_MS),
-        );
-        runtime = await liveViewRuntimeState();
-        if (runtime.kind === "owned") break;
-      } while (Date.now() < deadline);
-    }
-    if (runtime.kind !== "owned") {
-      throw new LiveViewPreparationError("monitor_start_timeout");
-    }
-    const bootstrapCredential = await requestViewerGrant(
-      runtime.info,
-      inheritedExcludedSessionId(),
-    );
-    process.stdout.write(
-      `${JSON.stringify({
-        ok: true,
-        reused,
-        target: liveViewTarget(runtime.info, bootstrapCredential),
-      })}\n`,
-    );
+    const target = await prepareLiveViewTarget(args);
+    await openExternalBrowser(target);
+    process.stdout.write("Codex Agent View opened in the default browser.\n");
   } catch (error) {
-    const code =
-      error instanceof LiveViewPreparationError
-        ? error.code
-        : "live_view_preparation_failed";
-    process.stdout.write(`${JSON.stringify({ ok: false, error: { code } })}\n`);
+    const code = error instanceof LiveViewPreparationError
+      ? error.code
+      : "live_view_open_failed";
+    process.stderr.write(`codex-agent-view: live view open failed (${code})\n`);
     process.exitCode = 1;
   }
 }
@@ -1122,12 +1151,12 @@ async function main() {
     process.stdout.write(`${await packageVersion()}\n`);
   } else if (command === "start") {
     await start(args);
+  } else if (command === "open") {
+    await openLiveView(args);
   } else if (command === "status") {
     await status(args);
   } else if (command === "doctor") {
     await doctor(args);
-  } else if (command === "prepare-live-view") {
-    await prepareLiveView(args);
   } else if (command === "install") {
     await install(args);
   } else if (command === "uninstall") {

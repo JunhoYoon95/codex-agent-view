@@ -491,10 +491,16 @@ test("shows an optional safe request summary and does not expose the session ID 
   assert.match(styles, /\.task-summary/);
 });
 
-test("provides honest authentication recovery guidance and a working credential retry", () => {
-  assert.match(app, /recoveryStep: "In the Codex app,[^"]*actual \$show-agents skill/);
-  assert.match(app, /recoveryStep: "Codex 앱 입력창에서[^"]*실제 \$show-agents 스킬/);
-  assert.match(app, /recoveryStep: "En el cuadro de texto de Codex,[^"]*\$show-agents/);
+test("provides external-browser recovery guidance and a working credential retry", () => {
+  assert.match(app, /recoveryStep: "Return to the Codex app and run @codex-agent-view again/);
+  assert.match(app, /recoveryStep: "Codex 앱으로 돌아가 @codex-agent-view를 다시 실행/);
+  assert.match(app, /recoveryStep: "Vuelve a la aplicación Codex y ejecuta @codex-agent-view de nuevo/);
+  assert.match(app, /default browser/);
+  assert.match(app, /기본 브라우저/);
+  assert.match(app, /navegador predeterminado/);
+  assert.doesNotMatch(app, /\$show-agents|skill picker|스킬 선택기|selector de skills/);
+  assert.doesNotMatch(app, /in-app Browser|Codex 내장 Browser/);
+  assert.match(html, /Connecting this browser to the local Codex monitor on this device/);
   assert.match(app, /retryMode === "authentication" \? retryAuthentication : refreshState/);
   assert.match(app, /retryMode === "authentication"[\s\S]*?recovery-guidance/);
   assert.match(styles, /\.recovery-guidance/);
@@ -509,6 +515,20 @@ test("provides honest authentication recovery guidance and a working credential 
   assert.doesNotMatch(app, /localStorage\.setItem\(SESSION_TOKEN_KEY/);
   assert.doesNotMatch(app, /localStorage\.(?:getItem|setItem)\(RECOVERY_CREDENTIAL_KEY/);
   assert.doesNotMatch(app, /document\.cookie|Set-Cookie/i);
+});
+
+test("ordinary connection errors expose an immediate retry button in the browser", async () => {
+  const harness = createAuthVmHarness([
+    stateResponse({ updatedAtMs: 1, sessions: [], diagnostics: [] }),
+  ], { accessToken: signedCredential("browser-retry") });
+
+  harness.auth.setStateMessage("error", "Disconnected", "Retrying", "connection");
+  const button = harness.stateMessage.children.find(({ tagName }) => tagName === "button");
+  assert(button, "a transient connection failure must expose a retry button");
+  assert.equal(button.children.length, 0);
+
+  await button.listeners.click();
+  assert.deepEqual(harness.fetchCalls.map(([url]) => url), ["/api/state"]);
 });
 
 test("startup exchanges a fragment grant before the first state request", async () => {

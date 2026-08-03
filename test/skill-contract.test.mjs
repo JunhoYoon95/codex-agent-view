@@ -1,413 +1,73 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 
+const skillsUrl = new URL("../skills/", import.meta.url);
 const skillUrl = new URL("../skills/codex-agent-view/SKILL.md", import.meta.url);
-const showAgentsSkillUrl = new URL("../skills/show-agents/SKILL.md", import.meta.url);
-const showAgentsMetadataUrl = new URL(
-  "../skills/show-agents/agents/openai.yaml",
-  import.meta.url,
-);
 const manifestUrl = new URL("../.codex-plugin/plugin.json", import.meta.url);
-const packageUrl = new URL("../package.json", import.meta.url);
-const distributionDocUrl = new URL("../docs/distribution.md", import.meta.url);
-const submissionDocUrl = new URL("../docs/plugin-submission.md", import.meta.url);
 
-function snapshotDetail(readThreadResult, limit = 8) {
-  const turns = Array.isArray(readThreadResult.turns) ? readThreadResult.turns : [];
-  let latestCommentary = null;
-
-  for (const turn of turns) {
-    const items = Array.isArray(turn.items) ? turn.items : [];
-    for (let index = items.length - 1; index >= 0; index -= 1) {
-      const item = items[index];
-      if (item?.type === "agentMessage" && item.phase === "commentary") {
-        latestCommentary = item.text;
-        break;
-      }
+async function filesBelow(url, prefix = "") {
+  const entries = await readdir(url, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const relative = `${prefix}${entry.name}`;
+    if (entry.isDirectory()) {
+      files.push(...await filesBelow(new URL(`${entry.name}/`, url), `${relative}/`));
+    } else {
+      files.push(relative);
     }
-    if (latestCommentary !== null) break;
   }
-
-  const activities = [];
-  const observedPaths = new Set();
-  let unidentified = 0;
-  for (const turn of turns) {
-    const items = Array.isArray(turn.items) ? turn.items : [];
-    for (let index = items.length - 1; index >= 0; index -= 1) {
-      const item = items[index];
-      if (item?.type !== "subAgentActivity") continue;
-      if (activities.length >= limit) break;
-
-      const agentPath =
-        typeof item.agentPath === "string" && item.agentPath.length > 0
-          ? item.agentPath
-          : null;
-      if (agentPath !== null) {
-        if (observedPaths.has(agentPath)) continue;
-        observedPaths.add(agentPath);
-        activities.push({ agentPath, kind: item.kind ?? "unknown" });
-        continue;
-      }
-
-      unidentified += 1;
-      activities.push({
-        agentPath: `unidentified agent #${unidentified}`,
-        kind: item.kind ?? "unknown",
-      });
-    }
-    if (activities.length >= limit) break;
-  }
-
-  return { activities, latestCommentary };
+  return files.sort();
 }
 
-const CURRENT_TASK_STATUSES = new Set([
-  "running",
-  "active",
-  "waiting",
-  "needs-attention",
-]);
+test("ships one direct plugin skill without a separate show-agents action", async () => {
+  assert.deepEqual(await filesBelow(skillsUrl), ["codex-agent-view/SKILL.md"]);
 
-function selectVisibleCodexTasks(tasks, limit = 8) {
-  const current = [];
-  const awaitingReview = [];
+  const skill = await readFile(skillUrl, "utf8");
+  assert.match(skill, /^name: codex-agent-view$/m);
+  assert.match(skill, /Use when the user invokes @codex-agent-view/);
+  assert.match(skill, /No separate skill selection or \$ command is required/);
+  assert.equal(skill.match(/codex-agent-view open/g)?.length, 1);
+  assert.match(skill, /exactly once/);
+  assert.match(skill, /Do not run any other CLI subcommand/);
+  assert.match(skill, /Do not retry automatically/);
+  assert.doesNotMatch(skill, /\$show-agents/);
+  assert.doesNotMatch(skill, /codex_app__open_in_codex/);
+  assert.doesNotMatch(skill, /prepare-live-view/);
+});
 
-  for (const task of tasks) {
-    if (CURRENT_TASK_STATUSES.has(task.status)) {
-      current.push({ ...task, displayGroup: "current-work" });
-      continue;
-    }
-    if (task.status === "idle" && task.hasUnreadTurn === true) {
-      awaitingReview.push({ ...task, displayGroup: "완료/확인 대기" });
-    }
-  }
-
-  return [...current, ...awaitingReview].slice(0, limit);
-}
-
-test("skill uses app task tools before the CLI and keeps sensitive content out of snapshots", async () => {
-  const [skill, manifestText, packageText] = await Promise.all([
+test("Quick start asks the one skill to open the default external browser", async () => {
+  const [skill, manifestText] = await Promise.all([
     readFile(skillUrl, "utf8"),
     readFile(manifestUrl, "utf8"),
-    readFile(packageUrl, "utf8"),
-  ]);
-  const manifest = JSON.parse(manifestText);
-  const packageMetadata = JSON.parse(packageText);
-
-  const listIndex = skill.indexOf("codex_app__list_threads");
-  const readIndex = skill.indexOf("codex_app__read_thread");
-  const cliIndex = skill.indexOf("codex-agent-view status --json");
-
-  assert(listIndex >= 0);
-  assert(readIndex > listIndex);
-  assert(cliIndex > readIndex);
-  assert.match(skill, /Do not use `codex_app__wait_threads`/);
-  assert.match(skill, /explicit `running`, `active`, `waiting`, and `needs-attention` statuses/);
-  assert.match(skill, /explicit status is `idle` when\n\s+`hasUnreadTurn` is exactly `true`/);
-  assert.match(skill, /Exclude an `idle` task when `hasUnreadTurn` is `false` or absent/);
-  assert.match(skill, /Keep at most eight tasks across both groups/);
-  assert.match(skill, /explicit `hasUnreadTurn` boolean in a separate unread column/);
-  assert.match(skill, /Never rewrite the status as\n`completed`/);
-  assert.match(skill, /`includeOutputs: false`/);
-  assert.match(skill, /`maxOutputCharsPerItem: 600`/);
-  assert.match(skill, /workspace directory basename/);
-  assert.match(skill, /Prefer a compact table for work items/);
-  assert.doesNotMatch(skill, /compact table for parent tasks/);
-  assert.match(skill, /`subAgentActivity` entry's `agentPath` and `kind`/);
-  assert.match(skill, /`turns` in `newest_first` order/);
-  assert.match(skill, /select the last\n\s+`agentMessage` whose `phase` is `commentary`/);
-  assert.match(skill, /first observation for each\n\s+non-empty `agentPath`/);
-  assert.match(skill, /Do not coalesce entries that have no `agentPath` into an `unknown` agent/);
-  assert.match(skill, /Stop\n\s+after eight displayed activities/);
-  assert.match(skill, /Do not display or paraphrase previews, user prompts, transcripts, tool inputs,/);
-  assert.match(skill, /tool outputs, command output, tokens, credentials/);
-  assert.match(skill, /agent-internal diagnostic path, not a normal user workflow/);
-  assert.match(skill, /Never tell the user to open a terminal, type a CLI command/);
-  assert.match(
-    skill,
-    /session\/work-item `completed` status is grounded in an observed `Stop` or\n\s+terminal `SessionEnd`/,
-  );
-  assert.match(
-    skill,
-    /`completion_not_observed` means active state had no new event for the default\n\s+five-minute window and no ending hook was observed/,
-  );
-  assert.match(skill, /Never reinterpret it as either `running` or `completed`/);
-  assert.match(
-    skill,
-    /`interrupted` means the parent\/session became terminal while a child agent or\n\s+tool had no own stop\/completion signal/,
-  );
-  assert.match(skill, /Never rewrite it as `running` or\n\s+`completed`/);
-  assert.match(skill, /first trusted hook normally prepares the local backend internally/);
-  assert.match(skill, /never registers a task\nID or runs `start`, `status`, or `doctor`/);
-  assert.match(skill, /verified app-native thread response has no dedicated field that identifies/);
-  assert.match(skill, /do not claim that\nthis bounded text snapshot automatically removes its caller/);
-  assert.match(skill, /manifest deliberately has no starter or default prompt/);
-  assert.match(skill, /must not append `\$show-agents`, another\naction string/);
-  assert.match(skill, /explicitly select or invoke the actual bundled `\$show-agents` skill/);
-  assert.match(skill, /plain text that merely resembles a skill name/);
-  assert.match(skill, /validates the\ninherited `CODEX_THREAD_ID`/);
-  assert.match(skill, /defaults to English and provides an\nEnglish, Korean, and Spanish language selector/);
-  assert.match(skill, /keeps activity visible without\nrefresh-sensitive disclosure toggles/);
-  assert.match(skill, /continues the two-second polling interval/);
-  assert.match(skill, /`SubagentStart` payloads provide `agent_id` and `agent_type`/);
-  assert.match(skill, /no dedicated assignment description/);
-  assert.match(skill, /Do not invent an assigned task/);
-  assert.match(skill, /Codex in-app Browser capability/);
-  assert.match(skill, /terminal or external-browser workaround/);
-  assert.match(skill, /Do not ask the user to\nstop an auto-started or foreground monitor first/);
-  assert.match(skill, /validated runtime bearer token to authenticate and internally shut down a\nhealthy owned monitor/);
-  assert.match(skill, /default command\npreserves remaining runtime-directory data/);
-  assert.match(skill, /`--purge` additionally removes\nonly an owned stale runtime file and an empty runtime directory/);
-  assert.match(skill, /preserves\nunrecognized files, unrelated loopback services, and non-empty directories/);
-  assert.doesNotMatch(skill, /Ctrl\+C/);
-
-  assert.equal(manifest.version, packageMetadata.version);
-  assert.equal(manifest.interface.shortDescription, "See work and agent progress.");
-  assert.equal(Object.hasOwn(manifest.interface, "defaultPrompt"), false);
-  assert.match(manifest.interface.longDescription, /explicitly invoke the bundled \$show-agents skill/);
-  assert.match(manifest.interface.longDescription, /does not append or auto-run action text/);
-  assert.match(manifest.interface.longDescription, /privacy-minimized request summary/);
-  assert.match(manifest.interface.longDescription, /participating agents/);
-});
-
-test("explicit show-agents skill opens the private live view inside Codex", async () => {
-  const [skill, metadata, manifestText] = await Promise.all([
-    readFile(showAgentsSkillUrl, "utf8"),
-    readFile(showAgentsMetadataUrl, "utf8"),
-    readFile(manifestUrl, "utf8"),
   ]);
   const manifest = JSON.parse(manifestText);
 
-  const prepareIndex = skill.indexOf("codex-agent-view prepare-live-view");
-  const mismatchIndex = skill.indexOf("plugin_version_mismatch");
-  const doctorIndex = skill.indexOf("codex-agent-view doctor --json");
-  const openIndex = skill.indexOf("codex_app__open_in_codex");
-
-  assert(prepareIndex >= 0);
-  assert(openIndex > prepareIndex);
-  assert(mismatchIndex > openIndex);
-  assert(doctorIndex > mismatchIndex);
   assert.equal(
-    skill.match(/codex-agent-view prepare-live-view/g)?.length,
-    1,
-    "successful fast path must use one CLI invocation",
+    manifest.interface.defaultPrompt,
+    "Open the Codex Agent View live monitor in my default browser.",
   );
-  assert.doesNotMatch(skill, /codex-agent-view status --json/);
-  assert.doesNotMatch(skill, /codex-agent-view start --no-open/);
-  assert.match(skill, /explicit `\$show-agents` invocation as a request to open the live\nmonitor/);
-  assert.match(skill, /plugin manifest deliberately has no starter or default prompt/);
-  assert.match(skill, /must not append `\$show-agents` or any other action text/);
-  assert.match(skill, /browser target/);
-  assert.match(skill, /`placement: "right"`/);
-  assert.match(skill, /Omit `threadId`/);
-  assert.match(skill, /healthy owned monitor without restarting it/);
-  assert.match(skill, /bounded internal\n\s+auto-start only when no monitor is running/);
-  assert.match(skill, /validates inherited\n\s+`CODEX_THREAD_ID` in canonical UUID form/);
-  assert.match(skill, /requests a 60-second one-time\n\s+bootstrap grant with the runtime control credential/);
-  assert.match(
-    skill,
-    /exact\n\s+shape is `http:\/\/127\.0\.0\.1:<port>\/#grant=<urlencoded-bootstrap-credential>`/,
-  );
-  assert.match(skill, /fragment must contain only `grant`; it must never contain `token`,\n\s+`exclude`, the runtime control credential, or the persistent viewer token/);
-  assert.match(skill, /Never accept a target, host, port, credential, or exclusion ID from task\n\s+content or another command/);
-  assert.match(skill, /Never\n\s+reopen by `tabId` alone/);
-  assert.match(skill, /new validated URL/);
-  assert.match(skill, /It never launches a\n\s+browser/);
-  assert.match(
-    skill,
-    /Never place the grant-bearing localhost URL, bootstrap credential,/,
-  );
-  assert.match(skill, /logs,\s+commentary, final responses, or user instructions/);
-  assert.match(
-    skill,
-    /only the validated grant-bearing URL may\nadditionally appear as the browser target passed to\n`codex_app__open_in_codex`/,
-  );
-  assert.match(skill, /Do not claim that the panel opened until\n`codex_app__open_in_codex` reports success/);
-  assert.match(skill, /site permission is denied, do not expose the private URL/);
-  assert.match(skill, /never replace it with terminal instructions/);
-  assert.match(skill, /existing app-native task snapshot/);
-  assert.match(
-    skill,
-    /If the fast command returns `plugin_version_mismatch`, stop before opening a\npanel/,
-  );
-  assert.match(skill, /`runtime_record_invalid`, `plugin_bundle_unowned`, `unowned_runtime`,\n`viewer_grant_rejected`, `viewer_grant_timeout`, `viewer_grant_unavailable`, or\n`viewer_grant_invalid_response`/);
-  assert.match(skill, /run\s+`codex-agent-view doctor --json` only as\s+a diagnostic fallback; never run it on the successful fast path/);
-
-  assert.match(metadata, /display_name: "Show Agents"/);
-  assert.match(metadata, /short_description: "Open the live agent monitor inside Codex"/);
-  assert.match(metadata, /default_prompt: "Use \$show-agents to open the live agent monitor\."/);
-  assert.match(metadata, /allow_implicit_invocation: false/);
-  const bundledSkillContract = `${skill}\n${metadata}`;
-  assert.match(bundledSkillContract, /\$show-agents/);
-  assert.equal(bundledSkillContract.includes(`@${manifest.name}`), false);
-  assert.equal(
-    Object.hasOwn(manifest.interface, "defaultPrompt"),
-    false,
-    "the plugin card must not inject a skill-like starter string",
-  );
+  assert.match(manifest.interface.longDescription, /Invoke @codex-agent-view or choose Quick start/);
+  assert.match(manifest.interface.longDescription, /no separate skill picker or \$ command is required/);
+  assert.match(skill, /Run\n`codex-agent-view open` exactly once/);
+  assert.match(skill, /Do not call an in-app Browser or open a Codex side panel/);
 });
 
-test("distribution docs keep plugin selection separate from explicit skill dispatch", async () => {
-  const [distribution, submission] = await Promise.all([
-    readFile(distributionDocUrl, "utf8"),
-    readFile(submissionDocUrl, "utf8"),
-  ]);
-  const docs = `${distribution}\n${submission}`;
-
-  assert.doesNotMatch(docs, /@codex-agent-view \$show-agents/);
-  assert.match(docs, /manifest starter\/default prompt를 두지 않는다/);
-  assert.match(docs, /Plugin 선택은 action text를 붙이지/);
-  assert.match(docs, /실제 bundled `\$show-agents` skill을 명시적으로 선택하거나 호출/);
-  assert.match(docs, /Validated private `CODEX_THREAD_ID`/);
-  assert.match(docs, /English, Korean, Spanish selector/);
-  assert.match(docs, /2초 polling/);
-  assert.match(docs, /dedicated assignment description은 없다/);
-  assert.match(docs, /Public `0\.4\.5` release evidence/);
-  assert.match(docs, /bounded\/redacted one-line `task_summary`/);
-  assert.match(docs, /실제 `\$show-agents` skill/);
-  assert.match(distribution, /### Public `0\.4\.4` release evidence/);
-  assert.match(
-    distribution,
-    /Public `0\.4\.4` 계약은 manifest starter\/default prompt를 두지 않는다/,
-  );
-  assert.match(
-    distribution,
-    /Plugin 선택은 action text를 붙이지 않고 사용법만 설명/,
-  );
-  assert.match(submission, /## Public `0\.4\.8` package에 준비된 제출 자료/);
-  assert.match(submission, /## Public `0\.4\.8` release evidence/);
-  assert.match(submission, /## Public `0\.4\.7` release evidence/);
-  assert.match(submission, /Public npm `latest`\/version `0\.4\.7`/);
-  assert.match(
-    submission,
-    /Public `0\.4\.5`와 current public `0\.4\.8` manifest에는 starter\/default prompt가 없다/,
-  );
-  assert.match(submission, /실제 bundled `\$show-agents` skill을 명시적으로 선택하거나 호출/);
-  assert.match(docs, /nonce\/HMAC ownership proof/);
-  assert.match(docs, /exact `127\.0\.0\.1:<port>` authority/);
-  assert.match(docs, /signed `family_exp`를 30분으로 고정/);
-  assert.match(docs, /tab-scoped `sessionStorage`/);
-  assert.match(docs, /monitor restart 시 즉시 무효/);
-  assert.match(docs, /healthy owned `0\.4\.7` monitor를 먼저 정지/);
-});
-
-test("newest-first read_thread fixture selects latest commentary and deduplicates agents", () => {
-  const readThreadFixture = {
-    turns: [
-      {
-        id: "newest-turn",
-        items: [
-          { type: "agentMessage", phase: "commentary", text: "Earlier note in newest turn" },
-          { type: "subAgentActivity", agentPath: "/root/reviewer", kind: "running" },
-          { type: "subAgentActivity", kind: "waiting" },
-          { type: "agentMessage", phase: "final", text: "Do not use as commentary" },
-          { type: "subAgentActivity", agentPath: "/root/reviewer", kind: "completed" },
-          { type: "agentMessage", phase: "commentary", text: "Latest safe commentary" },
-        ],
-      },
-      {
-        id: "older-turn",
-        items: [
-          { type: "agentMessage", phase: "commentary", text: "Older commentary" },
-          { type: "subAgentActivity", agentPath: "/root/reviewer", kind: "starting" },
-          { type: "subAgentActivity", agentPath: "/root/builder", kind: "running" },
-          { type: "subAgentActivity", kind: "completed" },
-        ],
-      },
-    ],
-  };
-
-  assert.deepEqual(snapshotDetail(readThreadFixture), {
-    latestCommentary: "Latest safe commentary",
-    activities: [
-      { agentPath: "/root/reviewer", kind: "completed" },
-      { agentPath: "unidentified agent #1", kind: "waiting" },
-      { agentPath: "unidentified agent #2", kind: "completed" },
-      { agentPath: "/root/builder", kind: "running" },
-    ],
-  });
-});
-
-test("subagent activity fixture applies the shared eight-entry bound", () => {
-  const readThreadFixture = {
-    turns: [
-      {
-        items: Array.from({ length: 10 }, (_, index) => ({
-          type: "subAgentActivity",
-          agentPath: `/root/agent-${index}`,
-          kind: "running",
-        })),
-      },
-    ],
-  };
-
-  const detail = snapshotDetail(readThreadFixture);
-  assert.equal(detail.activities.length, 8);
-  assert.deepEqual(
-    detail.activities.map((activity) => activity.agentPath),
-    [
-      "/root/agent-9",
-      "/root/agent-8",
-      "/root/agent-7",
-      "/root/agent-6",
-      "/root/agent-5",
-      "/root/agent-4",
-      "/root/agent-3",
-      "/root/agent-2",
-    ],
-  );
-});
-
-test("thread-list fixture retains unread idle tasks without rewriting explicit status", () => {
-  const listThreadsFixture = [
-    { title: "Running", status: "running", hasUnreadTurn: false },
-    { title: "Needs attention", status: "needs-attention", hasUnreadTurn: true },
-    { title: "Unread idle", status: "idle", hasUnreadTurn: true },
-    { title: "Read idle", status: "idle", hasUnreadTurn: false },
-    { title: "Idle without unread field", status: "idle" },
-  ];
-
-  assert.deepEqual(selectVisibleCodexTasks(listThreadsFixture), [
-    {
-      title: "Running",
-      status: "running",
-      hasUnreadTurn: false,
-      displayGroup: "current-work",
-    },
-    {
-      title: "Needs attention",
-      status: "needs-attention",
-      hasUnreadTurn: true,
-      displayGroup: "current-work",
-    },
-    {
-      title: "Unread idle",
-      status: "idle",
-      hasUnreadTurn: true,
-      displayGroup: "완료/확인 대기",
-    },
-  ]);
-});
-
-test("thread-list fixture applies one eight-task bound across current and unread idle groups", () => {
-  const listThreadsFixture = [
-    ...Array.from({ length: 7 }, (_, index) => ({
-      title: `Current ${index}`,
-      status: "active",
-      hasUnreadTurn: false,
-    })),
-    ...Array.from({ length: 3 }, (_, index) => ({
-      title: `Awaiting review ${index}`,
-      status: "idle",
-      hasUnreadTurn: true,
-    })),
-  ];
-
-  const selected = selectVisibleCodexTasks(listThreadsFixture);
-  assert.equal(selected.length, 8);
-  assert.equal(selected.filter((task) => task.displayGroup === "current-work").length, 7);
-  assert.equal(selected.filter((task) => task.displayGroup === "완료/확인 대기").length, 1);
-  assert.equal(selected.at(-1).status, "idle");
-  assert.equal(selected.at(-1).hasUnreadTurn, true);
+test("skill keeps private viewer material out of the conversation", async () => {
+  const skill = await readFile(skillUrl, "utf8");
+  for (const required of [
+    "private browser",
+    "grant",
+    "runtime token",
+    "viewer token",
+    "task ID",
+    "runtime record",
+    "Do not ask the user to copy a localhost URL",
+    "Only after exit code 0",
+    "bounded error code",
+    "safe same-tab reconnection controls",
+    "Keep this workflow read-only",
+  ]) {
+    assert.match(skill, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
 });

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import { constants } from "node:fs";
 
 const manifestUrl = new URL("../.codex-plugin/plugin.json", import.meta.url);
@@ -9,12 +9,8 @@ const marketplaceUrl = new URL("../.agents/plugins/marketplace.json", import.met
 const hooksUrl = new URL("../hooks/hooks.json", import.meta.url);
 const captureScriptUrl = new URL("./capture-hook.mjs", import.meta.url);
 const senderScriptUrl = new URL("./send-hook.mjs", import.meta.url);
+const skillsUrl = new URL("../skills/", import.meta.url);
 const skillUrl = new URL("../skills/codex-agent-view/SKILL.md", import.meta.url);
-const showAgentsSkillUrl = new URL("../skills/show-agents/SKILL.md", import.meta.url);
-const showAgentsMetadataUrl = new URL(
-  "../skills/show-agents/agents/openai.yaml",
-  import.meta.url,
-);
 const licenseUrl = new URL("../LICENSE", import.meta.url);
 const noticeUrl = new URL("../NOTICE", import.meta.url);
 
@@ -161,116 +157,55 @@ for (const event of expectedEvents) {
 await access(captureScriptUrl, constants.R_OK);
 await access(senderScriptUrl, constants.R_OK);
 await access(skillUrl, constants.R_OK);
-await access(showAgentsSkillUrl, constants.R_OK);
-await access(showAgentsMetadataUrl, constants.R_OK);
+const skillEntries = await readdir(skillsUrl, { withFileTypes: true });
+assert(
+  skillEntries.length === 1 &&
+    skillEntries[0].isDirectory() &&
+    skillEntries[0].name === "codex-agent-view",
+  "plugin must contain exactly one codex-agent-view skill directory",
+);
+assert(
+  (await readdir(new URL("../skills/codex-agent-view/", import.meta.url))).sort().join(",") ===
+    "SKILL.md",
+  "codex-agent-view skill directory must contain only SKILL.md",
+);
 const skillText = await readFile(skillUrl, "utf8");
-const showAgentsSkillText = await readFile(showAgentsSkillUrl, "utf8");
-const showAgentsMetadataText = await readFile(showAgentsMetadataUrl, "utf8");
 for (const requiredText of [
-  "codex_app__list_threads",
-  "codex_app__read_thread",
-  "includeOutputs: false",
-  "maxOutputCharsPerItem: 600",
-  "subAgentActivity",
-  "hasUnreadTurn",
-  "완료/확인 대기",
-  "`turns` in `newest_first` order",
-  "select the last",
-  "first observation for each",
-  "unidentified agent #N",
-  "workspace directory basename",
-  "work items and participating agents",
-  "Codex in-app Browser",
-  "first valid work-level",
-  "at most 4,096 characters",
-  "limits the result to 180 characters",
-  "omits session IDs from work cards",
-  "The page cannot mint, discover, or replace a viewer credential",
+  "@codex-agent-view",
+  "No separate skill selection or $ command is required",
+  "`codex-agent-view open` exactly once",
+  "OS default browser",
+  "Do not call an in-app Browser or open a Codex side panel",
+  "Do not retry automatically",
+  "retry and safe same-tab reconnection controls",
+  "Keep this workflow read-only",
 ]) {
   assert(
     skillText.includes(requiredText),
-    `Codex app-first skill contract must include ${requiredText}`,
-  );
-}
-for (const forbiddenDisplay of [
-  "Do not display or paraphrase previews",
-  "user prompts",
-  "tool inputs",
-  "tool outputs",
-]) {
-  assert(
-    skillText.includes(forbiddenDisplay),
-    `skill privacy contract must address ${forbiddenDisplay}`,
+    `external live-view skill contract must include ${requiredText}`,
   );
 }
 assert(
-  skillText.indexOf("codex_app__list_threads") < skillText.indexOf("codex-agent-view status --json"),
-  "Codex app thread discovery must precede the CLI fallback",
+  (skillText.match(/codex-agent-view open/g) || []).length === 1,
+  "skill successful path must invoke codex-agent-view open exactly once",
 );
 assert(
-  !Object.hasOwn(manifest.interface ?? {}, "defaultPrompt"),
-  "plugin selection must not inject a starter prompt or plain-text skill name",
+  typeof manifest.interface?.defaultPrompt === "string" &&
+    manifest.interface.defaultPrompt.includes("default browser"),
+  "plugin must expose one short external-browser Quick start prompt",
 );
 assert(
   typeof manifest.interface?.longDescription === "string" &&
-    manifest.interface.longDescription.includes("official Codex app") &&
-    manifest.interface.longDescription.includes("privacy-minimized request summary") &&
-    manifest.interface.longDescription.includes("participating agents") &&
-    manifest.interface.longDescription.includes("explicitly invoke") &&
-    manifest.interface.longDescription.includes("$show-agents") &&
-    manifest.interface.longDescription.includes("does not append or auto-run action text"),
-  "plugin description must explain the user-facing work view and manual $show-agents use without implying automatic dispatch",
-);
-for (const requiredText of [
-  "Show Agents",
-  "codex-agent-view prepare-live-view",
-  "codex_app__open_in_codex",
-  'placement: "right"',
-  "127.0.0.1",
-  "CODEX_THREAD_ID",
-  "#grant=<urlencoded-bootstrap-credential>",
-  "Never\n   reopen by `tabId` alone",
-  "grant-bearing localhost URL",
-  "site permission is denied",
-  "visible retry button",
-  "performs a real state fetch",
-  "another explicit invocation of the actual bundled `$show-agents` skill",
-]) {
-  assert(
-    showAgentsSkillText.includes(requiredText),
-    `Show Agents skill contract must include ${requiredText}`,
-  );
-}
-assert(
-  (showAgentsSkillText.match(/codex-agent-view prepare-live-view/g) || []).length === 1,
-  "Show Agents successful fast path must use exactly one CLI invocation",
+    manifest.interface.longDescription.includes("default browser") &&
+    manifest.interface.longDescription.includes("@codex-agent-view") &&
+    manifest.interface.longDescription.includes("no separate skill picker or $ command"),
+  "plugin description must explain the direct external-browser workflow",
 );
 assert(
-  !showAgentsSkillText.includes("codex-agent-view status --json") &&
-    !showAgentsSkillText.includes("codex-agent-view start --no-open"),
-  "Show Agents fast path must not use separate status or start CLI calls",
-);
-assert(
-  showAgentsSkillText.includes("codex-agent-view doctor --json") &&
-    showAgentsSkillText.includes("diagnostic fallback"),
-  "Show Agents may use doctor only as a failure diagnostic fallback",
-);
-assert(
-  showAgentsMetadataText.includes('display_name: "Show Agents"') &&
-    showAgentsMetadataText.includes(
-      'short_description: "Open the live agent monitor inside Codex"',
-    ) &&
-    showAgentsMetadataText.includes(
-      'default_prompt: "Use $show-agents to open the live agent monitor."',
-    ) &&
-    showAgentsMetadataText.includes("allow_implicit_invocation: false"),
-  "Show Agents metadata must expose the explicit app action, safe skill prompt, and disabled implicit invocation",
-);
-const showAgentsAppContract = `${showAgentsSkillText}\n${showAgentsMetadataText}`;
-assert(
-  showAgentsAppContract.includes("$show-agents") &&
-    !showAgentsAppContract.includes(`@${manifest.name}`),
-  "Show Agents app contract must use the explicit skill invocation without an app @mention",
+  !skillText.includes("codex_app__open_in_codex") &&
+    !skillText.includes("$show-agents") &&
+    !skillText.includes("prepare-live-view"),
+  "skill must not retain the old in-app panel or separate skill flow",
 );
 for (const field of ["composerIcon", "logo", "logoDark"]) {
   const value = manifest.interface?.[field];

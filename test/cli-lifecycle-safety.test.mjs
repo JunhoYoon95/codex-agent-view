@@ -71,7 +71,7 @@ if (args.join(" ") === "plugin marketplace list --json") {
   process.stdout.write(JSON.stringify({ installed: [{
     pluginId: "codex-agent-view@codex-agent-view",
     enabled: process.env.FAKE_PLUGIN_DISABLED !== "1",
-    version: "0.4.8",
+    version: "0.5.0",
     source: { source: "local", path: sourcePath }
   }] }) + "\\n");
 } else {
@@ -90,6 +90,7 @@ if (args.join(" ") === "plugin marketplace list --json") {
       `#!/usr/bin/env node
 const { appendFileSync } = require("node:fs");
 appendFileSync(process.env.FAKE_BROWSER_LOG, JSON.stringify(process.argv.slice(2)) + "\\n");
+process.exitCode = Number(process.env.FAKE_BROWSER_EXIT_CODE || 0);
 `,
       { mode: 0o700 },
     );
@@ -252,7 +253,7 @@ async function stopPreparedMonitor(env) {
   }).catch(() => {});
 }
 
-test("prepare-live-view reuses one healthy owned runtime and returns only the private viewer target", async (t) => {
+test("open reuses an owned runtime and passes one private grant only to the default browser", async (t) => {
   if (process.platform === "win32") {
     t.skip("fake executable fixture uses a POSIX shebang");
     return;
@@ -307,36 +308,34 @@ test("prepare-live-view reuses one healthy owned runtime and returns only the pr
     },
     env,
   );
-  await writeFile(setup.log, "");
-
+  await writeFile(setup.browserLog, "");
   const threadId = "ABCDEF12-3456-7890-ABCD-EF1234567890";
-  const result = await runCli(setup, runtimeRoot, ["prepare-live-view"], {
+
+  const result = await runCli(setup, runtimeRoot, ["open"], {
     env: { CODEX_THREAD_ID: threadId },
   });
 
   assert.equal(result.code, 0, result.stderr);
+  assert.equal(result.stdout, "Codex Agent View opened in the default browser.\n");
   assert.equal(result.stderr, "");
-  assert.deepEqual(JSON.parse(result.stdout), {
-    ok: true,
-    reused: true,
-    target: `http://127.0.0.1:${address.port}/#grant=${encodeURIComponent(bootstrapCredential)}`,
-  });
-  assert.deepEqual(grantRequests, [
-    {
-      authorization: `Bearer ${runtimeToken}`,
-      body: { exclude_session_id: threadId.toLowerCase() },
-    },
+  assert.deepEqual(grantRequests, [{
+    authorization: `Bearer ${runtimeToken}`,
+    body: { exclude_session_id: threadId.toLowerCase() },
+  }]);
+  const browserCalls = await waitForBrowserCall(setup.browserLog);
+  assert.equal(browserCalls.length, 1);
+  assert.deepEqual(browserCalls[0], [
+    `http://127.0.0.1:${address.port}/#grant=${encodeURIComponent(bootstrapCredential)}`,
   ]);
   assert(!result.stdout.includes(runtimeToken));
   assert(!result.stdout.includes(viewerToken));
-  assert(!result.stdout.includes("#token="));
-  assert(!result.stdout.includes("exclude="));
-  assert.deepEqual(await readCalls(setup.log), []);
-  assert.deepEqual(await readCalls(setup.browserLog), []);
-  assert.equal((await readRuntimeInfo(env)).token, runtimeToken);
+  assert(!result.stdout.includes(bootstrapCredential));
+  assert(!result.stderr.includes(runtimeToken));
+  assert(!result.stderr.includes(viewerToken));
+  assert(!result.stderr.includes(bootstrapCredential));
 });
 
-test("prepare-live-view starts a missing monitor internally and omits an invalid inherited task ID", async (t) => {
+test("open starts a missing monitor internally and never exposes its authenticated target", async (t) => {
   if (process.platform === "win32") {
     t.skip("detached monitor fixture uses POSIX process behavior");
     return;
@@ -346,308 +345,90 @@ test("prepare-live-view starts a missing monitor internally and omits an invalid
   const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
   const install = await runCli(setup, runtimeRoot, ["install"]);
   assert.equal(install.code, 0, install.stderr);
-  await writeFile(setup.log, "");
   t.after(async () => stopPreparedMonitor(env));
 
-  let port;
-  let result;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    port = await reserveLoopbackPort();
-    await writeRuntimeInfo(
-      {
-        host: LOOPBACK_HOST,
-        pid: process.pid,
-        port,
-        schema_version: RUNTIME_SCHEMA_VERSION,
-        started_at_ms: Date.now(),
-        token: "s".repeat(43),
-      },
-      env,
-    );
-    result = await runCli(setup, runtimeRoot, ["prepare-live-view"], {
-      env: {
-        CODEX_AGENT_VIEW_AUTO_START_PORT: String(port),
-        CODEX_THREAD_ID: "not-a-canonical-thread-id",
-      },
-    });
-    if (result.code === 0) break;
-    const failureCode = JSON.parse(result.stdout).error?.code;
-    if (!["monitor_start_timeout", "unowned_runtime"].includes(failureCode)) break;
-  }
+  const port = await reserveLoopbackPort();
+  const result = await runCli(setup, runtimeRoot, ["open"], {
+    env: {
+      CODEX_AGENT_VIEW_AUTO_START_PORT: String(port),
+      CODEX_THREAD_ID: "not-a-canonical-thread-id",
+    },
+  });
 
-  assert.equal(result?.code, 0, result?.stdout || result?.stderr);
-  const prepared = JSON.parse(result.stdout);
-  assert.equal(prepared.ok, true);
-  assert.equal(prepared.reused, false);
-  assert.match(prepared.target, new RegExp(`^http://127\\.0\\.0\\.1:${port}/#grant=[^&?#]+$`));
-  const grant = decodeURIComponent(new URL(prepared.target).hash.slice("#grant=".length));
-  const grantPayload = JSON.parse(
-    Buffer.from(grant.split(".", 1)[0], "base64url").toString("utf8"),
-  );
-  assert.equal(grantPayload.exclude_session_id, null);
-  const startedRuntime = await readRuntimeInfo(env);
-  assert(!result.stdout.includes(startedRuntime.token));
-  assert(!result.stdout.includes(startedRuntime.viewer_token));
-  assert(!prepared.target.includes("token="));
-  assert(!prepared.target.includes("exclude="));
-  assert.deepEqual(await readCalls(setup.log), []);
-  assert.deepEqual(await readCalls(setup.browserLog), []);
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(result.stdout, "Codex Agent View opened in the default browser.\n");
+  const [browserTarget] = (await waitForBrowserCall(setup.browserLog))[0];
+  assert.match(browserTarget, new RegExp(`^http://127\\.0\\.0\\.1:${port}/#grant=[^&?#]+$`));
+  const grant = decodeURIComponent(new URL(browserTarget).hash.slice("#grant=".length));
+  const payload = JSON.parse(Buffer.from(grant.split(".", 1)[0], "base64url").toString("utf8"));
+  assert.equal(payload.exclude_session_id, null);
+  assert(!result.stdout.includes(grant));
+  assert(!result.stderr.includes(grant));
 });
 
-test("prepare-live-view fails with bounded structured codes for unsafe bundle and runtime states", async (t) => {
+test("open returns bounded private-safe errors for invalid arguments and unsafe states", async (t) => {
   if (process.platform === "win32") {
     t.skip("fake executable fixture uses a POSIX shebang");
     return;
   }
   const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
 
-  const mismatchRoot = join(setup.root, "mismatch-runtime");
-  const mismatchInstall = await runCli(setup, mismatchRoot, ["install"]);
-  assert.equal(mismatchInstall.code, 0, mismatchInstall.stderr);
-  const invalidArguments = await runCli(setup, mismatchRoot, [
-    "prepare-live-view",
-    "unexpected",
-  ]);
+  const invalidArguments = await runCli(setup, runtimeRoot, ["open", "unexpected"]);
   assert.equal(invalidArguments.code, 1);
-  assert.deepEqual(JSON.parse(invalidArguments.stdout), {
-    ok: false,
-    error: { code: "invalid_arguments" },
-  });
-  assert.equal(invalidArguments.stderr, "");
-  const manifestPath = join(mismatchRoot, "marketplace", ".codex-plugin", "plugin.json");
+  assert.equal(invalidArguments.stdout, "");
+  assert.equal(
+    invalidArguments.stderr,
+    "codex-agent-view: live view open failed (invalid_arguments)\n",
+  );
+  assert.deepEqual(await readCalls(setup.browserLog), []);
+
+  const manifestPath = join(runtimeRoot, "marketplace", ".codex-plugin", "plugin.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   await writeFile(manifestPath, `${JSON.stringify({ ...manifest, version: "0.0.0" })}\n`);
-  const mismatch = await runCli(setup, mismatchRoot, ["prepare-live-view"]);
+  const mismatch = await runCli(setup, runtimeRoot, ["open"]);
   assert.equal(mismatch.code, 1);
-  assert.deepEqual(JSON.parse(mismatch.stdout), {
-    ok: false,
-    error: { code: "plugin_version_mismatch" },
-  });
-  assert.equal(mismatch.stderr, "");
-
-  const malformedRoot = join(setup.root, "malformed-runtime");
-  const malformedInstall = await runCli(setup, malformedRoot, ["install"]);
-  assert.equal(malformedInstall.code, 0, malformedInstall.stderr);
-  await writeFile(runtimeFile({ CODEX_AGENT_VIEW_RUNTIME_DIR: malformedRoot }), "not-json\n");
-  const malformed = await runCli(setup, malformedRoot, ["prepare-live-view"]);
-  assert.equal(malformed.code, 1);
-  assert.deepEqual(JSON.parse(malformed.stdout), {
-    ok: false,
-    error: { code: "runtime_record_invalid" },
-  });
-  assert.equal(malformed.stderr, "");
-
-  const unownedRoot = join(setup.root, "unowned-runtime");
-  const unownedInstall = await runCli(setup, unownedRoot, ["install"]);
-  assert.equal(unownedInstall.code, 0, unownedInstall.stderr);
-  const unrelated = createServer((_request, response) => {
-    response.writeHead(200, { "content-type": "application/json" });
-    response.end("{}\n");
-  });
-  await new Promise((resolvePromise, reject) => {
-    unrelated.once("error", reject);
-    unrelated.listen(0, LOOPBACK_HOST, resolvePromise);
-  });
-  t.after(() => new Promise((resolvePromise) => unrelated.close(resolvePromise)));
-  const address = unrelated.address();
-  assert(address && typeof address !== "string");
-  await writeRuntimeInfo(
-    {
-      host: LOOPBACK_HOST,
-      pid: process.pid,
-      port: address.port,
-      schema_version: RUNTIME_SCHEMA_VERSION,
-      started_at_ms: Date.now(),
-      token: "c".repeat(43),
-      viewer_token: "v".repeat(43),
-    },
-    { CODEX_AGENT_VIEW_RUNTIME_DIR: unownedRoot },
+  assert.equal(mismatch.stdout, "");
+  assert.equal(
+    mismatch.stderr,
+    "codex-agent-view: live view open failed (plugin_version_mismatch)\n",
   );
-  const unowned = await runCli(setup, unownedRoot, ["prepare-live-view"]);
-  assert.equal(unowned.code, 1);
-  assert.deepEqual(JSON.parse(unowned.stdout), {
-    ok: false,
-    error: { code: "unowned_runtime" },
-  });
-  assert.equal(unowned.stderr, "");
-});
-
-test("prepare-live-view safely reports rejected and timed-out viewer grants without exposing credentials", async (t) => {
-  if (process.platform === "win32") {
-    t.skip("fake executable fixture uses a POSIX shebang");
-    return;
-  }
-  const setup = await fixture(t);
-
-  for (const failure of ["rejected", "timeout"]) {
-    const runtimeRoot = join(setup.root, `${failure}-grant-runtime`);
-    const install = await runCli(setup, runtimeRoot, ["install"]);
-    assert.equal(install.code, 0, install.stderr);
-    const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
-    const runtimeToken = failure === "rejected" ? "j".repeat(43) : "k".repeat(43);
-    const viewerToken = await readViewerToken(env);
-    const owned = createServer(async (request, response) => {
-      if (request.url === "/api/internal/ownership-proof") {
-        await respondToOwnershipChallenge(request, response, runtimeToken);
-        return;
-      }
-      if (request.url === "/api/internal/viewer-grant") {
-        assert.equal(request.headers.authorization, `Bearer ${runtimeToken}`);
-        if (failure === "rejected") {
-          response.writeHead(403, { "content-type": "application/json" });
-          response.end('{"error":"denied"}\n');
-          return;
-        }
-        setTimeout(() => {
-          if (!response.writableEnded) {
-            response.writeHead(201, { "content-type": "application/json" });
-            response.end('{"status":"granted","bootstrap_credential":"too-late","expires_in_ms":60000}\n');
-          }
-        }, 1_200);
-        return;
-      }
-      response.writeHead(404).end();
-    });
-    await new Promise((resolvePromise, reject) => {
-      owned.once("error", reject);
-      owned.listen(0, LOOPBACK_HOST, resolvePromise);
-    });
-    t.after(() => new Promise((resolvePromise) => owned.close(resolvePromise)));
-    const address = owned.address();
-    assert(address && typeof address !== "string");
-    await writeRuntimeInfo(
-      {
-        host: LOOPBACK_HOST,
-        pid: process.pid,
-        port: address.port,
-        schema_version: RUNTIME_SCHEMA_VERSION,
-        started_at_ms: Date.now(),
-        token: runtimeToken,
-        viewer_token: viewerToken,
-      },
-      env,
-    );
-
-    const result = await runCli(setup, runtimeRoot, ["prepare-live-view"]);
-    assert.equal(result.code, 1);
-    assert.deepEqual(JSON.parse(result.stdout), {
-      ok: false,
-      error: {
-        code: failure === "rejected" ? "viewer_grant_rejected" : "viewer_grant_timeout",
-      },
-    });
-    assert.equal(result.stderr, "");
-    assert(!result.stdout.includes(runtimeToken));
-    assert(!result.stdout.includes(viewerToken));
-  }
-});
-
-test("prepare-live-view rejects malformed signed grants before constructing a target", async (t) => {
-  if (process.platform === "win32") {
-    t.skip("fake executable fixture uses a POSIX shebang");
-    return;
-  }
-  const setup = await fixture(t);
-  const runtimeRoot = join(setup.root, "invalid-grant-runtime");
-  const install = await runCli(setup, runtimeRoot, ["install"]);
-  assert.equal(install.code, 0, install.stderr);
-  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
-  const runtimeToken = "i".repeat(43);
-  const viewerToken = await readViewerToken(env);
-  const invalidCredentials = [
-    "not-signed",
-    `payload.${"a".repeat(42)}#`,
-    `payload.${"b".repeat(42)} `,
-  ];
-  let grantIndex = 0;
-  const owned = createServer(async (request, response) => {
-    if (request.url === "/api/internal/ownership-proof") {
-      await respondToOwnershipChallenge(request, response, runtimeToken);
-      return;
-    }
-    if (request.url === "/api/internal/viewer-grant") {
-      assert.equal(request.headers.authorization, `Bearer ${runtimeToken}`);
-      response.writeHead(201, { "content-type": "application/json" });
-      response.end(`${JSON.stringify({
-        status: "granted",
-        bootstrap_credential: invalidCredentials[grantIndex],
-        expires_in_ms: 60_000,
-      })}\n`);
-      grantIndex += 1;
-      return;
-    }
-    response.writeHead(404).end();
-  });
-  await new Promise((resolvePromise, reject) => {
-    owned.once("error", reject);
-    owned.listen(0, LOOPBACK_HOST, resolvePromise);
-  });
-  t.after(() => new Promise((resolvePromise) => owned.close(resolvePromise)));
-  const address = owned.address();
-  assert(address && typeof address !== "string");
-  await writeRuntimeInfo(
-    {
-      host: LOOPBACK_HOST,
-      pid: process.pid,
-      port: address.port,
-      schema_version: RUNTIME_SCHEMA_VERSION,
-      started_at_ms: Date.now(),
-      token: runtimeToken,
-      viewer_token: viewerToken,
-    },
-    env,
-  );
-
-  for (const invalidCredential of invalidCredentials) {
-    const result = await runCli(setup, runtimeRoot, ["prepare-live-view"]);
-    assert.equal(result.code, 1);
-    assert.deepEqual(JSON.parse(result.stdout), {
-      ok: false,
-      error: { code: "viewer_grant_invalid_response" },
-    });
-    assert.equal(result.stderr, "");
-    assert(!result.stdout.includes(invalidCredential));
-    assert(!result.stdout.includes("#grant="));
-  }
-  assert.equal(grantIndex, invalidCredentials.length);
   assert.deepEqual(await readCalls(setup.browserLog), []);
 });
 
-test("prepare-live-view sends no bearer or grant request to a service that spoofs monitor responses", async (t) => {
+test("open rejects malformed grants and spoofed runtimes before invoking a browser", async (t) => {
   if (process.platform === "win32") {
     t.skip("fake executable fixture uses a POSIX shebang");
     return;
   }
   const setup = await fixture(t);
-  const runtimeRoot = join(setup.root, "spoofed-runtime");
+  const runtimeRoot = join(setup.root, "runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
   const install = await runCli(setup, runtimeRoot, ["install"]);
   assert.equal(install.code, 0, install.stderr);
-  const runtimeToken = "q".repeat(43);
-  const seen = [];
+  const runtimeToken = "i".repeat(43);
+  const viewerToken = await readViewerToken(env);
+  let bearerRequests = 0;
   const spoof = createServer(async (request, response) => {
-    seen.push({ authorization: request.headers.authorization, url: request.url });
+    if (request.headers.authorization) bearerRequests += 1;
     if (request.url === "/api/internal/ownership-proof") {
       const chunks = [];
       for await (const chunk of request) chunks.push(chunk);
       response.writeHead(200, { "content-type": "application/json" });
-      response.end(`${JSON.stringify({ proof: "z".repeat(43), status: "owned" })}\n`);
-      return;
-    }
-    if (request.url === "/api/state") {
-      response.writeHead(200, { "content-type": "application/json" });
-      response.end('{"schema_version":1,"source_of_truth":"hook"}\n');
-      return;
-    }
-    if (request.url === "/api/internal/viewer-grant") {
-      response.writeHead(201, { "content-type": "application/json" });
       response.end(`${JSON.stringify({
-        bootstrap_credential: `payload.${"g".repeat(43)}`,
-        expires_in_ms: 60_000,
-        status: "granted",
+        proof: "z".repeat(43),
+        status: "owned",
       })}\n`);
       return;
     }
-    response.writeHead(404).end();
+    response.writeHead(201, { "content-type": "application/json" });
+    response.end(`${JSON.stringify({
+      status: "granted",
+      bootstrap_credential: "not-signed",
+      expires_in_ms: 60_000,
+    })}\n`);
   });
   await new Promise((resolvePromise, reject) => {
     spoof.once("error", reject);
@@ -663,19 +444,168 @@ test("prepare-live-view sends no bearer or grant request to a service that spoof
     schema_version: RUNTIME_SCHEMA_VERSION,
     started_at_ms: Date.now(),
     token: runtimeToken,
-    viewer_token: await readViewerToken({ CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot }),
-  }, { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot });
+    viewer_token: viewerToken,
+  }, env);
 
-  const result = await runCli(setup, runtimeRoot, ["prepare-live-view"]);
+  const result = await runCli(setup, runtimeRoot, ["open"]);
   assert.equal(result.code, 1);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    ok: false,
-    error: { code: "unowned_runtime" },
+  assert.equal(result.stdout, "");
+  assert.equal(result.stderr, "codex-agent-view: live view open failed (unowned_runtime)\n");
+  assert.equal(bearerRequests, 0);
+  assert.deepEqual(await readCalls(setup.browserLog), []);
+  assert(!result.stderr.includes(runtimeToken));
+  assert(!result.stderr.includes(viewerToken));
+});
+
+test("open preserves bounded grant rejection, timeout, and invalid-response failures", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const cases = [
+    { expectedCode: "viewer_grant_rejected", kind: "rejected" },
+    { expectedCode: "viewer_grant_timeout", kind: "timeout" },
+    { expectedCode: "viewer_grant_invalid_response", kind: "invalid" },
+  ];
+
+  for (const [index, failure] of cases.entries()) {
+    const runtimeRoot = join(setup.root, `grant-${failure.kind}`);
+    const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+    const install = await runCli(setup, runtimeRoot, ["install"]);
+    assert.equal(install.code, 0, install.stderr);
+    const runtimeToken = String.fromCharCode(106 + index).repeat(43);
+    const viewerToken = await readViewerToken(env);
+    const invalidCredential = `invalid-${failure.kind}`;
+    const owned = createServer(async (request, response) => {
+      if (request.url === "/api/internal/ownership-proof") {
+        await respondToOwnershipChallenge(request, response, runtimeToken);
+        return;
+      }
+      if (request.url === "/api/internal/viewer-grant") {
+        assert.equal(request.headers.authorization, `Bearer ${runtimeToken}`);
+        if (failure.kind === "rejected") {
+          response.writeHead(403, { "content-type": "application/json" });
+          response.end('{"error":"denied"}\n');
+          return;
+        }
+        if (failure.kind === "timeout") {
+          setTimeout(() => {
+            if (!response.writableEnded) response.end();
+          }, 1_200);
+          return;
+        }
+        response.writeHead(201, { "content-type": "application/json" });
+        response.end(`${JSON.stringify({
+          status: "granted",
+          bootstrap_credential: invalidCredential,
+          expires_in_ms: 60_000,
+        })}\n`);
+        return;
+      }
+      response.writeHead(404).end();
+    });
+    await new Promise((resolvePromise, reject) => {
+      owned.once("error", reject);
+      owned.listen(0, LOOPBACK_HOST, resolvePromise);
+    });
+    t.after(() => owned.listening
+      ? new Promise((resolvePromise) => owned.close(resolvePromise))
+      : undefined);
+    const address = owned.address();
+    assert(address && typeof address !== "string");
+    await writeRuntimeInfo({
+      host: LOOPBACK_HOST,
+      pid: process.pid,
+      port: address.port,
+      schema_version: RUNTIME_SCHEMA_VERSION,
+      started_at_ms: Date.now(),
+      token: runtimeToken,
+      viewer_token: viewerToken,
+    }, env);
+
+    const result = await runCli(setup, runtimeRoot, ["open"]);
+    assert.equal(result.code, 1);
+    assert.equal(result.stdout, "");
+    assert.equal(
+      result.stderr,
+      `codex-agent-view: live view open failed (${failure.expectedCode})\n`,
+    );
+    assert(!result.stderr.includes(runtimeToken));
+    assert(!result.stderr.includes(viewerToken));
+    assert(!result.stderr.includes(invalidCredential));
+    assert.deepEqual(await readCalls(setup.browserLog), []);
+    await new Promise((resolvePromise) => owned.close(resolvePromise));
+  }
+});
+
+test("open reports a bounded error and no success when the browser launcher exits nonzero", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  const runtimeToken = "q".repeat(43);
+  const viewerToken = await readViewerToken(env);
+  const credential = `payload.${"g".repeat(43)}`;
+  const owned = createServer(async (request, response) => {
+    if (request.url === "/api/internal/ownership-proof") {
+      await respondToOwnershipChallenge(request, response, runtimeToken);
+      return;
+    }
+    if (request.url === "/api/internal/viewer-grant") {
+      response.writeHead(201, { "content-type": "application/json" });
+      response.end(`${JSON.stringify({
+        status: "granted",
+        bootstrap_credential: credential,
+        expires_in_ms: 60_000,
+      })}\n`);
+      return;
+    }
+    response.writeHead(404).end();
   });
-  assert(!result.stdout.includes("#grant="));
-  assert.deepEqual(seen, [
-    { authorization: undefined, url: "/api/internal/ownership-proof" },
-  ]);
+  await new Promise((resolvePromise, reject) => {
+    owned.once("error", reject);
+    owned.listen(0, LOOPBACK_HOST, resolvePromise);
+  });
+  t.after(() => new Promise((resolvePromise) => owned.close(resolvePromise)));
+  const address = owned.address();
+  assert(address && typeof address !== "string");
+  await writeRuntimeInfo({
+    host: LOOPBACK_HOST,
+    pid: process.pid,
+    port: address.port,
+    schema_version: RUNTIME_SCHEMA_VERSION,
+    started_at_ms: Date.now(),
+    token: runtimeToken,
+    viewer_token: viewerToken,
+  }, env);
+
+  const result = await runCli(setup, runtimeRoot, ["open"], {
+    env: { FAKE_BROWSER_EXIT_CODE: "7" },
+  });
+  assert.equal(result.code, 1);
+  assert.equal(result.stdout, "");
+  assert.equal(result.stderr, "codex-agent-view: live view open failed (browser_open_failed)\n");
+  assert(!result.stderr.includes(credential));
+  assert.equal((await readCalls(setup.browserLog)).length, 1);
+
+  const browserCommand = process.platform === "darwin" ? "open" : "xdg-open";
+  await rm(join(setup.fakeBin, browserCommand));
+  const missingLauncher = await runCli(setup, runtimeRoot, ["open"], {
+    env: { PATH: setup.fakeBin },
+  });
+  assert.equal(missingLauncher.code, 1);
+  assert.equal(missingLauncher.stdout, "");
+  assert.equal(
+    missingLauncher.stderr,
+    "codex-agent-view: live view open failed (browser_open_failed)\n",
+  );
+  assert(!missingLauncher.stderr.includes(credential));
 });
 
 test("refuses to replace or uninstall an unmanaged marketplace directory", async (t) => {
@@ -1373,7 +1303,18 @@ test("start accepts legacy --no-open and rejects conflicting or unknown argument
   const help = await runCli(setup, join(setup.root, "help-runtime"), ["help"]);
   assert.equal(help.code, 0, help.stderr);
   assert.match(help.stdout, /start \[--port <port>\] \[--open\]/);
+  assert.match(help.stdout, /^  codex-agent-view open$/m);
   assert.doesNotMatch(help.stdout, /\[--no-open\]/);
+  assert.doesNotMatch(help.stdout, /prepare-live-view/);
+
+  const removed = await runCli(
+    setup,
+    join(setup.root, "removed-command-runtime"),
+    ["prepare-live-view"],
+  );
+  assert.equal(removed.code, 1);
+  assert.match(removed.stderr, /unknown command: prepare-live-view/);
+  assert.doesNotMatch(removed.stdout + removed.stderr, /#grant=|Bearer |token=/);
 });
 
 test("doctor distinguishes valid registration from unobservable hook trust and no events", async (t) => {
@@ -1399,7 +1340,7 @@ test("doctor distinguishes valid registration from unobservable hook trust and n
     enabled: true,
     installed: true,
     source_path: join(runtimeRoot, "marketplace"),
-    version: "0.4.8",
+    version: "0.5.0",
   });
   assert.equal(report.hook.wiring_ok, true);
   assert.equal(report.hook.trust, "unknown");
