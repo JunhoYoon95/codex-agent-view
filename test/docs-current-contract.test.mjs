@@ -123,8 +123,46 @@ test("keeps current 0.5.2 release language separate from historical releases and
     assert.match(document, /npm 공개 완료 조건으로 사용하지/);
     assert.match(document, /Directory (?:submission )?(?:blocker|제출 경계|제출 단계|portal submission 경계)/i);
   }
-  assert.match(distribution, /실제 성공 뒤/);
-  assert.match(findings, /실제 성공 뒤/);
+});
+
+test("records verified public 0.5.2 evidence without claiming Directory or Quick start acceptance", async () => {
+  const [english, korean, distribution, findings, submission] = await Promise.all([
+    readProjectFile("README.md"),
+    readProjectFile("README.ko.md"),
+    readProjectFile("docs/distribution.md"),
+    readProjectFile("docs/phase-0-findings.md"),
+    readProjectFile("docs/plugin-submission.md"),
+  ]);
+
+  assert.match(english, /Public npm `latest` is `codex-agent-view@0\.5\.2`/);
+  assert.match(korean, /Public npm `latest`는 `codex-agent-view@0\.5\.2`/);
+
+  for (const document of [distribution, findings, submission]) {
+    assert.match(document, /2026-08-03T18:45:19\.094Z/);
+    assert.match(document, /58a3841a73f8dec2060710962f4bfd0273931fec/);
+    assert.match(document, /sha512-ugMRzbmWI2Fp5QGtwuze9yC3SNspq5Uua\/FL\/9YMj1OBVlq9JXigqRiHnZgOjWny15QXJ6wLi8z2MN8vAgq53A==/);
+    assert.match(document, /npm signature 1개|signature 1개/);
+    assert.match(document, /23 files|23-file/);
+    assert.match(document, /62\.5 kB/);
+    assert.match(document, /251\.2 kB/);
+    assert.match(document, /6292b1a9a93fe0ede6054362544b609991322adf37b44611e35c4d0ec74c174b/);
+    assert.match(document, /9227bff6526978e4d8f8fc48b047ffcbf44f5599/);
+    assert.match(document, /byte-identical/);
+    assert.match(document, /30842520151/);
+    assert.match(document, /30842851244/);
+    assert.match(document, /Node\.js 18\/20\/22/);
+    assert.match(document, /releases\/tag\/v0\.5\.2/);
+    assert.match(document, /diff-identical/);
+    assert.match(document, /hook wiring 9종/);
+    assert.match(document, /events_received: true/);
+    assert.match(document, /sessions 1/);
+    assert.match(document, /Assigned work/);
+    assert.match(document, /Current activity/);
+    assert.match(document, /(?:Hook trust|hook trust).*`unknown`|CLI-unobservable `unknown`/i);
+    assert.match(document, /Directory/);
+    assert.match(document, /pending|unverified|미확인/i);
+    assert.match(document, /Quick start/);
+  }
 });
 
 test("keeps README local links resolvable and the root guide free of Korean copy", async () => {

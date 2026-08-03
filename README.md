@@ -8,7 +8,7 @@ It does not replace Codex, control tasks or agents, run a hosted service, send t
 
 ## Quick start
 
-Version `0.5.2` is the current public-release target. Install it from a regular terminal:
+Public npm `latest` is `codex-agent-view@0.5.2`. Install it from a regular terminal:
 
 ```bash
 npm install --global codex-agent-view@0.5.2
@@ -92,7 +92,9 @@ codex-agent-view uninstall --purge
 
 ## Release and project documentation
 
-The package and plugin manifest are version `0.5.2`. npm publication, registry metadata and digests, the annotated tag, GitHub Release, CI, and exact public reinstall are verified and recorded only after each step actually succeeds. npm publication is separate from submission to the Universal Plugins Directory; directory search availability is not claimed here.
+Version `0.5.2` is public on npm. Its signed 23-file registry artifact, source-pack identity, Node.js 18/20/22 CI, annotated tag, [GitHub Release v0.5.2](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.5.2), exact public reinstall, installed plugin/hook wiring, and actual Assigned work/Current activity display were verified. Full digests and acceptance evidence are recorded in [Distribution](docs/distribution.md).
+
+npm publication is separate from submission to the Universal Plugins Directory. Directory validator compatibility, portal/reviewer acceptance, search exposure, and promptless plugin-card Quick start behavior remain unverified and are not claimed here.
 
 - [Distribution and release evidence](docs/distribution.md)
 - [Plugin directory submission status](docs/plugin-submission.md)

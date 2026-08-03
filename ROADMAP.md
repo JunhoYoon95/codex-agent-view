@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-현재 source/package `0.5.2`는 공개 릴리스 진행 중이다. Registry metadata·digest, exact reinstall, main/tag CI, annotated tag/GitHub Release는 실제 성공 뒤에만 완료로 기록한다. Public `0.5.1` evidence는 historical fact로 보존한다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다.
+Public npm `latest`/version은 `0.5.2`다. Signed registry artifact와 source-pack identity, exact reinstall, main/tag CI, annotated tag/GitHub Release, installed plugin/hook wiring과 actual Assigned work/Current activity display를 확인했다. Public `0.5.1` evidence는 historical fact로 보존한다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다.
 
 ## 제품 원칙
 
@@ -21,15 +21,17 @@ Plugin-level `interface.defaultPrompt`는 plugin 실행 기능이 아니라 plug
 - [x] Plugin-level starter prompt를 비워 두고 internal single skill/`open` contract는 유지한다.
 - [x] README와 배포·privacy·terms 문서에서 promptless invocation 경계를 설명한다.
 - [x] Repository validator/tests와 local Codex CLI install/cache ingestion에서 promptless `0.5.2`가 installed/enabled로 수락됨을 확인한다.
-- [ ] npm 공개 전 repository validation/tests와 실제 앱 동작을 확인한다.
+- [x] npm 공개 전 repository validation/tests와 실제 앱 동작을 확인한다.
 - [ ] Bundled plugin-creator validation 요구는 Universal Plugins Directory 제출 경계로 별도 추적한다. npm 공개 완료 조건으로 사용하지 않으며 Directory acceptance는 portal/reviewer 확인 전까지 주장하지 않는다.
-- [ ] `npm run check`와 exact tarball smoke를 통과한다.
-- [ ] npm `0.5.2` publish 뒤 registry version, signature/digest와 packaged README를 확인한다.
-- [ ] Public exact `0.5.2` reinstall에서 CLI/plugin version, installed/enabled, hook wiring과 live event 수신을 확인한다.
-- [ ] Main/tag CI, annotated `v0.5.2`와 GitHub Release를 실제 성공 뒤 기록한다.
-- [ ] 공식 Codex 앱에서 `@codex-agent-view` 자체 선택·전송 → internal single skill → `open` → default browser E2E를 확인한다.
+- [x] `npm run check`와 exact tarball smoke를 통과한다.
+- [x] npm `0.5.2` publish 뒤 registry version, signature/digest와 packaged README를 확인한다.
+- [x] Public exact `0.5.2` reinstall에서 CLI/plugin version, installed/enabled, hook wiring과 live event 수신을 확인한다. Hook trust는 CLI에서 관찰할 수 없어 `unknown`으로 유지한다.
+- [x] Main/tag CI, annotated `v0.5.2`와 public GitHub Release를 확인한다.
+- [x] 공식 Codex 앱에서 actual Assigned work와 Current activity 표시를 확인하고 사용자 확인을 받는다.
+- [ ] `@codex-agent-view` 자체 선택·전송 → internal single skill → `open` → default browser의 public exact invocation E2E를 별도 재확인한다.
 - [ ] Plugin 카드의 promptless Quick start 제공 여부를 실제 앱에서 관찰하고 결과만 기록한다.
-- [ ] Repository validation/tests와 실제 앱 관찰 근거를 바탕으로 npm publish, exact reinstall, artifact comparison, CI와 tag/GitHub Release를 진행한다. Bundled validator와 portal/reviewer 확인은 별도 Directory submission blocker/미확인으로 유지한다.
+- [x] Repository validation/tests와 실제 앱 관찰 근거를 바탕으로 npm publish, exact reinstall, artifact comparison, CI와 tag/GitHub Release를 완료한다.
+- [ ] Bundled validator와 portal/reviewer 확인은 별도 Directory submission blocker/미확인으로 유지한다.
 
 ## Historical current public — `0.5.1` release acceptance
 

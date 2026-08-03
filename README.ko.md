@@ -8,7 +8,7 @@ Codex를 대체하거나 작업·에이전트를 제어하지 않으며, 외부 
 
 ## 설치
 
-`0.5.2`는 현재 공개 배포 대상 버전입니다. 일반 터미널에서 다음을 실행합니다.
+Public npm `latest`는 `codex-agent-view@0.5.2`입니다. 일반 터미널에서 다음을 실행합니다.
 
 ```bash
 npm install --global codex-agent-view@0.5.2
@@ -92,7 +92,9 @@ codex-agent-view uninstall --purge
 
 ## 릴리스 및 프로젝트 문서
 
-Package와 plugin manifest 버전은 `0.5.2`입니다. npm 공개, registry metadata와 digest, annotated tag, GitHub Release, CI와 public exact reinstall은 각 단계가 실제 성공한 뒤에만 검증 기록을 갱신합니다. npm 공개와 Universal Plugins Directory 제출은 별도 절차이며, 이 문서는 directory 검색 노출을 주장하지 않습니다.
+Version `0.5.2`는 npm에 공개됐습니다. Signature가 있는 23-file registry artifact, source pack 일치, Node.js 18/20/22 CI, annotated tag, [GitHub Release v0.5.2](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.5.2), public exact reinstall, 설치된 plugin/hook wiring과 실제 Assigned work/Current activity 표시를 확인했습니다. 전체 digest와 acceptance 증거는 [배포 문서](docs/distribution.md)에 기록합니다.
+
+npm 공개와 Universal Plugins Directory 제출은 별도 절차입니다. Directory validator 호환성, portal/reviewer acceptance, 검색 노출과 promptless plugin-card Quick start 동작은 아직 확인하지 않았으며 이 문서에서 지원을 주장하지 않습니다.
 
 - [배포 및 릴리스 증거](docs/distribution.md)
 - [Plugin Directory 제출 상태](docs/plugin-submission.md)

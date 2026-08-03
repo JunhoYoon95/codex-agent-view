@@ -12,7 +12,7 @@
 - 상태 설계: live companion 상태는 의도적으로 bounded process-local memory만 사용하며 재시작은 새 관찰 window를 시작한다. 이는 완성된 제품 경계다.
 - 의도적 non-goal: 대체 Codex 클라이언트, 외부 서버, 외부 telemetry, 필수 SQLite/영구 event store, 원격 제어
 - 영구 history는 누락된 요구가 아니다. 실제 사용자 가치가 입증될 때만 retention/deletion/privacy 비용을 포함한 별도 explicit opt-in 제안으로 검토한다.
-- 현재 단계: source/package `0.5.2` 공개 릴리스 진행 중. npm registry metadata·digest, exact reinstall, CI, tag와 GitHub Release는 실제 성공 뒤에만 완료로 기록하며 historical `0.5.1` evidence는 배포 문서에 보존한다.
+- 현재 단계: public `0.5.2` npm/artifact/exact reinstall/CI/tag/GitHub Release와 actual Assigned work/Current activity evidence 확인 완료. Universal Plugins Directory validator·portal/reviewer·검색 노출과 promptless plugin-card Quick start는 별도 미확인 상태로 유지한다.
 
 ## 명령어
 
