@@ -8,12 +8,12 @@ Codex Agent View gives you a clear, read-only view of what Codex is working on a
 
 ## Quick start
 
-Public npm `latest` is `codex-agent-view@0.5.0`. Current source is the **unpublished `0.5.1` patch candidate**: it keeps the same one-invocation default-browser workflow while removing automatic `in-app-browser-context` wrapper text before deriving a task summary. The install command below targets the verified public `0.5.0`; it does not claim that `0.5.1` is available.
+Public npm `latest` is `codex-agent-view@0.5.1`. This release keeps the one-invocation default-browser workflow and removes automatic `in-app-browser-context` wrapper text before deriving a task summary.
 
 Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
 ```bash
-npm install --global codex-agent-view@0.5.0
+npm install --global codex-agent-view@0.5.1
 codex-agent-view install
 ```
 
@@ -40,11 +40,15 @@ In short: install once in a terminal, invoke `@codex-agent-view` in Codex, and m
 
 ## Status
 
-Current source is the unpublished `0.5.1` ambient-wrapper removal patch candidate. It preserves the public `0.5.0` launch and authentication design: one `@codex-agent-view` invocation runs the bundle's internal capability, prepares the view, and opens the default browser; the user-facing `$show-agents` picker and app panel are not part of the workflow. After bounding inspection to the original prompt's first 4,096 characters, the patch removes a closed exact leading `in-app-browser-context` block before redaction so ambient UI state is not presented as the user's requested work. Publication, tag, GitHub Release, public-artifact verification, and an official fixed E2E for `0.5.1` are still pending.
+Public `0.5.1` preserves the `0.5.0` launch and authentication design: one `@codex-agent-view` invocation runs the bundle's internal capability, prepares the view, and opens the default browser; the user-facing `$show-agents` picker and app panel are not part of the workflow. After bounding inspection to the original prompt's first 4,096 characters, it removes a closed exact leading `in-app-browser-context` block before redaction so ambient UI state is not presented as the user's requested work.
 
-Historical public `0.5.0` evidence: npm `latest` is `0.5.0`. The signed 23-file registry artifact has shasum `bf89ee665840e62d502551d87d7faaed2a1e0206`, integrity `sha512-W8rOv+0Xb5SVsFl/kXHF/vt9CJ/Su0rwDWVFWLWYWhKidZTxx+ea9Z0dtd65k3KBxucLRuwMOUJL3BtHr2p2Dw==`, and SHA-256 `e23c4ea484fa6186c17f2c564b5019a08eb6acca10f99fc85bf95e2f2757bc2c`. Main CI `30816426733` passed on Node.js 18, 20, and 22. This machine was reinstalled from public exact `0.5.0`; the CLI/plugin version matched, all nine hooks were wired, and `events_received: true`. The official app delivered an actual subagent start/stop pair with final status `stopped`. That E2E also exposed automatic `in-app-browser-context` text in the task summary, which is the bounded defect addressed by `0.5.1`. No `v0.5.0` tag or GitHub Release has been created yet.
+Verified public `0.5.1` evidence: npm `latest`/version `0.5.1`, shasum `ca9b1e61ce8139f62a5f3016c81973d8bf1ea1ac`, integrity `sha512-tvz3oN+F5sMW0at+17FEDGoC4FO8LfBJUjBBYmYmvKtIsyPhhqJ+irPfd/8Uws+Bn5QMjtYcLzG/rBEXtGQ6UQ==`, and one npm signature were confirmed. The registry and release tarballs are byte-identical with SHA-256 `e540adcc4205eb6c1026f6a17864ac1a44e925696e0ff5ac659cba95402cf447`. Public exact global reinstall confirmed CLI/plugin `0.5.1`, installed/enabled state, all nine hooks, and `events_received: true`. Main CI `30818761050` and tag CI `30825304988` passed; tag CI covered Node.js 18, 20, and 22. Annotated `v0.5.1` and [GitHub Release v0.5.1](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.5.1) are public. The official live UI observed an actual `SubagentStart`/`SubagentStop`: running agents changed from 1 to 0 and the target finished `completed`/`stopped`.
 
-Historical public `0.4.8` evidence: `npm run check` passed all 153 tests plus plugin validation and package dry-run. npm `latest` was `0.4.8` at release time; the signed 25-file registry artifact, exact global installation, enabled plugin `0.4.8`, all nine hooks, healthy doctor result, main/tag CI, annotated tag, and public GitHub Release were verified. The official Codex app delivered an actual new subagent start/stop pair with ordered timestamps and final stopped status. Its historical in-app Browser flow also verified grant authentication, fragment removal, same-tab bare-root recovery, and no recovery button in a new tab. That release evidence does not validate the current `0.5.1` patch candidate.
+The official task-summary live prompt remains unverified because the monitor started after that run's `UserPromptSubmit`. Automated core, store, and live-path tests pass with the actual ambient-wrapper fixture; that test evidence is not represented as an observed official prompt event.
+
+Historical public `0.5.0` evidence: npm `latest` was `0.5.0` at release time. The signed 23-file registry artifact has shasum `bf89ee665840e62d502551d87d7faaed2a1e0206`, integrity `sha512-W8rOv+0Xb5SVsFl/kXHF/vt9CJ/Su0rwDWVFWLWYWhKidZTxx+ea9Z0dtd65k3KBxucLRuwMOUJL3BtHr2p2Dw==`, and SHA-256 `e23c4ea484fa6186c17f2c564b5019a08eb6acca10f99fc85bf95e2f2757bc2c`. Main CI `30816426733` passed on Node.js 18, 20, and 22. This machine was reinstalled from public exact `0.5.0`; the CLI/plugin version matched, all nine hooks were wired, and `events_received: true`. The official app delivered an actual subagent start/stop pair with final status `stopped`. That E2E also exposed automatic `in-app-browser-context` text in the task summary, which is the bounded defect addressed by `0.5.1`. No `v0.5.0` tag or GitHub Release has been created yet.
+
+Historical public `0.4.8` evidence: `npm run check` passed all 153 tests plus plugin validation and package dry-run. npm `latest` was `0.4.8` at release time; the signed 25-file registry artifact, exact global installation, enabled plugin `0.4.8`, all nine hooks, healthy doctor result, main/tag CI, annotated tag, and public GitHub Release were verified. The official Codex app delivered an actual new subagent start/stop pair with ordered timestamps and final stopped status. Its historical in-app Browser flow also verified grant authentication, fragment removal, same-tab bare-root recovery, and no recovery button in a new tab. That release evidence does not validate the current public `0.5.1` acceptance.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -170,16 +174,16 @@ After plugin enablement/trust and an app restart, the first trusted hook interna
 
 ## Install from npm
 
-The commands below install the verified public npm `latest`, `0.5.0`. Current source is the separate unpublished `0.5.1` ambient-wrapper removal patch candidate.
+The commands below install the public npm `latest`, `0.5.1`.
 
 ```bash
-npm install --global codex-agent-view@0.5.0
+npm install --global codex-agent-view@0.5.1
 codex-agent-view install
 ```
 
 After these two commands succeed, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. Invoke `@codex-agent-view` once to open the default browser and invoke it again after closing the tab.
 
-The public `0.5.0` installation path is the global package install followed by the explicit `codex-agent-view install` command above. During an upgrade, explicit `install` replaces registration and bundle files through the authenticated maintenance lifecycle. It preserves the installation-owned viewer credential and the historical migration boundary. The launch workflow prints no persistent token and puts neither the viewer credential nor runtime/control bearer in the browser target.
+The public `0.5.1` installation path is the global package install followed by the explicit `codex-agent-view install` command above. During an upgrade, explicit `install` replaces registration and bundle files through the authenticated maintenance lifecycle. It preserves the installation-owned viewer credential and the historical migration boundary. The launch workflow prints no persistent token and puts neither the viewer credential nor runtime/control bearer in the browser target.
 
 Version-specific npm, install, migration, CI, tag, and GitHub Release evidence is preserved in [Distribution](docs/distribution.md). That evidence is updated only after each item is actually verified.
 

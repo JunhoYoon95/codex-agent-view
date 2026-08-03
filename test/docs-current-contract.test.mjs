@@ -33,7 +33,7 @@ test("documents one plugin invocation that opens the default browser without a u
     assert.match(document, /internal (?:execution )?skill|내부 (?:execution )?skill|internal launch skill/);
     assert.match(document, /default browser|기본 browser/);
     assert.match(document, /user-facing skill picker|사용자용 skill picker|별도 `\$show-agents` picker/);
-    assert.match(document, /미배포|unreleased/);
+    assert.match(document, /0\.5\.1/);
   }
 
   assert.match(privacy, /operating system's default browser/);
@@ -89,7 +89,7 @@ test("documents the current live-view UX and evidence boundary", async () => {
   assert.match(privacy, /do not enable CORS and no authentication cookie is set/);
 });
 
-test("separates the unpublished 0.5.1 patch from historical public 0.5.0 acceptance", async () => {
+test("records final public npm 0.5.1 acceptance while keeping only the official task-summary prompt unverified", async () => {
   const [packageText, manifestText, english, korean, roadmap, distribution, findings, submission, privacy] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -106,46 +106,58 @@ test("separates the unpublished 0.5.1 patch from historical public 0.5.0 accepta
 
   assert.equal(packageMetadata.version, "0.5.1");
   assert.equal(manifest.version, "0.5.1");
-  assert.match(english, /npm install --global codex-agent-view@0\.5\.0/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.5\.0/);
+  assert.match(english, /npm install --global codex-agent-view@0\.5\.1/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.5\.1/);
   assert.match(english, /Historical public `0\.5\.0` evidence/);
   assert.match(korean, /Historical public `0\.5\.0` evidence/);
-  assert.match(english, /unpublished `0\.5\.1` ambient-wrapper removal patch candidate/i);
-  assert.match(korean, /미배포 `0\.5\.1` ambient-wrapper removal patch candidate/i);
-  assert.match(english, /Public npm `latest` is `codex-agent-view@0\.5\.0`/);
-  assert.match(korean, /Public npm `latest`는 `codex-agent-view@0\.5\.0`/);
-  assert.doesNotMatch(english, /public `0\.5\.1`/i);
-  assert.doesNotMatch(korean, /public `0\.5\.1`/i);
+  assert.match(english, /Public npm `latest` is `codex-agent-view@0\.5\.1`/);
+  assert.match(korean, /Public npm `latest`는 `codex-agent-view@0\.5\.1`/);
+  assert.doesNotMatch(english, /unpublished `0\.5\.1`|`0\.5\.1` patch candidate/i);
+  assert.doesNotMatch(korean, /미배포 `0\.5\.1`|`0\.5\.1` patch candidate/i);
   for (const document of [english, korean, distribution, findings, submission]) {
     assert.match(document, /60-second|60초/);
     assert.match(document, /bootstrap grant/);
   }
+  const releaseEvidenceDocuments = [english, korean, distribution, findings, submission];
+  for (const document of releaseEvidenceDocuments) {
+    assert.match(document, /(?:public npm `latest`(?:\/version)?|npm `latest`|Public npm `latest`).*`?0\.5\.1`?/i);
+    assert.match(document, /ca9b1e61ce8139f62a5f3016c81973d8bf1ea1ac/);
+    assert.match(document, /sha512-tvz3oN\+F5sMW0at\+17FEDGoC4FO8LfBJUjBBYmYmvKtIsyPhhqJ\+irPfd\/8Uws\+Bn5QMjtYcLzG\/rBEXtGQ6UQ==/);
+    assert.match(document, /e540adcc4205eb6c1026f6a17864ac1a44e925696e0ff5ac659cba95402cf447/);
+    assert.match(document, /(?:one npm signature|npm signature 1개|signature 1개)/i);
+    assert.match(document, /(?:registry(?: and|\/) release tarballs are byte-identical|Registry tarball과 release tarball은 byte-identical|release↔registry tarball byte 일치)/i);
+    assert.match(document, /(?:public exact global reinstall|public exact `0\.5\.1` global reinstall|public exact global `0\.5\.1` reinstall)/i);
+    assert.match(document, /CLI\/plugin `0\.5\.1`/);
+    assert.match(document, /installed\/enabled/);
+    assert.match(document, /(?:all nine hooks|hook wiring 9종)/i);
+    assert.match(document, /events_received: true|`events_received: true`/);
+    assert.match(document, /30818761050/);
+    assert.match(document, /30825304988/);
+    assert.match(document, /Node\.js 18(?:,|\/)20(?:,|, and |\/)22|Node\.js 18, 20, and 22/);
+    assert.match(document, /releases\/tag\/v0\.5\.1/);
+    assert.match(document, /SubagentStart/);
+    assert.match(document, /SubagentStop/);
+    assert.match(document, /(?:running agents changed from 1 to 0|running 1→0|running agent 수가 1에서 0|`SubagentStart` 뒤 running 1, `SubagentStop` 뒤 running 0)/i);
+    assert.match(document, /completed.*stopped|completed`\/`stopped`/is);
+  }
   for (const document of [english, korean, roadmap, distribution, findings, submission, privacy]) {
     assert.match(document, /0\.5\.1/);
-    assert.match(document, /in-app-browser-context/);
-    assert.match(document, /(?:미배포|unpublished)/i);
-    assert.match(document, /(?:fixed E2E|수정 후 공식 앱 E2E|수정 후 official fixed E2E|공식 E2E.*다시 확인|official fixed E2E).*?(?:pending|아직|확인|not claimed)/is);
-    assert.doesNotMatch(document, /public `?0\.5\.1`?/i);
+    assert.match(document, /in-app-browser-context|ambient(?:-| )wrapper|ambient(?:-| )fixture/i);
+    assert.match(document, /(?:official task-summary live prompt|official `task_summary` live prompt|공식 task-summary live prompt|Official task-summary live prompt).*?(?:unverified|미확인)/is);
+    assert.match(document, /UserPromptSubmit/);
+    assert.match(document, /(?:automated|자동화).*?(?:ambient|fixture).*?(?:pass|통과)/is);
   }
-  for (const document of [english, korean, distribution, findings, submission]) {
-    assert.match(document, /(?:public npm `latest`(?:\/version)?|npm `latest`).*`?0\.5\.0`?/i);
-    assert.match(document, /bf89ee665840e62d502551d87d7faaed2a1e0206/);
-    assert.match(document, /sha512-W8rOv\+0Xb5SVsFl\/kXHF\/vt9CJ\/Su0rwDWVFWLWYWhKidZTxx\+ea9Z0dtd65k3KBxucLRuwMOUJL3BtHr2p2Dw==/);
-    assert.match(document, /e23c4ea484fa6186c17f2c564b5019a08eb6acca10f99fc85bf95e2f2757bc2c/);
-    assert.match(document, /registry signature/);
-    assert.match(document, /23[- ]file|23 files/);
-    assert.match(document, /30816426733/);
-    assert.match(document, /Node(?:\.js)? 18(?:,|\/)20(?:,|\/)22|Node\.js 18, 20, and 22/);
-    assert.match(document, /(?:public exact.*(?:reinstall|install|재설치)|reinstalled from public exact)/i);
-    assert.match(document, /CLI\/plugin(?: `0\.5\.0`| version (?:matched|일치))/i);
-    assert.match(document, /installed\/enabled/);
-    assert.match(document, /(?:hook wiring 9종|all nine hooks were wired)/);
-    assert.match(document, /events_received: true/);
-    assert.match(document, /subagent start\/stop/i);
-    assert.match(document, /(?:final status|최종(?: agent)? 상태).*`?stopped`?/i);
-    assert.match(document, /(?:tag|`v0\.5\.0`).*(?:아직|has not|have not|없)/is);
-    assert.match(document, /GitHub Release.*(?:아직|has not|have not|없)/is);
-    assert.doesNotMatch(document, /releases\/tag\/v0\.5\.0/);
+  assert.match(roadmap, /Registry\/release tarball byte-identical.*\[x\]|\[x\].*Registry\/release tarball byte-identical/is);
+  assert.match(roadmap, /\[x\].*Main\/tag CI.*actual subagent live UI running 1→0/is);
+  for (const document of [english, korean, roadmap, distribution, findings, submission]) {
+    const currentReleaseLines = document
+      .split("\n")
+      .filter((line) => line.includes("0.5.1"))
+      .join("\n");
+    assert.doesNotMatch(
+      currentReleaseLines,
+      /(?:GitHub|CI|registry.*tarball|exact.*reinstall|subagent.*E2E).*?(?:pending|아직 확인하지|완료하지|unverified)/i,
+    );
   }
 });
 

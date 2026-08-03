@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-현재 source/package는 미배포 `0.5.1` ambient-wrapper removal patch candidate다. Public npm `latest`는 historical `0.5.0`이며 registry/CI/this-device hook E2E는 확인했지만 `v0.5.0` tag와 GitHub Release는 아직 없다. `0.5.1`의 publish/tag/release와 수정 후 공식 E2E도 아직 주장하지 않는다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. 기존 public release evidence를 보존한다.
+현재 source/package와 public npm `latest`는 `0.5.1`이다. Registry/release artifact, public exact reinstall, main/tag CI, annotated tag/GitHub Release와 actual subagent live UI E2E를 확인했다. Official task-summary live prompt는 monitor가 `UserPromptSubmit` 이후 시작되어 미확인이며 automated ambient-fixture tests와 구분한다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다. 기존 public release evidence를 보존한다.
 
 ## 제품 원칙
 
@@ -13,7 +13,7 @@
 - 설치, hook trust, 제거는 사용자가 명시적으로 수행하고 복구 경로를 제공한다.
 - task/subagent control과 permission 자동 처리 기능을 제공하지 않는다.
 
-## Current — `0.5.1` ambient-wrapper removal patch candidate
+## Current — public `0.5.1` release acceptance
 
 Public `0.5.0`은 공식 Codex 앱에서 실행을 시작하고 OS 기본 외부 브라우저에 live UI를 표시하는 설계를 배포했다. 공식 E2E에서 Codex가 자동 첨부한 `in-app-browser-context` block이 task summary에 섞이는 문제를 확인했다. `0.5.1`은 그 ambient wrapper만 summary 입력에서 제거하며 launch, read-only와 bounded-memory 경계는 바꾸지 않는다.
 
@@ -21,12 +21,15 @@ Public `0.5.0`은 공식 Codex 앱에서 실행을 시작하고 OS 기본 외부
 - [x] Public exact `0.5.0` plugin/hook wiring 9종, `events_received: true`와 actual subagent start/stop의 최종 `stopped`를 확인한다.
 - [x] Official E2E에서 automatic `in-app-browser-context` wrapper가 task summary를 오염시키는 문제를 재현한다.
 - [x] Current source를 `0.5.1`로 올리고 summary 정규화 전에 해당 automatic wrapper를 제거한다.
-- [ ] 팀장이 source tests와 전체 test/plugin/package validation을 직접 재검증한다.
-- [ ] 팀장이 공식 Codex 앱 → OS 기본 browser에서 wrapper가 제거된 summary와 actual subagent lifecycle을 다시 확인한다.
-- [ ] `0.5.1` npm publish, main/tag CI, annotated tag, GitHub Release와 this-device exact public reinstall acceptance를 완료한다.
+- [x] npm `0.5.1` publish와 `latest`/version, shasum `ca9b1e61ce8139f62a5f3016c81973d8bf1ea1ac`을 확인한다.
+- [x] Release tarball SHA-256 `e540adcc4205eb6c1026f6a17864ac1a44e925696e0ff5ac659cba95402cf447`을 기록한다.
+- [x] Registry/release tarball byte-identical, shasum/integrity/signature와 SHA-256을 확인한다.
+- [x] Public exact global reinstall, CLI/plugin `0.5.1`, installed/enabled, hook wiring 9종과 events true를 확인한다.
+- [x] Main/tag CI, annotated `v0.5.1`, GitHub Release와 actual subagent live UI running 1→0, target completed/stopped를 확인한다.
+- [ ] Official task-summary live prompt를 monitor가 `UserPromptSubmit` 전부터 실행된 새 관찰 window에서 확인한다. Automated actual ambient fixture tests는 이미 통과했지만 공식 event 관찰을 대체하지 않는다.
 - [ ] 누락된 `v0.5.0` tag/GitHub Release를 만들지는 release owner가 별도로 결정하고, 생성 전에는 완료로 기록하지 않는다.
 
-현재 다음 작업: 팀장이 `0.5.1` source validation 뒤 공식 Codex 앱 → OS 기본 browser에서 ambient wrapper 제거와 actual hook lifecycle을 직접 확인한다. 그 뒤 publish/tag/GitHub Release와 public exact install acceptance를 별도로 완료한다.
+현재 다음 작업: 새 관찰 window에서 official `UserPromptSubmit` task-summary live prompt만 확인한다. 나머지 `0.5.1` release acceptance는 완료됐다.
 
 ## 제품 구현 상태
 

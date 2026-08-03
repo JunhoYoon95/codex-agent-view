@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-03
 
-Codex Agent View is an unofficial, read-only companion plugin for Codex. Its live monitor is local-only and communicates over IPv4 loopback (`127.0.0.1`). Public npm `latest` `0.5.0` opens that local page in the operating system's default browser when the user invokes `@codex-agent-view`; it does not send the page to a hosted service. Current source is the unpublished `0.5.1` ambient task-summary patch candidate. It has no external telemetry, hosted service, cloud account, analytics SDK, remote database, or SQLite event store. `0.5.1` publish, tag, GitHub Release and official fixed E2E are not claimed; `v0.5.0` tag and GitHub Release also have not been created.
+Codex Agent View is an unofficial, read-only companion plugin for Codex. Its live monitor is local-only and communicates over IPv4 loopback (`127.0.0.1`). Public npm `latest` `0.5.1` opens that local page in the operating system's default browser when the user invokes `@codex-agent-view`; it does not send the page to a hosted service. It has no external telemetry, hosted service, cloud account, analytics SDK, remote database, or SQLite event store. Public `0.5.1` registry/release artifact equality, exact reinstall, CI, tag/Release and actual subagent live UI E2E are verified. Official task-summary live prompt evidence remains unverified because that monitor window started after `UserPromptSubmit`; automated actual ambient-fixture tests are recorded separately.
 
 ## Data flow
 

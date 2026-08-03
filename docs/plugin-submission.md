@@ -2,7 +2,7 @@
 
 조사일: 2026-08-01
 
-이 문서는 Codex Agent View의 Universal Plugins Directory 제출 경계와 준비 상태를 정리한다. Public npm `latest`/version은 `0.5.0`이고 current source/package는 미배포 `0.5.1` ambient-wrapper removal patch candidate다. `0.2.0`부터 `0.5.0`까지의 public release evidence를 historical fact로 보존한다. Actual Directory 제출·승인·검색 노출이나 `0.5.1` release acceptance는 주장하지 않는다.
+이 문서는 Codex Agent View의 Universal Plugins Directory 제출 경계와 준비 상태를 정리한다. Public npm `latest`/version과 current source/package는 `0.5.1`이다. `0.2.0`부터 `0.5.1`까지의 public release evidence를 historical fact로 보존한다. `0.5.1` artifact/install/CI/tag/Release/subagent lifecycle acceptance는 완료했지만 Actual Directory 제출·승인·검색 노출은 주장하지 않는다. Official `task_summary` live prompt도 이번 observation timing 때문에 미확인이다.
 
 ## 핵심 결론
 
@@ -23,11 +23,19 @@ Public Codex plugin API에서 sidebar/panel/in-app Browser open이 이 제품에
 
 ## Historical public `0.5.0` release evidence
 
-Public npm `latest`/version `0.5.0`, shasum `bf89ee665840e62d502551d87d7faaed2a1e0206`, integrity `sha512-W8rOv+0Xb5SVsFl/kXHF/vt9CJ/Su0rwDWVFWLWYWhKidZTxx+ea9Z0dtd65k3KBxucLRuwMOUJL3BtHr2p2Dw==`, registry signature와 23 files를 확인했다. Registry artifact SHA-256은 `e23c4ea484fa6186c17f2c564b5019a08eb6acca10f99fc85bf95e2f2757bc2c`다. Main CI `30816426733`은 Node.js 18/20/22에서 성공했다.
+Release 당시 public npm `latest`/version `0.5.0`, shasum `bf89ee665840e62d502551d87d7faaed2a1e0206`, integrity `sha512-W8rOv+0Xb5SVsFl/kXHF/vt9CJ/Su0rwDWVFWLWYWhKidZTxx+ea9Z0dtd65k3KBxucLRuwMOUJL3BtHr2p2Dw==`, registry signature와 23 files를 확인했다. Registry artifact SHA-256은 `e23c4ea484fa6186c17f2c564b5019a08eb6acca10f99fc85bf95e2f2757bc2c`다. Main CI `30816426733`은 Node.js 18/20/22에서 성공했다.
 
-This-device public exact reinstall에서 CLI/plugin `0.5.0`, installed/enabled, hook wiring 9종과 `events_received: true`를 확인했다. 공식 Codex 앱은 actual subagent start/stop을 전달했고 최종 agent 상태는 `stopped`였다. 그 official E2E에서 automatic `in-app-browser-context` wrapper가 task summary에 섞이는 defect도 확인했다. Current `0.5.1` candidate는 이 wrapper를 summary 입력에서 제거하지만 publish와 official fixed E2E는 아직 완료하지 않았다.
+This-device public exact reinstall에서 CLI/plugin `0.5.0`, installed/enabled, hook wiring 9종과 `events_received: true`를 확인했다. 공식 Codex 앱은 actual subagent start/stop을 전달했고 최종 agent 상태는 `stopped`였다. 그 official E2E에서 automatic `in-app-browser-context` wrapper가 task summary에 섞이는 defect도 확인했다. Public `0.5.1`은 이 wrapper를 summary 입력에서 제거한다.
 
-`v0.5.0` tag와 GitHub Release는 아직 생성하지 않았다. 따라서 tag CI와 release URL도 없다. 이 npm/CI/E2E evidence는 Universal Directory 제출·승인·검색 노출이나 npm provenance attestation을 뜻하지 않는다. `0.5.1` publish, tag, GitHub Release, public artifact와 official fixed E2E도 pending이다.
+`v0.5.0` tag와 GitHub Release는 아직 생성하지 않았다. 따라서 tag CI와 release URL도 없다. 이 npm/CI/E2E evidence는 Universal Directory 제출·승인·검색 노출이나 npm provenance attestation을 뜻하지 않는다.
+
+## Public `0.5.1` npm release evidence
+
+Public npm `latest`/version `0.5.1`, shasum `ca9b1e61ce8139f62a5f3016c81973d8bf1ea1ac`, integrity `sha512-tvz3oN+F5sMW0at+17FEDGoC4FO8LfBJUjBBYmYmvKtIsyPhhqJ+irPfd/8Uws+Bn5QMjtYcLzG/rBEXtGQ6UQ==`와 npm signature 1개를 확인했다. Registry tarball과 release tarball은 byte-identical이고 SHA-256은 모두 `e540adcc4205eb6c1026f6a17864ac1a44e925696e0ff5ac659cba95402cf447`이다.
+
+This-device public exact `0.5.1` global reinstall에서 CLI/plugin `0.5.1`, installed/enabled, hook wiring 9종과 `events_received: true`를 확인했다. Main CI `30818761050`과 tag CI `30825304988`은 성공했고 tag CI는 Node.js 18/20/22를 통과했다. Annotated `v0.5.1` tag와 [GitHub Release v0.5.1](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.5.1)을 확인했다. Actual official `SubagentStart`/`SubagentStop` live UI E2E에서 running agent 수가 1에서 0으로 바뀌고 대상 agent가 completed/stopped로 끝났다.
+
+Official `task_summary` live prompt는 monitor가 해당 task의 `UserPromptSubmit` 뒤에 시작되어 이번 observation window에서 미확인이다. Actual ambient wrapper fixture를 쓰는 core/store/live automated tests는 통과했지만 official live prompt 증거로 대체하지 않는다. Universal Directory review도 별도 external acceptance다.
 
 ## Public `0.4.8` release evidence
 
@@ -137,11 +145,11 @@ Release package는 기존 app-native snapshot skill과 새 explicit live-panel *
 
 Historical skill `quick_validate.py`와 plugin/package wiring validation은 통과했다. Portal safety/security skill scan과 reviewer execution은 별도 외부 단계다.
 
-### Current source/package `0.5.1` 제출 delta — 미검증
+### Public source/package `0.5.1` 제출 delta
 
-Public `0.5.0`은 historical skill 2개를 내부 launch skill 하나로 합쳤다. Current `0.5.1`은 같은 plugin `defaultPrompt`, internal skill과 `codex-agent-view open` 동작을 유지하면서 automatic `in-app-browser-context` wrapper를 task-summary 입력에서 제거한다. 사용자는 `$show-agents`를 고르지 않는다. Command는 private target/token/task ID/path를 출력하지 않고 operating-system default browser에 직접 전달한다.
+Public `0.5.0`은 historical skill 2개를 내부 launch skill 하나로 합쳤다. Public `0.5.1`은 같은 plugin `defaultPrompt`, internal skill과 `codex-agent-view open` 동작을 유지하면서 automatic `in-app-browser-context` wrapper를 task-summary 입력에서 제거한다. 사용자는 `$show-agents`를 고르지 않는다. Command는 private target/token/task ID/path를 출력하지 않고 operating-system default browser에 직접 전달한다.
 
-같은 tab의 transient error에는 page retry와 safe **Reconnect**가 있고, credential 없는 새 tab이나 fixed-family 만료에는 `@codex-agent-view`를 다시 실행하도록 한다. App panel 또는 in-app Browser fallback은 제공하지 않는다. `0.5.1` delta는 아직 public package/registry artifact, official fixed E2E, portal scan 또는 reviewer E2E를 통과하지 않았다.
+같은 tab의 transient error에는 page retry와 safe **Reconnect**가 있고, credential 없는 새 tab이나 fixed-family 만료에는 `@codex-agent-view`를 다시 실행하도록 한다. App panel 또는 in-app Browser fallback은 제공하지 않는다. npm publish, registry/release artifact comparison, exact install, CI/tag/Release와 actual subagent lifecycle E2E는 완료했다. Official `task_summary` live prompt는 monitor가 `UserPromptSubmit` 뒤에 시작되어 미확인이고, portal scan 또는 reviewer E2E도 별도 external 단계다.
 
 ### Listing metadata와 assets
 
@@ -157,7 +165,7 @@ Historical public `0.4.8`의 `.codex-plugin/plugin.json`에는 다음이 들어 
 
 Repository에는 `SUPPORT.md`, `SECURITY.md`, `docs/privacy.md`, `docs/terms.md`가 있다. 이 파일의 존재는 verified publisher identity, portal URL 승인, 법률 검토 완료를 뜻하지 않는다. Portal에 필요한 support URL shape와 publisher 승인 여부는 제출 전 확인한다.
 
-Current `0.5.1` candidate manifest는 semantic version `0.5.1`이며 public `0.5.0`과 같은 single external-browser workflow의 `defaultPrompt`, long description과 bundled skill 1개를 유지한다. 새 source validator와 E2E가 통과하더라도 publish, public artifact와 portal acceptance는 별도로 확인한다.
+Public `0.5.1` manifest는 semantic version `0.5.1`이며 public `0.5.0`과 같은 single external-browser workflow의 `defaultPrompt`, long description과 bundled skill 1개를 유지한다. npm publish와 public artifact comparison은 확인했고 portal acceptance는 별도로 확인한다.
 
 현재 local plugin validator 통과와 official final submission validation 통과는 다르다. 다만 이전 `shortDescription` 길이 gap은 해결했다. Public `0.4.8`의 현재 값 `See work and agent progress.`는 28 characters이며 repository validator도 official final limit인 30 characters 이하를 계약으로 검사하고 current validation은 통과했다. Final portal validation은 여전히 별도 외부 단계다.
 
@@ -264,7 +272,12 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [x] Public `0.5.0` npm latest, registry signature/shasum/integrity/SHA-256와 23 files, main CI Node.js 18/20/22, this-device exact reinstall, CLI/plugin installed/enabled, hook wiring 9종과 events true 확인
 - [x] Public exact `0.5.0` official-app actual subagent start/stop와 final stopped 확인. Automatic `in-app-browser-context` summary contamination defect도 기록
 - [ ] `v0.5.0` tag와 GitHub Release는 아직 없음
-- [ ] Current `0.5.1` full validation, official fixed E2E, publish/tag/GitHub Release, public exact reinstall과 Directory delta review 필요
+- [x] Public `0.5.1` npm latest/version, shasum/integrity/signature 1개, release↔registry tarball byte 일치와 SHA-256 `e540adcc4205eb6c1026f6a17864ac1a44e925696e0ff5ac659cba95402cf447` 확인
+- [x] Public exact `0.5.1` global reinstall에서 CLI/plugin installed/enabled, hook wiring 9종과 `events_received: true` 확인
+- [x] Public `0.5.1` main CI `30818761050`, Node.js 18/20/22 tag CI `30825304988`, annotated tag와 public GitHub Release 확인
+- [x] Public exact `0.5.1` official-app actual `SubagentStart`/`SubagentStop` live UI E2E에서 running 1→0과 target completed/stopped 확인
+- [ ] Official `task_summary` live prompt는 monitor가 `UserPromptSubmit` 뒤에 시작되어 미확인. Actual ambient fixture core/store/live automated tests 통과와 구분
+- [ ] Public `0.5.1` Directory delta portal/reviewer review 필요
 
 별도 npm provenance attestation은 선택 사항이며 `0.2.0`에는 없다. Registry signature와 source/artifact 일치 검증을 attestation 완료로 표현하지 않는다.
 
