@@ -1,7 +1,7 @@
 {
   "name": "codex-agent-view",
-  "version": "0.5.3",
-  "description": "A lightweight, read-only Codex companion plugin for monitoring live tasks and subagent activity locally in your browser, without additional ongoing model calls for monitoring.",
+  "version": "0.5.4",
+  "description": "A read-only Codex plugin for monitoring live tasks and subagents in your browser. Open each view with one lightweight @codex-agent-view invocation. Once open, live monitoring runs locally with no additional model calls.",
   "author": {
     "name": "Junho Yoon",
     "url": "https://github.com/JunhoYoon95"
@@ -12,8 +12,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Agent View",
-    "shortDescription": "Live tasks and agent activity.",
-    "longDescription": "Open a lightweight, read-only live view of active Codex work, privacy-minimized request summaries, participating agents, and progress locally in your default browser. Invoke @codex-agent-view directly; no separate skill picker or $ command is required, and no starter text is inserted. The initial invocation may use a normal Codex turn, and monitored Codex tasks and subagents continue to use their normal tokens. After the live view opens, monitoring itself adds no ongoing model or external API calls.",
+    "shortDescription": "Live Codex agent dashboard.",
+    "longDescription": "Open a lightweight, read-only dashboard of active Codex work, privacy-minimized request summaries, participating agents, and progress locally in your default browser. Invoke @codex-agent-view directly; no separate skill picker or $ command is required, and no starter text is inserted. Open each view with one lightweight @codex-agent-view invocation. Once open, live monitoring runs locally with no additional model calls. A new invocation may be needed after the browser tab is closed or its credential expires. Each invocation is a normal Codex turn, and monitored tasks and subagents continue to use their normal tokens. The live monitoring path does not resend observed task data to a model.",
     "developerName": "Junho Yoon",
     "category": "Productivity",
     "brandColor": "#123F35",

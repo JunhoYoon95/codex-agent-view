@@ -52,14 +52,14 @@ function npmPackEnvironment() {
   return env;
 }
 
-test("keeps the npm 0.5.3 executable, discovery metadata, and publish surface intact", async () => {
+test("keeps the npm 0.5.4 executable, discovery metadata, and publish surface intact", async () => {
   const packageMetadata = await readJson("package.json");
 
   assert.equal(packageMetadata.name, "codex-agent-view");
-  assert.equal(packageMetadata.version, "0.5.3");
+  assert.equal(packageMetadata.version, "0.5.4");
   assert.equal(
     packageMetadata.description,
-    "A lightweight, read-only Codex companion plugin for monitoring live tasks and subagent activity locally in your browser, without additional ongoing model calls for monitoring.",
+    "A read-only Codex plugin for monitoring live tasks and subagents in your browser. Open each view with one lightweight @codex-agent-view invocation. Once open, live monitoring runs locally with no additional model calls.",
   );
   for (const keyword of [
     "codex",
@@ -188,7 +188,7 @@ test("has no postinstall side effects or production dependencies", async () => {
 
 test("keeps legal links secure and branding assets local", async () => {
   const manifest = await readJson(".codex-plugin/plugin.json");
-  assert.equal(manifest.version, "0.5.3");
+  assert.equal(manifest.version, "0.5.4");
   assert.equal(
     Object.hasOwn(manifest.interface ?? {}, "defaultPrompt"),
     false,
@@ -196,17 +196,21 @@ test("keeps legal links secure and branding assets local", async () => {
   );
   assert.equal(
     manifest.description,
-    "A lightweight, read-only Codex companion plugin for monitoring live tasks and subagent activity locally in your browser, without additional ongoing model calls for monitoring.",
+    "A read-only Codex plugin for monitoring live tasks and subagents in your browser. Open each view with one lightweight @codex-agent-view invocation. Once open, live monitoring runs locally with no additional model calls.",
   );
-  assert.equal(manifest.interface.shortDescription, "Live tasks and agent activity.");
+  assert.equal(manifest.interface.shortDescription, "Live Codex agent dashboard.");
   assert.match(manifest.interface.longDescription, /privacy-minimized request summaries/);
   assert.match(manifest.interface.longDescription, /default browser/);
   assert.match(manifest.interface.longDescription, /@codex-agent-view/);
   assert.match(manifest.interface.longDescription, /no separate skill picker or \$ command/);
-  assert.match(manifest.interface.longDescription, /initial invocation may use a normal Codex turn/);
+  assert.match(manifest.interface.longDescription, /Open each view with one lightweight @codex-agent-view invocation\./);
+  assert.match(manifest.interface.longDescription, /Once open, live monitoring runs locally with no additional model calls\./);
+  assert.match(manifest.interface.longDescription, /new invocation may be needed after the browser tab is closed or its credential expires/);
+  assert.match(manifest.interface.longDescription, /Each invocation is a normal Codex turn/);
   assert.match(manifest.interface.longDescription, /tasks and subagents continue to use their normal tokens/);
-  assert.match(manifest.interface.longDescription, /monitoring itself adds no ongoing model or external API calls/);
+  assert.match(manifest.interface.longDescription, /does not resend observed task data to a model/);
   assert.doesNotMatch(manifest.interface.longDescription, /no ongoing token usage/);
+  assert.doesNotMatch(manifest.interface.longDescription, /zero[- ]token/i);
 
   const legalUrls = [
     manifest.interface?.websiteURL,

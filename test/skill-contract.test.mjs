@@ -47,10 +47,14 @@ test("promptless invocation routes through the one external-browser skill", asyn
   assert.match(manifest.interface.longDescription, /Invoke @codex-agent-view directly/);
   assert.doesNotMatch(manifest.interface.longDescription, /Quick start/i);
   assert.match(manifest.interface.longDescription, /no separate skill picker or \$ command is required/);
-  assert.match(manifest.interface.longDescription, /initial invocation may use a normal Codex turn/);
+  assert.match(manifest.interface.longDescription, /Open each view with one lightweight @codex-agent-view invocation\./);
+  assert.match(manifest.interface.longDescription, /Once open, live monitoring runs locally with no additional model calls\./);
+  assert.match(manifest.interface.longDescription, /new invocation may be needed after the browser tab is closed or its credential expires/);
+  assert.match(manifest.interface.longDescription, /Each invocation is a normal Codex turn/);
   assert.match(manifest.interface.longDescription, /tasks and subagents continue to use their normal tokens/);
-  assert.match(manifest.interface.longDescription, /monitoring itself adds no ongoing model or external API calls/);
+  assert.match(manifest.interface.longDescription, /does not resend observed task data to a model/);
   assert.doesNotMatch(manifest.interface.longDescription, /no ongoing token usage/);
+  assert.doesNotMatch(manifest.interface.longDescription, /zero[- ]token/i);
   assert.match(skill, /Run\n`codex-agent-view open` exactly once/);
   assert.match(skill, /Do not call an in-app Browser or open a Codex side panel/);
 });
