@@ -2,16 +2,18 @@
 
 > [Read in Korean](https://github.com/JunhoYoon95/codex-agent-view/blob/main/README.ko.md)
 
-Codex Agent View is an unofficial, read-only companion plugin for the official Codex app. It shows the work Codex is handling, the participating agents, their assigned work when it can be verified, and their latest observable activity. Hook data stays on this device in bounded process memory, and one `@codex-agent-view` invocation opens the live view in the operating system's default browser.
+Codex Agent View is a lightweight, unofficial, read-only companion plugin for monitoring live Codex tasks and subagent activity locally in your browser. It shows the work Codex is handling, the participating agents, their assigned work when it can be verified, and their latest observable activity. Hook data stays on this device in bounded process memory, and one `@codex-agent-view` invocation opens the live view in the operating system's default browser.
+
+Once the view is open, its live refreshes use local hook data and create no additional ongoing model or external API inference calls for monitoring. Invoking `@codex-agent-view` is still a normal Codex turn and can use tokens, and the Codex tasks and subagents being observed continue their normal token usage.
 
 It does not replace Codex, control tasks or agents, run a hosted service, send telemetry, or keep a persistent event history.
 
 ## Quick start
 
-Public npm `latest` is `codex-agent-view@0.5.2`. Install it from a regular terminal:
+Install the current release from a regular terminal:
 
 ```bash
-npm install --global codex-agent-view@0.5.2
+npm install --global codex-agent-view@0.5.3
 codex-agent-view install
 ```
 
@@ -92,7 +94,7 @@ codex-agent-view uninstall --purge
 
 ## Release and project documentation
 
-Version `0.5.2` is public on npm. Its signed 23-file registry artifact, source-pack identity, Node.js 18/20/22 CI, annotated tag, [GitHub Release v0.5.2](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.5.2), exact public reinstall, installed plugin/hook wiring, and actual Assigned work/Current activity display were verified. Full digests and acceptance evidence are recorded in [Distribution](docs/distribution.md).
+Release publication and verification evidence is recorded outside the immutable npm package README in [Distribution](docs/distribution.md), including registry digests, exact reinstall checks, CI, tags, and GitHub Releases.
 
 npm publication is separate from submission to the Universal Plugins Directory. Directory validator compatibility, portal/reviewer acceptance, search exposure, and promptless plugin-card Quick start behavior remain unverified and are not claimed here.
 

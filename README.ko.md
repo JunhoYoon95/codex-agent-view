@@ -2,16 +2,18 @@
 
 > [Read in English](https://github.com/JunhoYoon95/codex-agent-view/blob/main/README.md)
 
-Codex Agent View는 공식 Codex 앱을 위한 비공식 읽기 전용 companion plugin입니다. Codex가 처리하는 작업, 참여 중인 에이전트, 확인 가능한 할당 작업과 최근 관찰 활동을 보여줍니다. Hook 데이터는 이 기기의 제한된 process memory 안에만 유지되며, `@codex-agent-view` 한 번으로 운영체제 기본 브라우저에 실시간 화면을 엽니다.
+Codex Agent View는 Codex의 실시간 작업과 subagent 활동을 브라우저에서 로컬로 확인하는 가벼운 비공식 읽기 전용 companion plugin입니다. Codex가 처리하는 작업, 참여 중인 에이전트, 확인 가능한 할당 작업과 최근 관찰 활동을 보여줍니다. Hook 데이터는 이 기기의 제한된 process memory 안에만 유지되며, `@codex-agent-view` 한 번으로 운영체제 기본 브라우저에 실시간 화면을 엽니다.
+
+화면을 연 뒤의 실시간 갱신은 local hook data를 사용하며 모니터링을 위한 추가적인 지속 model 또는 외부 API inference call을 만들지 않습니다. 다만 `@codex-agent-view`를 실행하는 최초 요청은 일반 Codex turn이므로 token을 사용할 수 있고, 관찰 대상인 Codex task와 subagent도 작업 수행에 필요한 token을 평소처럼 사용합니다.
 
 Codex를 대체하거나 작업·에이전트를 제어하지 않으며, 외부 서버·telemetry·영구 작업 기록을 사용하지 않습니다.
 
 ## 설치
 
-Public npm `latest`는 `codex-agent-view@0.5.2`입니다. 일반 터미널에서 다음을 실행합니다.
+일반 터미널에서 현재 릴리스를 설치합니다.
 
 ```bash
-npm install --global codex-agent-view@0.5.2
+npm install --global codex-agent-view@0.5.3
 codex-agent-view install
 ```
 
@@ -92,7 +94,7 @@ codex-agent-view uninstall --purge
 
 ## 릴리스 및 프로젝트 문서
 
-Version `0.5.2`는 npm에 공개됐습니다. Signature가 있는 23-file registry artifact, source pack 일치, Node.js 18/20/22 CI, annotated tag, [GitHub Release v0.5.2](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.5.2), public exact reinstall, 설치된 plugin/hook wiring과 실제 Assigned work/Current activity 표시를 확인했습니다. 전체 digest와 acceptance 증거는 [배포 문서](docs/distribution.md)에 기록합니다.
+Registry digest, exact reinstall, CI, tag와 GitHub Release를 포함한 공개·검증 증거는 변경할 수 없는 npm package README 밖의 [배포 문서](docs/distribution.md)에 기록합니다.
 
 npm 공개와 Universal Plugins Directory 제출은 별도 절차입니다. Directory validator 호환성, portal/reviewer acceptance, 검색 노출과 promptless plugin-card Quick start 동작은 아직 확인하지 않았으며 이 문서에서 지원을 주장하지 않습니다.
 
