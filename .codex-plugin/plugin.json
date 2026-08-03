@@ -1,7 +1,7 @@
 {
   "name": "codex-agent-view",
-  "version": "0.5.2",
-  "description": "Follow Codex work and participating agent progress in a clear, read-only live view opened from the official Codex app.",
+  "version": "0.5.3",
+  "description": "A lightweight, read-only Codex companion plugin for monitoring live tasks and subagent activity locally in your browser, without additional ongoing model calls for monitoring.",
   "author": {
     "name": "Junho Yoon",
     "url": "https://github.com/JunhoYoon95"
@@ -12,8 +12,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Codex Agent View",
-    "shortDescription": "See work and agent progress.",
-    "longDescription": "Open a read-only live view of active Codex work, privacy-minimized request summaries, participating agents, and progress in your default browser. Invoke @codex-agent-view directly; no separate skill picker or $ command is required, and no starter text is inserted.",
+    "shortDescription": "Live tasks and agent activity.",
+    "longDescription": "Open a lightweight, read-only live view of active Codex work, privacy-minimized request summaries, participating agents, and progress locally in your default browser. Invoke @codex-agent-view directly; no separate skill picker or $ command is required, and no starter text is inserted. The initial invocation may use a normal Codex turn, and monitored Codex tasks and subagents continue to use their normal tokens. After the live view opens, monitoring itself adds no ongoing model or external API calls.",
     "developerName": "Junho Yoon",
     "category": "Productivity",
     "brandColor": "#123F35",

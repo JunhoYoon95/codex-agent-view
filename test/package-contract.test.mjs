@@ -52,13 +52,32 @@ function npmPackEnvironment() {
   return env;
 }
 
-test("keeps the npm 0.5.2 executable and publish surface intact", async () => {
+test("keeps the npm 0.5.3 executable, discovery metadata, and publish surface intact", async () => {
   const packageMetadata = await readJson("package.json");
 
   assert.equal(packageMetadata.name, "codex-agent-view");
-  assert.equal(packageMetadata.version, "0.5.2");
-  assert.match(packageMetadata.description, /participating agent progress/);
-  assert.match(packageMetadata.description, /official Codex app/);
+  assert.equal(packageMetadata.version, "0.5.3");
+  assert.equal(
+    packageMetadata.description,
+    "A lightweight, read-only Codex companion plugin for monitoring live tasks and subagent activity locally in your browser, without additional ongoing model calls for monitoring.",
+  );
+  for (const keyword of [
+    "codex",
+    "openai-codex",
+    "codex-plugin",
+    "ai-agents",
+    "multi-agent",
+    "subagents",
+    "agent-monitoring",
+    "developer-tools",
+    "observability",
+    "local-first",
+    "privacy-first",
+    "read-only",
+    "npm-package",
+  ]) {
+    assert.ok(packageMetadata.keywords.includes(keyword), `npm keywords must include ${keyword}`);
+  }
   assert.deepEqual(packageMetadata.bin, {
     "codex-agent-view": "bin/codex-agent-view.mjs",
   });
@@ -169,18 +188,25 @@ test("has no postinstall side effects or production dependencies", async () => {
 
 test("keeps legal links secure and branding assets local", async () => {
   const manifest = await readJson(".codex-plugin/plugin.json");
-  assert.equal(manifest.version, "0.5.2");
+  assert.equal(manifest.version, "0.5.3");
   assert.equal(
     Object.hasOwn(manifest.interface ?? {}, "defaultPrompt"),
     false,
     "plugin invocation must not append a starter sentence",
   );
-  assert.match(manifest.description, /participating agent progress/);
-  assert.match(manifest.interface.shortDescription, /work and agent progress/i);
+  assert.equal(
+    manifest.description,
+    "A lightweight, read-only Codex companion plugin for monitoring live tasks and subagent activity locally in your browser, without additional ongoing model calls for monitoring.",
+  );
+  assert.equal(manifest.interface.shortDescription, "Live tasks and agent activity.");
   assert.match(manifest.interface.longDescription, /privacy-minimized request summaries/);
   assert.match(manifest.interface.longDescription, /default browser/);
   assert.match(manifest.interface.longDescription, /@codex-agent-view/);
   assert.match(manifest.interface.longDescription, /no separate skill picker or \$ command/);
+  assert.match(manifest.interface.longDescription, /initial invocation may use a normal Codex turn/);
+  assert.match(manifest.interface.longDescription, /tasks and subagents continue to use their normal tokens/);
+  assert.match(manifest.interface.longDescription, /monitoring itself adds no ongoing model or external API calls/);
+  assert.doesNotMatch(manifest.interface.longDescription, /no ongoing token usage/);
 
   const legalUrls = [
     manifest.interface?.websiteURL,
