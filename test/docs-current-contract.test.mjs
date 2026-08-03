@@ -10,27 +10,38 @@ async function readProjectFile(path) {
   return readFile(resolve(projectRoot, path), "utf8");
 }
 
-test("documents explicit skill selection instead of claiming starter text dispatch", async () => {
-  const [english, korean, findings] = await Promise.all([
+test("documents one plugin invocation that opens the default browser without a user-facing skill picker", async () => {
+  const [english, korean, distribution, findings, submission, privacy, terms] = await Promise.all([
     readProjectFile("README.md"),
     readProjectFile("README.ko.md"),
+    readProjectFile("docs/distribution.md"),
     readProjectFile("docs/phase-0-findings.md"),
+    readProjectFile("docs/plugin-submission.md"),
+    readProjectFile("docs/privacy.md"),
+    readProjectFile("docs/terms.md"),
   ]);
 
-  assert.match(english, /Quick start is not a skill invocation/);
-  assert.match(english, /defines no plugin-card starter prompt/);
-  assert.match(korean, /지금 사용해보기는 skill 호출이 아니다/);
-  assert.match(findings, /interface\.defaultPrompt.*starter text/);
+  assert.match(english, /one `@codex-agent-view` invocation opens the monitor in your default web browser/);
+  assert.match(english, /There is no separate `\$show-agents` selection/);
+  assert.match(english, /If you close the browser tab, invoke `@codex-agent-view` again/);
+  assert.match(korean, /`@codex-agent-view` 한 번으로 운영체제 기본 브라우저에 monitor를 연다/);
+  assert.match(korean, /별도 `\$show-agents` 선택은 없다/);
+  assert.match(korean, /Browser tab을 닫았다면 `@codex-agent-view`를 다시 실행/);
 
-  const obsoleteClaims = [
-    "Its `$show-agents` starter explicitly invokes",
-    "Starter `$show-agents`가 bundled **Show Agents** skill을 명시 호출",
-  ];
-  for (const claim of obsoleteClaims) {
-    assert.equal(english.includes(claim), false);
-    assert.equal(korean.includes(claim), false);
-    assert.equal(findings.includes(claim), false);
+  for (const document of [distribution, findings, submission]) {
+    assert.match(document, /current source|Current source/);
+    assert.match(document, /internal (?:execution )?skill|내부 (?:execution )?skill|internal launch skill/);
+    assert.match(document, /default browser|기본 browser/);
+    assert.match(document, /user-facing skill picker|사용자용 skill picker|별도 `\$show-agents` picker/);
+    assert.match(document, /미배포|unreleased/);
   }
+
+  assert.match(privacy, /operating system's default browser/);
+  assert.match(privacy, /passes the private target directly/);
+  assert.match(privacy, /invoke `@codex-agent-view` again/);
+  assert.match(terms, /operating system's default browser/);
+  assert.match(terms, /another `@codex-agent-view` invocation/);
+  assert.match(distribution, /Public `0\.4\.8` section.*immutable historical release evidence/is);
 });
 
 test("documents the current live-view UX and evidence boundary", async () => {
@@ -75,7 +86,7 @@ test("documents the current live-view UX and evidence boundary", async () => {
   assert.match(privacy, /do not enable CORS and no authentication cookie is set/);
 });
 
-test("records public 0.4.8 acceptance while preserving historical 0.4.7 evidence", async () => {
+test("separates the unpublished 0.5.0 candidate from historical public 0.4.8 acceptance", async () => {
   const [packageText, manifestText, english, korean, distribution, findings, submission] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -88,14 +99,22 @@ test("records public 0.4.8 acceptance while preserving historical 0.4.7 evidence
   const packageMetadata = JSON.parse(packageText);
   const manifest = JSON.parse(manifestText);
 
-  assert.equal(packageMetadata.version, "0.4.8");
-  assert.equal(manifest.version, "0.4.8");
-  assert.match(english, /npm install --global codex-agent-view@0\.4\.8/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.4\.8/);
-  assert.match(english, /Public version `0\.4\.8`/);
-  assert.match(korean, /Public `0\.4\.8`/);
-  assert.doesNotMatch(english, /0\.4\.8.*release candidate/i);
-  assert.doesNotMatch(korean, /0\.4\.8.*release candidate/i);
+  assert.equal(packageMetadata.version, "0.5.0");
+  assert.equal(manifest.version, "0.5.0");
+  assert.match(english, /npm install --global codex-agent-view@0\.5\.0/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.5\.0/);
+  assert.match(english, /Historical public `0\.4\.8` evidence/);
+  assert.match(korean, /Historical public `0\.4\.8` evidence/);
+  assert.match(english, /unpublished `0\.5\.0` external-browser launch release candidate/i);
+  assert.match(korean, /미배포 `0\.5\.0` external-browser launch release candidate/i);
+  assert.match(english, /public npm `latest`.*historical.*0\.4\.8/i);
+  assert.match(korean, /public npm `latest`.*historical.*0\.4\.8/i);
+  assert.doesNotMatch(english, /public `0\.5\.0`/i);
+  assert.doesNotMatch(korean, /public `0\.5\.0`/i);
+  assert.match(english, /Publication, public-artifact verification.*still pending/i);
+  assert.match(korean, /Publish, public artifact 검증.*아직 남아/);
+  assert.doesNotMatch(english, /(?:public|current) `?0\.4\.8`? release candidate/i);
+  assert.doesNotMatch(korean, /(?:public|current) `?0\.4\.8`? release candidate/i);
   for (const document of [english, korean, distribution, findings, submission]) {
     assert.match(document, /60-second|60초/);
     assert.match(document, /bootstrap grant/);
@@ -133,7 +152,7 @@ test("records public 0.4.8 acceptance while preserving historical 0.4.7 evidence
     assert.match(document, /일반화하지 않는다/i);
     assert.match(document, /prerelease: false/);
     assert.match(document, /Universal Directory.*(?:미확인|주장하지 않는다|뜻하지 않는다)/is);
-    assert.doesNotMatch(document, /0\.4\.8.*release candidate/i);
+    assert.doesNotMatch(document, /(?:public|current) `?0\.4\.8`? release candidate/i);
     assert.match(document, /5fc4c73ba16fe1bef79c468f0a0be3d3850a7ce7/);
   }
 });
