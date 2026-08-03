@@ -200,6 +200,38 @@ test("scopes the no-additional-monitoring-calls claim without promising zero tok
   }
 });
 
+test("records verified public 0.5.3 release evidence without claiming pending app or Directory acceptance", async () => {
+  const documents = await Promise.all([
+    readProjectFile("docs/distribution.md"),
+    readProjectFile("docs/phase-0-findings.md"),
+    readProjectFile("docs/plugin-submission.md"),
+  ]);
+
+  for (const document of documents) {
+    assert.match(document, /2026-08-03T19:29:03\.590Z/);
+    assert.match(document, /94b60ff4662b829ca5853439e4da0cef4466927d/);
+    assert.match(document, /sha512-r59F\+z19gehSiKlhsRpcaPDiIwXFBtUXXjaUIVr1RiWotV4CBXGMI95Se8BmJ0g\/gBPUOsvewm4NvVIv3IK0DQ==/);
+    assert.match(document, /signature 1개/);
+    assert.match(document, /23 files/);
+    assert.match(document, /62\.9 kB/);
+    assert.match(document, /252\.8 kB/);
+    assert.match(document, /125abefe16b600d12b5f81dc93f96da89c6742be76522a98d45f996b53805cbd/);
+    assert.match(document, /4b79e1b0645405927e22752a52d6900a9d02a2a2/);
+    assert.match(document, /byte-identical/);
+    assert.match(document, /30845807979/);
+    assert.match(document, /30846142549/);
+    assert.match(document, /Node\.js 18\/20\/22/);
+    assert.match(document, /releases\/tag\/v0\.5\.3/);
+    assert.match(document, /diff-identical|diff identity/);
+    assert.match(document, /hook wiring 9종/);
+    assert.match(document, /monitor_not_running/);
+    assert.match(document, /unknown/);
+    assert.match(document, /actual event|Actual new event|actual live event/i);
+    assert.match(document, /pending/);
+    assert.match(document, /Directory/);
+  }
+});
+
 test("keeps README local links resolvable and the root guide free of Korean copy", async () => {
   const english = await readProjectFile("README.md");
   assert.doesNotMatch(english, /[가-힣]/);
