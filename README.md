@@ -8,12 +8,12 @@ Codex Agent View gives you a clear, read-only view of what Codex is working on a
 
 ## Quick start: install once, then stay inside the Codex app
 
-This README documents `codex-agent-view@0.4.7`. Use the exact-version command below for the one-time terminal installation.
+This README documents the `codex-agent-view@0.4.8` release candidate. Use the exact-version command below for the one-time terminal installation after that version is published.
 
 Universal Plugins Directory search installation is not available yet, so use a regular terminal for the **initial installation only**:
 
 ```bash
-npm install --global codex-agent-view@0.4.7
+npm install --global codex-agent-view@0.4.8
 codex-agent-view install
 ```
 
@@ -30,9 +30,9 @@ After installation:
 
 **Quick start is not a skill invocation.** Codex plugin `interface.defaultPrompt` values are starter text, and text that looks like `$show-agents` is not guaranteed to be interpreted as a skill selection. Codex Agent View therefore defines no plugin-card starter prompt. Select the plugin with `@codex-agent-view`, then explicitly select `$show-agents` using the Codex app's skill UI. Routine use still requires neither a terminal command, an external browser, nor a localhost URL.
 
-When the first trusted hook arrives, the plugin sender internally prepares the local backend and retries delivery of that same event. Users do not register task IDs or run `start`, `status`, or `doctor`. **Show Agents** reuses the healthy backend and attempts to open the live view in the Codex app without exposing a tokenized localhost URL or using an external browser. If the app does not provide the required Browser capability or permission, the skill reports that it could not open the view instead of exposing a private URL.
+When the first trusted hook arrives, the plugin sender internally prepares the local backend and retries delivery of that same event. Users do not register task IDs or run `start`, `status`, or `doctor`. On its normal path, **Show Agents** runs one internal `prepare-live-view` command and makes one Codex in-app Browser open request. Before sending the runtime bearer, the command verifies a fresh nonce/HMAC ownership proof from the exact owned monitor. It then obtains a one-time, 60-second bootstrap grant signed by that process's runtime token. Only that bounded grant enters the URL fragment: the installation-owned viewer credential and runtime/control token do not. Every request uses the exact `127.0.0.1:<port>` authority and origin-form target. No cookie, CORS access, external browser, or user-managed localhost URL is involved.
 
-The public Codex plugin API does not provide no-prompt app-start creation of a sidebar, panel, or Browser tab. Opening the live view therefore requires one explicit `$show-agents` skill selection inside the Codex app. Once the right-side live tab is open, it refreshes every two seconds and automatically reconnects after a temporary disconnect, monitor restart, or package upgrade when the backend returns on the same loopback origin. The task that invoked the live view is excluded using the app-provided `CODEX_THREAD_ID`, so the monitor does not keep promoting its own viewer task. The live observation window still resets when the monitor process restarts; only the read-only viewer credential survives.
+The public Codex plugin API does not provide no-prompt app-start creation of a sidebar, panel, or Browser tab. Opening the live view therefore requires one explicit `$show-agents` skill selection inside the Codex app. The bootstrap fixes one signed 30-minute credential-family expiry that access, recovery, and refresh can never extend. Fifteen-minute access credentials refresh automatically only inside that family, so the same tab remains connected until the family ends. Recovery is tab-scoped `sessionStorage`, not `localStorage`. A previously authenticated tab can therefore use **Reconnect** after losing page-level access, while a tab with no authentication history shows no nonfunctional button. When the family expires, the actual `$show-agents` skill must be invoked again. The invoking task's validated `CODEX_THREAD_ID` remains signed into the family. A bootstrap is one-use within its issuing process and becomes invalid immediately when that monitor restarts; a family already exchanged under the persistent viewer signing key can reconnect on the same origin until its original absolute expiry.
 
 The live UI defaults to English and offers **English**, **Korean**, and **Spanish** in its language selector. Activity remains visible rather than hidden behind refresh-sensitive disclosure toggles, and the two-second polling interval is unchanged. Each work item can show its first valid short request summary derived from `UserPromptSubmit`: the sender inspects at most 4,096 characters, redacts common credentials, email addresses, links, and absolute paths, collapses the result to one line, bounds it to 180 characters, and immediately discards the full request. Later follow-ups do not replace that first valid summary. Verified `SubagentStart` payloads still provide only `agent_id` and `agent_type`; they do not provide a dedicated assignment description. The monitor therefore shows the work-level request summary but does not invent an agent-specific assignment from prompts or tool input.
 
@@ -40,7 +40,7 @@ In short: install once in a terminal; perform snapshot queries, status checks, l
 
 ## Status
 
-Version `0.4.7` completes the lifecycle-correctness patch. In addition to terminal `SessionEnd`, late-event protection, and honest **End not confirmed** state, normal or late `SubagentStop` and `PostToolUse` events now refine the matching earlier start entry in recent activity to **Stopped** or **Completed**. A finished agent or tool therefore no longer leaves its prior recent-activity row falsely **Running**. It retains the app-native snapshot skill, privacy-minimized hooks, bounded in-memory reducer, local authenticated live backend, and explicit install/remove plus maintainer-diagnostic CLI commands.
+Version `0.4.8` is a release candidate focused on faster, recoverable, least-privilege live-view opening. Its normal `$show-agents` path is reduced to one internal preparation command followed by one in-app Browser open request. Ownership is proven before the runtime bearer is sent; the URL carries only a one-use, 60-second process-signed bootstrap grant. A fixed 30-minute signed family supports automatic 15-minute access refresh and tab-scoped recovery without extending the family deadline. Monitor restart invalidates only an unused bootstrap; an exchanged family can reconnect to the new in-memory observation window until its original expiry. Family expiry requires the actual skill again. Source `npm run check` passes all 153 tests plus plugin validation and package dry-run. In the official Codex in-app Browser, grant authentication, fragment removal, same-tab bare-root recovery, and absence of a recovery button in a new tab were observed. Updated official-app hook delivery remains unverified until the current app process is restarted. npm publication, GitHub Release, CI, and public exact installation are not yet claimed.
 
 Plugin installation and lifecycle payloads were verified with Homebrew Codex CLI and the Codex executable embedded in the official app. However, a real-use attempt that installed and enabled `0.2.0` in an already-running official app process delivered zero events while two subagents ran. The monitor, registration, enablement, and installed bundle were healthy, while app logs showed no sender invocation. Evidence indicates that the same process retained a pre-install `hooks/list` snapshot; persisted exact-hook trust is not exposed through CLI JSON, so the precise skip boundary remains unconfirmed.
 
@@ -80,7 +80,7 @@ Codex Agent View is a live companion, not a historical audit or session-replay p
 - Hooks remain the source of truth for detailed lifecycle state in the trusted-hook auto-prepared local live backend. Its operational state exists only in bounded process memory; restart begins a new observation window. The separate private viewer credential is authentication metadata, not stored task history.
 - `Stop` marks the observed root turn and the session/work-item summary `completed` immediately. If a child agent or tool was still active, its own row is separately marked `completion_not_observed` because no child stop/tool completion signal was observed. `SessionEnd` has terminal priority; any child agent, tool, or permission still open at that point is shown as `interrupted`, not silently completed.
 - Official `SessionEnd` delivery may be delayed by up to 30 minutes. If no ending hook is observed while activity still appears open, five minutes without a new event changes it to `completion_not_observed` (**End not confirmed**), never inferred `completed`. This keeps a delayed or missing terminal event from turning stale activity into a false success.
-- The viewer credential is read-only and remains stable across monitor restarts and package upgrades during one installation. The runtime/control token remains separate and process-scoped.
+- The installation-owned viewer credential remains private to local runtime files for ownership/legacy boundaries. The runtime/control token remains separate and process-scoped. The normal live-view URL contains neither credential; it contains only a one-use, process-signed 60-second bootstrap grant.
 - After installation, hook trust, and an app restart, the first trusted hook automatically prepares the backend. This prepares a local process; it does not create app UI without a user action.
 - There is no external telemetry, remote server, account, required SQLite/persistent event store, or remote control.
 - Full prompt text, transcript paths, full tool input/output, and assistant messages are not retained or displayed by the monitor. Only the bounded, redacted one-line work summary described above may be retained in process memory.
@@ -109,7 +109,7 @@ Use this flow in a **new task** after completing installation and enablement in 
 4. Choose **English**, **Korean**, or **Spanish** from the language selector. English is the default, and changing language does not stop the two-second refresh.
 5. If the app's Browser capability or permission is unavailable, the skill reports the failure without exposing a private localhost URL or opening an external browser.
 
-If you close the right-side live view, select `@codex-agent-view` and explicitly invoke `$show-agents` again in a Codex app task. Do not rely on a pasted `@codex-agent-view $show-agents` string being reparsed as a skill selection. An open tab refreshes and reconnects automatically after temporary disconnects, monitor restarts, and upgrades. If a request fails, the live view provides a **Retry connection** button. If authentication is rejected or missing, it also provides an in-app recovery explanation and a button to check the current tab again; because the page cannot mint or recover a private credential by itself, use the actual `$show-agents` skill in the Codex app to open a newly authenticated view when that check cannot succeed. No terminal command, private URL copy, or external browser is part of recovery. A restarted monitor presents a new in-memory observation window rather than replaying earlier activity.
+If you close the right-side live view, select `@codex-agent-view` and explicitly invoke `$show-agents` again in a Codex app task. Do not rely on a pasted `@codex-agent-view $show-agents` string being reparsed as a skill selection. During its fixed 30-minute family, the same tab keeps recovery only in `sessionStorage`, refreshes 15-minute access automatically, and offers **Reconnect** when page-level access is missing or rejected. A different or never-authenticated tab has no recovery credential. Family expiry requires the actual `$show-agents` skill again. No terminal command, private URL copy, cookie, CORS access, or external browser is part of recovery. A restarted monitor presents a new in-memory observation window; an unused bootstrap issued by the old process is immediately invalid.
 
 ## Requirements and tested versions
 
@@ -166,16 +166,16 @@ After plugin enablement/trust and an app restart, the first trusted hook interna
 
 ## Install from npm
 
-The commands below install `0.4.7` by exact version.
+The commands below install `0.4.8` by exact version after publication.
 
 ```bash
-npm install --global codex-agent-view@0.4.7
+npm install --global codex-agent-view@0.4.8
 codex-agent-view install
 ```
 
 After these two commands, fully reopen the Codex app, verify installation, enablement, and hook trust, then create a new task. The first trusted hook prepares the backend and delivers its event internally, so users do not run monitor CLI commands. Use the plugin card's **Quick start** action to select `@codex-agent-view`, then explicitly select `$show-agents` in the app. Repeat that explicit skill selection after closing the panel.
 
-The `0.4.7` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. When upgrading an older valid installation, `install` preserves the installation-owned read-only viewer credential; the legacy `0.4.2` migration behavior remains as documented for `0.4.3`. Neither token nor the private URL is printed.
+The `0.4.8` installation path is the global package install followed by the explicit `codex-agent-view install` command above. Routine use remains inside the Codex app afterward. During an upgrade, explicit `install` first stops a healthy owned `0.4.7` monitor through the existing authenticated maintenance lifecycle, then replaces registration and bundle files. It preserves the installation-owned viewer credential and the historical `0.4.2` migration boundary. The normal Show Agents workflow prints neither persistent token and does not put either one in the Browser target.
 
 Version-specific npm, install, migration, CI, tag, and GitHub Release evidence is preserved in [Distribution](docs/distribution.md). That evidence is updated only after each item is actually verified.
 

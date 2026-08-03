@@ -1,6 +1,6 @@
 # Privacy
 
-Last updated: 2026-08-02
+Last updated: 2026-08-03
 
 Codex Agent View is an unofficial, read-only companion plugin for Codex. Its primary app-native snapshot uses the official Codex app's built-in thread tools; its optional hook monitor is local-only and communicates over IPv4 loopback (`127.0.0.1`). It has no external telemetry, hosted service, cloud account, analytics SDK, remote database, or SQLite event store.
 
@@ -43,14 +43,22 @@ SQLite or persistent history is not a required next step. It would be considered
 The runtime directory defaults to `~/.codex-agent-view` and can be overridden with `CODEX_AGENT_VIEW_RUNTIME_DIR`. It can contain:
 
 - a copied local plugin marketplace used by `codex-agent-view install`; and
-- `runtime.json`, containing the loopback host and port, process ID, start time, schema version, the process-scoped runtime/control token, and the installation-owned viewer token needed by the current skill workflow; and
-- `viewer-auth.json`, containing only the schema version and installation-owned read-only viewer token used for reconnect continuity.
+- `runtime.json`, containing the loopback host and port, process ID, start time, schema version, the process-scoped runtime/control token, and the installation-owned viewer token used for local ownership proof and legacy viewer compatibility; and
+- `viewer-auth.json`, containing only the schema version and installation-owned read-only viewer token used for ownership/legacy compatibility.
 
 The runtime directory is created with user-only permissions (`0700`), and both credential-bearing JSON files with `0600`. On a graceful monitor shutdown, the matching runtime file is removed; the viewer credential remains for the installation's reconnect continuity. A crash can leave a stale runtime file; `codex-agent-view doctor` reports this as a monitor problem.
 
-The Codex in-app Browser receives only the read-only viewer token in the URL fragment, removes the fragment from the visible URL, and keeps that token in browser `sessionStorage` for that browser session. It does not use `localStorage`. Treat the local URL, runtime files, and tokens as sensitive. The viewer token can read `/api/state` but cannot ingest hook events or request shutdown; the separate process-scoped runtime/control token can access those privileged local endpoints. The CLI does not open an operating-system browser by default; `--open` is an explicit external-browser action.
+Before `prepare-live-view` sends the process-scoped runtime/control bearer, it challenges the endpoint with a fresh nonce and verifies the HMAC ownership proof expected from the installed plugin credential. The grant request is then sent only to the exact `127.0.0.1:<bound-port>` authority using an origin-form request target. Every later Browser request uses that same exact authority/origin boundary.
 
-An already-open in-app live tab polls and reconnects after temporary disconnects while the same installation-owned viewer credential remains valid. A monitor restart begins a new observation window. Transient request failures expose a local retry button. Authentication failures expose an in-app recovery explanation and a button that checks the current tab's stored credential again; the page cannot mint, discover, or replace a missing/rejected credential. If that check cannot authenticate, the user must explicitly invoke the actual `$show-agents` skill in the Codex app to open a newly authenticated view. The automatic hook path emits no URL, and the skill never sends the private tokenized URL to the conversation. Recovery does not require a terminal command, private URL copy, or external browser. The public plugin API also cannot create a sidebar, panel, or Browser tab without an explicit in-app user action.
+The runtime token signs a one-time bootstrap grant with a 60-second bootstrap expiry and a fixed signed `family_exp` 30 minutes after issuance. The Browser URL fragment contains only that grant, never the installation-owned viewer credential or runtime/control token. The page removes the fragment immediately and exchanges it on the same exact origin. A bootstrap can be consumed only once in its issuing process; monitor restart rotates the signing token and invalidates every unused bootstrap from the old process immediately.
+
+The exchange creates a read-only credential family bound to the validated invoking-task exclusion. Access credentials last up to 15 minutes and refresh automatically only inside that family. Recovery and refresh copy the original signed `family_exp`; they never slide or extend it. This keeps a healthy view connected through access rotation until the fixed family deadline. After that deadline, all family credentials fail and the user must invoke the actual `$show-agents` skill again.
+
+Access and recovery are tab-scoped. Recovery is stored in browser `sessionStorage`, never `localStorage`, so another tab has no inherited recovery authority. A previously authenticated tab can present a real **Reconnect** action during its family window. A different or never-authenticated tab shows no recovery button because it has no credential to exchange. Rejected, expired, or family-expired recovery data is removed rather than retried indefinitely. Access, recovery, and refresh remain read-only and cannot ingest hook events or request shutdown.
+
+The exchange endpoints require an exact loopback Host, same-origin Origin, JSON content type, and same-origin Fetch Metadata when that header is present. Responses do not enable CORS and no authentication cookie is set. Cookie scoping is intentionally avoided because cookies are not port-isolated. Treat local runtime files and all credentials as sensitive even though the live URL no longer contains a persistent credential. The automatic hook path emits no URL, and the skill does not expose its private Browser target to the user or open an operating-system browser. The public plugin API also cannot create a sidebar, panel, or Browser tab without an explicit in-app user action.
+
+A monitor restart begins a new in-memory observation window and invalidates every unconsumed bootstrap signed by the previous process. A credential family that was already exchanged is signed under the persistent viewer signing key and remains verifiable on the same fixed origin only until its original `family_exp`; restart does not extend it. The existing tab can reconnect to the new empty observation window, but no task/event history is restored. The short-lived credential family does not change the product's local, read-only, bounded-memory state boundary.
 
 ## Optional diagnostic capture
 
@@ -71,7 +79,7 @@ Setting `CODEX_AGENT_VIEW_CAPTURE_FULL=1` for that diagnostic script disables re
 - `codex-agent-view uninstall` uses the bearer token from the validated runtime file to authenticate the loopback endpoint, verifies the endpoint is a healthy owned Codex Agent View monitor, and requests its internal shutdown. This safely stops both auto-started detached and maintainer foreground monitors without a separate manual stop. Only after shutdown is confirmed does it remove the Codex plugin registration, local marketplace registration, and copied marketplace bundle. It preserves remaining runtime-directory data by default.
 - `codex-agent-view uninstall --purge` performs the same authenticated shutdown, then additionally removes only an owned stale runtime file and the runtime directory when it is empty. It preserves an unrecognized runtime file, a non-empty directory, and unrelated local data. If the authenticated endpoint is another loopback service or an owned monitor cannot be stopped safely, removal aborts and plugin/runtime files are preserved.
 - Diagnostic captures stored through `PLUGIN_DATA`, `CODEX_AGENT_VIEW_CAPTURE_DIR`, or a project working directory may be outside the runtime directory. Inspect and remove those exact files separately if they are no longer needed.
-- Closing the relevant browser session clears its `sessionStorage` token under normal browser behavior.
+- Closing the relevant tab/session clears its access and recovery `sessionStorage` under normal browser behavior. No live-view authentication credential is stored in `localStorage`.
 
 Do not delete a broad Codex or home directory as a cleanup shortcut. If a capture or token may have been exposed, follow [SECURITY.md](../SECURITY.md) and do not post it in a public issue.
 
