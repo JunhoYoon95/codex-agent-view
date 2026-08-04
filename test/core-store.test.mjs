@@ -325,6 +325,68 @@ test("does not guess assignment order for concurrent completed spawns", () => {
   }
 });
 
+test("attaches an early singleton but fails closed for the remaining concurrent pair", () => {
+  const store = createTestStore();
+  store.ingest(
+    spawnToolPayload("PreToolUse", {
+      tool_use_id: "spawn-1",
+      tool_input: { task_name: "worker_1", message: "첫 번째 작업" },
+    }),
+    { receivedAtMs: 100 },
+  );
+  store.ingest(
+    spawnToolPayload("PostToolUse", { tool_use_id: "spawn-1" }),
+    { receivedAtMs: 101 },
+  );
+  store.ingest(
+    subagentPayload("SubagentStart", {
+      agent_id: "agent-1",
+      turn_id: "agent-turn-1",
+    }),
+    { receivedAtMs: 102 },
+  );
+
+  for (const [index, summary] of [
+    [2, "두 번째 작업"],
+    [3, "세 번째 작업"],
+  ]) {
+    const overrides = {
+      tool_use_id: `spawn-${index}`,
+      tool_input: { task_name: `worker_${index}`, message: summary },
+    };
+    store.ingest(spawnToolPayload("PreToolUse", overrides), {
+      receivedAtMs: 100 + index * 2,
+    });
+    store.ingest(spawnToolPayload("PostToolUse", overrides), {
+      receivedAtMs: 101 + index * 2,
+    });
+  }
+  for (const index of [2, 3]) {
+    store.ingest(
+      subagentPayload("SubagentStart", {
+        agent_id: `agent-${index}`,
+        turn_id: `agent-turn-${index}`,
+      }),
+      { receivedAtMs: 110 + index },
+    );
+  }
+
+  const agents = new Map(
+    store
+      .getSnapshot()
+      .sessions[0].agents.map((agent) => [agent.agent_id, agent]),
+  );
+  assert.equal(agents.get("agent-1").assignment_summary, "첫 번째 작업");
+  assert.equal(
+    agents.get("agent-1").assignment_match,
+    "best_effort_singleton",
+  );
+  for (const agentId of ["agent-2", "agent-3"]) {
+    assert(!("assignment_summary" in agents.get(agentId)));
+    assert(!("assignment_match" in agents.get(agentId)));
+  }
+});
+
 test("counts a spawn with no safe summary when deciding concurrency ambiguity", () => {
   const store = createTestStore();
   const valid = {

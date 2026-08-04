@@ -406,7 +406,13 @@ test("provides landmarks, form labels, live status, and keyboard navigation", ()
   assert.match(html, /<section\s+class="workspace"\s+aria-labelledby="sessions-heading">/);
   assert.match(html, /<form[\s\S]*?class="toolbar"[\s\S]*?role="search"[\s\S]*?data-i18n-aria-label="toolbarAria"[\s\S]*?hidden/);
   assert.match(html, /<label for="session-search" data-i18n="searchLabel">/);
-  assert.match(html, /<label for="status-filter" data-i18n="statusFilterLabel">/);
+  assert.match(
+    html,
+    /<label for="status-filter" data-i18n="statusFilterLabel">Work status filter \(optional\)<\/label>/,
+  );
+  assert.match(app, /statusFilterLabel: "Work status filter \(optional\)"/);
+  assert.match(app, /statusFilterLabel: "작업 상태 필터 \(선택\)"/);
+  assert.match(app, /statusFilterLabel: "Filtro por estado del trabajo \(opcional\)"/);
   assert.match(html, /id="connection-status"[\s\S]*?role="status"[\s\S]*?aria-live="polite"/);
   assert.match(styles, /:focus-visible/);
 });
@@ -994,13 +1000,54 @@ test("renders unconfirmed and interrupted lifecycle states honestly in every loc
   );
 
   const sessionMatchesStatus = loadStatusFilterHelper();
-  const activityInterrupted = {
+  const completedSessionWithInterruptedHistory = {
     status: "completed",
     agents: [{ status: "completed" }],
     recentActivities: [{ status: "interrupted" }],
   };
-  assert.equal(sessionMatchesStatus(activityInterrupted, "interrupted"), true);
-  assert.equal(sessionMatchesStatus(activityInterrupted, "running"), false);
+  assert.equal(
+    sessionMatchesStatus(completedSessionWithInterruptedHistory, "interrupted"),
+    false,
+  );
+  assert.equal(sessionMatchesStatus(completedSessionWithInterruptedHistory, "completed"), true);
+});
+
+test("status filter uses the work item's current status, not agent or activity history", () => {
+  const sessionMatchesStatus = loadStatusFilterHelper();
+  const sessions = [
+    {
+      status: "running",
+      agents: [{ status: "completed" }],
+      recentActivities: [{ status: "completed" }],
+    },
+    {
+      status: "completed",
+      agents: [{ status: "running" }],
+      recentActivities: [{ status: "running" }],
+    },
+    {
+      status: "waiting",
+      agents: [{ status: "completed" }],
+      recentActivities: [{ status: "completed" }],
+    },
+  ];
+
+  assert.deepEqual(
+    sessions.filter((session) => sessionMatchesStatus(session, "running")),
+    [sessions[0]],
+  );
+  assert.deepEqual(
+    sessions.filter((session) => sessionMatchesStatus(session, "completed")),
+    [sessions[1]],
+  );
+  assert.deepEqual(
+    sessions.filter((session) => sessionMatchesStatus(session, "waiting")),
+    [sessions[2]],
+  );
+  assert.deepEqual(
+    sessions.filter((session) => sessionMatchesStatus(session, "all")),
+    sessions,
+  );
 });
 
 test("keeps agent ordinals stable when last-seen ordering changes", () => {

@@ -58,7 +58,7 @@ const MESSAGES = Object.freeze({
     toolbarAria: "Filter automatically observed work and participating agents",
     searchLabel: "Filter list (optional)",
     searchPlaceholder: "Find work or an agent",
-    statusFilterLabel: "Status filter (optional)",
+    statusFilterLabel: "Work status filter (optional)",
     statusAll: "All statuses",
     statusRunning: "Running",
     statusWaiting: "Waiting",
@@ -213,7 +213,7 @@ const MESSAGES = Object.freeze({
     toolbarAria: "자동 수신된 작업과 참여 에이전트 목록 필터",
     searchLabel: "목록 필터 (선택)",
     searchPlaceholder: "작업 또는 에이전트 찾기",
-    statusFilterLabel: "상태 필터 (선택)",
+    statusFilterLabel: "작업 상태 필터 (선택)",
     statusAll: "모든 상태",
     statusRunning: "실행 중",
     statusWaiting: "대기",
@@ -368,7 +368,7 @@ const MESSAGES = Object.freeze({
     toolbarAria: "Filtrar trabajos y agentes participantes observados automáticamente",
     searchLabel: "Filtrar lista (opcional)",
     searchPlaceholder: "Buscar un trabajo o agente",
-    statusFilterLabel: "Filtrar por estado (opcional)",
+    statusFilterLabel: "Filtro por estado del trabajo (opcional)",
     statusAll: "Todos los estados",
     statusRunning: "En ejecución",
     statusWaiting: "En espera",
@@ -1562,15 +1562,10 @@ function sessionMatchesQuery(session, query) {
 }
 
 function sessionMatchesStatus(session, status) {
-  const matchesStatus = (candidate) => (
-    candidate === status ||
-    (status === "completion_not_observed" && candidate === "stale")
-  );
   return (
     status === "all" ||
-    matchesStatus(session.status) ||
-    session.agents.some((agent) => matchesStatus(agent.status)) ||
-    session.recentActivities.some((activity) => matchesStatus(activity.status))
+    session.status === status ||
+    (status === "completion_not_observed" && session.status === "stale")
   );
 }
 
