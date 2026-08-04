@@ -112,7 +112,7 @@ test("documents hook trust, local-only state, recovery, and safe removal", async
   assert.match(privacy, /Recovery is stored in browser `sessionStorage`, never `localStorage`/);
 });
 
-test("keeps current source 0.5.5 language separate from public 0.5.4 evidence and Directory acceptance", async () => {
+test("keeps public 0.5.5 evidence separate from official-app and Directory acceptance", async () => {
   const [english, korean, agents, roadmap, distribution, findings, submission, privacy, terms] = await Promise.all([
     readProjectFile("README.md"),
     readProjectFile("README.ko.md"),
@@ -132,6 +132,14 @@ test("keeps current source 0.5.5 language separate from public 0.5.4 evidence an
   for (const document of [english, korean]) {
     assert.doesNotMatch(document, /0\.5\.5[^\n]*(?:pending|release target|candidate|unpublished|대기|목표|후보|미배포)/i);
   }
+
+  assert.doesNotMatch(roadmap, /^## Historical current public\b/m);
+
+  assert.match(privacy, /Verified public `0\.5\.5` artifact, install, CI, tag and Release evidence/);
+  assert.match(privacy, /official Codex app restart\/new-task status-filter\/assignment E2E remains pending/);
+  assert.doesNotMatch(privacy, /0\.5\.5 publication evidence remains pending/i);
+  assert.match(distribution, /현재 사용자 설치 명령은 root README의 public `0\.5\.5` Quick start/);
+  assert.doesNotMatch(distribution, /현재 사용자 설치 명령은 root README의 `0\.5\.2`/);
 
   assert.match(distribution, /Historical public `0\.5\.1`/);
   assert.match(findings, /Historical public evidence|Historical `0\.2\.1`/);
@@ -274,6 +282,45 @@ test("records verified public 0.5.4 release evidence while keeping app E2E and D
     assert.match(document, /restart[-/]new-task|restart\/new-task/);
     assert.match(document, /pending/);
     assert.match(document, /Directory/);
+  }
+});
+
+test("records verified public 0.5.5 evidence without claiming official-app or Directory acceptance", async () => {
+  const documents = await Promise.all([
+    readProjectFile("docs/distribution.md"),
+    readProjectFile("docs/phase-0-findings.md"),
+    readProjectFile("docs/plugin-submission.md"),
+  ]);
+
+  for (const document of documents) {
+    assert.match(document, /2026-08-04T18:42:31\.744Z/);
+    assert.match(document, /cc04e6a10380a0b5b0f9b1df5af7b6ce8d85139a/);
+    assert.match(document, /sha512-J10ch73w6bi6Q\/R4A3nkjYVaV9\/HTnYxuu1Znmnin\+xi432IJVgWlKyEPmPfdBlW\+duoGyLzpV\+mmfHN4DZydA==/);
+    assert.match(document, /signature 1개/);
+    assert.match(document, /23 files/);
+    assert.match(document, /63\.2 kB/);
+    assert.match(document, /253525 bytes/);
+    assert.match(document, /242b007c8572474712d7694553e5319e193804ebc268c3d15008510258cc03d5/);
+    assert.match(document, /byte-identical/);
+    assert.match(document, /0037a5b304dc76a20050d2cf5dfce3276dccd004/);
+    assert.match(document, /30937777321/);
+    assert.match(document, /30940008363/);
+    assert.match(document, /Node\.js 18\/20\/22/);
+    assert.match(document, /releases\/tag\/v0\.5\.5/);
+    assert.match(document, /2026-08-04T18:44:32Z/);
+    assert.match(document, /installed\/enabled/);
+    assert.match(document, /hook(?: bundle|s)? 9종|valid hooks 9종/);
+    assert.match(document, /registry\/global diff(?:는)? 0/);
+    assert.match(document, /install entries 13개/);
+    assert.match(document, /marketplace(?: bundle)?(?:도)? diff 0/);
+    assert.match(document, /stopped/);
+    assert.match(document, /unknown/);
+    assert.match(document, /exact-tarball lifecycle/);
+    assert.match(document, /isolated browser (?:status-)?filter E2E/);
+    assert.match(document, /`hooks\/`, `scripts\/`, `src\/` diff(?:가|는)? 0/);
+    assert.match(document, /(?:official|공식) Codex 앱.*restart\/new-task.*status-filter\/assignment E2E.*pending/);
+    assert.match(document, /Directory/);
+    assert.match(document, /Quick start/);
   }
 });
 

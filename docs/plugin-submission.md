@@ -2,7 +2,7 @@
 
 조사일: 2026-08-01
 
-이 문서는 Codex Agent View의 Universal Plugins Directory 제출 경계와 준비 상태를 정리한다. Public npm `latest`/version은 `0.5.4`이고 signed artifact, source-pack identity, exact reinstall, main/tag CI와 annotated tag/GitHub Release를 확인했다. Current source/package `0.5.5`는 상태 필터 정확성 patch release candidate이며 publication evidence는 아직 pending이다. `0.2.0`부터 `0.5.3`까지의 public release evidence는 historical fact로 보존한다. npm 공개는 Directory 제출·승인·검색 노출과 별도이며 Actual Directory acceptance는 주장하지 않는다.
+이 문서는 Codex Agent View의 Universal Plugins Directory 제출 경계와 준비 상태를 정리한다. Public npm `latest`/version은 `0.5.5`이고 signed artifact, source-pack identity, exact reinstall, main/tag CI와 annotated tag/GitHub Release를 확인했다. `0.2.0`부터 `0.5.4`까지의 public release evidence는 historical fact로 보존한다. npm 공개는 Directory 제출·승인·검색 노출과 별도이며 Actual Directory acceptance는 주장하지 않는다.
 
 ## 핵심 결론
 
@@ -19,7 +19,17 @@ Bounded in-memory local architecture와 package surface를 구현했다. Histori
 
 Historical public `0.4.3`에는 plugin-level `$show-agents` starter text가 있었지만 실제 bundled skill dispatch를 보장하지 않았다. Public `0.4.5`와 `0.4.8` manifest에는 starter/default prompt가 없었고 사용자가 `$show-agents`를 따로 선택했다. Public `0.5.0`과 `0.5.1`의 `defaultPrompt`는 plugin card에 starter text를 붙이는 UI metadata였으며 skill 자체나 dispatch contract가 아니었다. Version `0.5.2`부터 current source `0.5.5`까지 starter text를 제공하거나 요구하지 않는다. 사용자는 task에서 `@codex-agent-view` 자체를 선택·전송하며 internal single skill은 `codex-agent-view open`을 한 번 실행해 기본 browser에 authenticated local view를 연다. Plugin 카드가 promptless Quick start control을 제공하는지는 앱 UI에 달려 있어 실제 확인 전에는 주장하지 않는다. Internal skill은 private URL을 대화에 출력하지 않는다. CLI는 runtime bearer 전에 nonce/HMAC ownership proof를 검증하고 exact `127.0.0.1:<port>` authority의 origin-form request만 사용한다. Runtime token이 서명한 1회용 60초 bootstrap grant만 browser target에 넣고 persistent viewer/runtime token은 URL에 넣지 않는다. npm/terminal은 최초 설치, 명시적 제거와 maintainer 진단 경계다. 별도로 실행한 App Server는 앱 내장 tools와 다른 process이며 live source로 취급하지 않는다.
 
-Public `0.5.4`의 README는 `Open each view with one lightweight \`@codex-agent-view\` invocation. Once open, live monitoring runs locally with no additional model calls.`라고 설명하며, 관찰 대상 task/subagent의 일반적인 model·token 사용은 계속됨을 명시한다. Package/plugin detailed description은 `A read-only Codex plugin for monitoring live tasks and subagents in your browser. Open each view with one lightweight @codex-agent-view invocation. Once open, live monitoring runs locally with no additional model calls.`이다. GitHub remote는 `PUBLIC`, short Description `A lightweight, read-only dashboard plugin for monitoring Codex tasks and subagents in real time.`, npm Website와 Topics 13개를 재조회해 확인했다.
+Public `0.5.5`의 README는 `Open each view with one lightweight \`@codex-agent-view\` invocation. Once open, live monitoring runs locally with no additional model calls.`라고 설명하며, 관찰 대상 task/subagent의 일반적인 model·token 사용은 계속됨을 명시한다. Package/plugin detailed description은 `A read-only Codex plugin for monitoring live tasks and subagents in your browser. Open each view with one lightweight @codex-agent-view invocation. Once open, live monitoring runs locally with no additional model calls.`이다. GitHub remote는 `PUBLIC`, short Description `A lightweight, read-only dashboard plugin for monitoring Codex tasks and subagents in real time.`, npm Website와 Topics 13개를 재조회해 확인했다.
+
+## Public `0.5.5` npm release evidence
+
+npm `latest`/version `0.5.5`, publish time `2026-08-04T18:42:31.744Z`, shasum `cc04e6a10380a0b5b0f9b1df5af7b6ce8d85139a`, integrity `sha512-J10ch73w6bi6Q/R4A3nkjYVaV9/HTnYxuu1Znmnin+xi432IJVgWlKyEPmPfdBlW+duoGyLzpV+mmfHN4DZydA==`와 signature 1개를 확인했다. Artifact는 23 files, packed `63.2 kB`, unpacked `253525 bytes`, SHA-256 `242b007c8572474712d7694553e5319e193804ebc268c3d15008510258cc03d5`이며 local release와 clean-cache registry tarball은 byte-identical하다.
+
+Release source `0037a5b304dc76a20050d2cf5dfce3276dccd004`의 main CI `30937777321`과 tag CI `30940008363`은 Node.js 18/20/22에서 성공했다. Annotated `v0.5.5`와 [public non-draft/non-prerelease GitHub Release](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.5.5)를 확인했으며 Release publish time은 `2026-08-04T18:44:32Z`다. This-device global package와 CLI `0.5.5`, plugin installed/enabled, valid hook bundle 9종, registry/global diff 0, registry install entries 13개와 marketplace diff 0을 확인했다. Monitor는 stopped이고 hook trust는 CLI-unobservable `unknown`이다. Prepublish exact-tarball lifecycle과 isolated browser filter E2E는 통과했지만 공식 Codex 앱 restart/new-task public exact status-filter/assignment E2E는 pending이다.
+
+`v0.5.4..v0.5.5`의 `hooks/`, `scripts/`, `src/` diff는 0으로 privacy-sensitive collection, transport와 state 경계가 바뀌지 않았다. Exact artifact/install과 isolated browser filter E2E는 official Codex app hook/plugin E2E를 대체하지 않는다.
+
+이 evidence는 Universal Directory submission/review/search exposure 또는 promptless plugin-card Quick start acceptance를 뜻하지 않는다.
 
 ## Public `0.5.4` npm release evidence
 
@@ -318,10 +328,11 @@ Test fixture는 actual packaged skill과 mock 또는 isolated CLI/runtime을 사
 - [x] Public npm `0.5.4` metadata/description/keywords/license/signature/digest, release/registry byte identity, exact reinstall, main/tag CI와 annotated tag/GitHub Release 확인
 - [x] Public exact `0.5.4` plugin installed/enabled, valid hook bundle과 registry install entries/runtime files 일치 확인
 - [ ] Public exact `0.5.4` Codex 앱 restart/new-task actual hook+assignment와 `@codex-agent-view` invocation E2E 확인
-- [ ] Current source/package `0.5.5` status-filter patch의 npm publish, public exact reinstall, CI/tag/GitHub Release와 official-app E2E 확인
+- [x] Public `0.5.5` status-filter patch의 npm publish, public exact reinstall, artifact identity, CI/tag/GitHub Release와 isolated browser filter E2E 확인
+- [ ] Public exact `0.5.5` official Codex 앱 restart/new-task status-filter/assignment E2E 확인
 - [ ] Bundled plugin-creator `validate_plugin.py`가 `interface.defaultPrompt or interface.default_prompt is required`로 실패. Current public manual의 optional manifest field/defaultPrompt starter control 설명과 contract 확인 필요
 - [ ] Promptless plugin-card Quick start 제공 여부는 official Codex 앱에서 실제 관찰 전까지 미확인
-- [ ] Bundled validator 요구와 portal/reviewer 검증은 current source `0.5.5` Universal Directory submission blocker/미확인으로 별도 추적. Historical public `0.5.4` release evidence는 보존하고 npm public publish와 Directory acceptance를 구분
+- [ ] Bundled validator 요구와 portal/reviewer 검증은 current public `0.5.5` Universal Directory submission blocker/미확인으로 별도 추적. Historical public `0.5.4` release evidence는 보존하고 npm public publish와 Directory acceptance를 구분
 
 별도 npm provenance attestation은 선택 사항이며 `0.2.0`에는 없다. Registry signature와 source/artifact 일치 검증을 attestation 완료로 표현하지 않는다.
 

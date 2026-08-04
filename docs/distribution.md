@@ -4,11 +4,11 @@
 
 릴리스 증거 갱신일: 2026-08-05
 
-이 문서는 Codex Agent View의 배포 경계를 정리한다. Public npm `latest`/version은 `0.5.4`이며 registry metadata·digest, source-pack identity, exact reinstall, main/tag CI, annotated tag와 GitHub Release를 확인했다. Current source/package `0.5.5`는 상태 필터 정확성 patch release candidate이며 아직 npm publication, exact reinstall, tag 또는 GitHub Release를 완료했다고 주장하지 않는다. `0.2.0`부터 `0.5.3`까지의 public evidence는 historical fact로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
+이 문서는 Codex Agent View의 배포 경계를 정리한다. Public npm `latest`/version은 `0.5.5`이며 registry metadata·digest, source-pack identity, exact reinstall, main/tag CI, annotated tag와 GitHub Release를 확인했다. `0.2.0`부터 `0.5.4`까지의 public evidence는 historical fact로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
 
 ## 현재 상태
 
-- Package 이름은 `codex-agent-view`이고 public npm `latest`는 `0.5.4`다. Signed 23-file registry artifact, source-pack identity, exact reinstall, main/tag CI와 tag/Release를 확인했다. Codex 앱 restart/new-task actual hook+assignment E2E는 pending이다.
+- Package 이름은 `codex-agent-view`이고 public npm `latest`는 `0.5.5`다. Signed 23-file registry artifact, source-pack identity, exact reinstall, main/tag CI와 tag/Release를 확인했다. Prepublish exact-tarball lifecycle과 isolated browser status-filter E2E는 통과했지만 공식 Codex 앱 restart/new-task public exact status-filter/assignment E2E는 pending이다.
 - Public `0.4.2`의 push, main CI Node.js 18/20/22, npm metadata/signature, release/registry tarball byte 일치, annotated tag/GitHub Release, this-device exact reinstall/artifact match, plugin installed/enabled, hook wiring 9종과 official Codex in-app Browser visual E2E를 확인했다.
 - Public `0.3.2`는 immutable packaged README의 잘못된 release-state 안내를 수정한 patch다. Registry metadata/digest/signature, tag/GitHub Release, main/tag CI, this-device exact install과 registry/install artifact match를 확인했다. App-native snapshot은 worker activity 3개를 확인했지만 live hook E2E는 앱 restart/new-task 전이라 미완료다.
 - Node.js `>=18`을 요구하며 production dependency가 없다.
@@ -19,11 +19,19 @@
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
 - Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Public exact `codex-agent-view@0.4.7`의 this-device global reinstall, registry-extracted artifact 일치, CLI/plugin version, installed/enabled와 hook wiring 9종을 확인했다. 같은 현재 공식 앱 process는 초기 none observed 뒤 later actual hooks 전달을 시작했고 최종 public `0.4.7` official-app hook E2E도 완료했다.
 
-### Source/package `0.5.5`: patch release candidate
+### Public `0.5.5` patch release contract and evidence
 
-Current source/package `0.5.5`는 **Work status filter**가 상위 작업의 현재 `session.status`만 매치하도록 제한한다. 이전 source는 하위 agent 상태와 recent activity history까지 OR 조건으로 사용해 `Running`을 선택해도 현재 완료·대기인 작업 카드가 섞일 수 있었다. 새 회귀 계약은 running/completed/waiting 각각에서 과거 활동이나 하위 agent가 다른 상태여도 상위 작업의 현재 상태가 선택값과 다른 카드를 제외한다. UI label과 README도 English/한국어/Español에서 이 필터가 work-item status 기준임을 명시한다.
+Public `0.5.5`는 **Work status filter**가 상위 작업의 현재 `session.status`만 매치하도록 제한한다. 이전 source는 하위 agent 상태와 recent activity history까지 OR 조건으로 사용해 `Running`을 선택해도 현재 완료·대기인 작업 카드가 섞일 수 있었다. 새 회귀 계약은 running/completed/waiting 각각에서 과거 활동이나 하위 agent가 다른 상태여도 상위 작업의 현재 상태가 선택값과 다른 카드를 제외한다. UI label과 README도 English/한국어/Español에서 이 필터가 work-item status 기준임을 명시한다.
 
-Agent assignment description의 privacy·정확성 경계는 바꾸지 않는다. 공식 exact correlation ID/key는 확인되지 않았으므로 제한된 시간창에 검증된 spawn candidate 하나와 newly observed agent 하나만 있을 때 bounded/best-effort로 summary를 연결한다. Concurrent spawn처럼 mapping이 ambiguous하면 timing/FIFO로 추측하지 않고 unavailable로 둔다. `0.5.5` npm publish, registry digest/signature, public exact reinstall, CI/tag/GitHub Release와 공식 앱 E2E는 실제 성공 뒤에만 이 문서에 기록한다.
+Agent assignment description의 privacy·정확성 경계는 바꾸지 않는다. 공식 exact correlation ID/key는 확인되지 않았으므로 제한된 시간창에 검증된 spawn candidate 하나와 newly observed agent 하나만 있을 때 bounded/best-effort로 summary를 연결한다. Concurrent spawn처럼 mapping이 ambiguous하면 timing/FIFO로 추측하지 않고 unavailable로 둔다.
+
+Release-source 비교에서 `v0.5.4..v0.5.5`의 `hooks/`, `scripts/`, `src/` diff가 0임을 확인했다. 따라서 이 patch는 hook collection, normalization, transport와 in-memory state의 privacy 경계를 변경하지 않는다.
+
+npm `latest`/version `0.5.5`, publish time `2026-08-04T18:42:31.744Z`, registry shasum `cc04e6a10380a0b5b0f9b1df5af7b6ce8d85139a`, integrity `sha512-J10ch73w6bi6Q/R4A3nkjYVaV9/HTnYxuu1Znmnin+xi432IJVgWlKyEPmPfdBlW+duoGyLzpV+mmfHN4DZydA==`와 signature 1개를 확인했다. Artifact는 23 files, packed `63.2 kB`, unpacked `253525 bytes`, tarball SHA-256 `242b007c8572474712d7694553e5319e193804ebc268c3d15008510258cc03d5`다. Local release tarball과 clean-cache registry tarball은 byte-identical하다.
+
+Release source `0037a5b304dc76a20050d2cf5dfce3276dccd004`의 main CI `30937777321`과 tag CI `30940008363`은 Node.js 18/20/22에서 성공했다. Annotated `v0.5.5` tag는 release source를 가리키며 [public non-draft/non-prerelease GitHub Release](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.5.5)는 `2026-08-04T18:44:32Z`에 공개됐다.
+
+This-device public exact global package와 CLI `0.5.5`, plugin installed/enabled와 valid hook bundle 9종을 확인했다. Registry extract와 global package diff는 0이고 registry install entries 13개와 marketplace bundle도 diff 0이다. Exact install 뒤 monitor는 stopped이고 persisted hook trust는 CLI-unobservable `unknown`이다. Prepublish exact-tarball lifecycle과 isolated browser filter E2E는 통과했다. 공식 Codex 앱 restart/new-task public exact status-filter/assignment E2E는 pending이며 Universal Directory와 promptless plugin-card Quick start도 미확인이다.
 
 ### Public `0.5.4` release contract
 
@@ -442,7 +450,7 @@ Release candidate 검증에서는 `npm pack`으로 만든 exact tarball을 임�
 
 ### Historical public `0.5.1`
 
-다음 exact-version 명령은 historical public registry artifact `0.5.1`을 재현할 때만 사용한다. 현재 사용자 설치 명령은 root README의 `0.5.2` 절을 따른다.
+다음 exact-version 명령은 historical public registry artifact `0.5.1`을 재현할 때만 사용한다. 현재 사용자 설치 명령은 root README의 public `0.5.5` Quick start를 따른다.
 
 ```bash
 npm install --global codex-agent-view@0.5.1

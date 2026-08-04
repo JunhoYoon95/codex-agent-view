@@ -1,6 +1,6 @@
 # Codex Agent View Roadmap
 
-Public npm `latest`/version은 `0.5.4`다. Signed registry artifact와 source-pack identity, exact reinstall, main/tag CI, annotated tag/GitHub Release, installed plugin/enabled와 valid hook bundle을 확인했다. Current source/package `0.5.5`는 작업 상태 필터 정확성을 고치는 patch release candidate이며 아직 public release로 주장하지 않는다. Public `0.5.3` evidence는 historical fact로 보존한다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다.
+Public npm `latest`/version은 `0.5.5`다. Signed registry artifact와 source-pack identity, exact reinstall, main/tag CI, annotated tag/GitHub Release, installed plugin/enabled와 valid hook bundle을 확인했다. Prepublish exact-tarball lifecycle과 isolated browser status-filter E2E도 통과했다. 공식 Codex 앱 restart/new-task public exact status-filter/assignment E2E는 pending이다. Public `0.5.4` evidence는 historical fact로 보존한다. Bounded in-memory hook state는 완성된 architecture이며 SQLite/영구 history는 누락된 milestone이 아니다.
 
 ## 제품 원칙
 
@@ -14,19 +14,19 @@ Public npm `latest`/version은 `0.5.4`다. Signed registry artifact와 source-pa
 - task/subagent control과 permission 자동 처리 기능을 제공하지 않는다.
 - Live monitor의 갱신은 local hook data만 사용하며 monitoring을 위한 additional ongoing model/external API inference call을 만들지 않는다. 최초 `@codex-agent-view` invocation은 일반 Codex turn이라 token을 사용할 수 있고 관찰 대상 task/subagent도 정상 token을 계속 사용하므로 zero-token 또는 넓은 no-ongoing-token 제품이라고 표현하지 않는다.
 
-## Current — `0.5.5` patch release candidate
+## Current — `0.5.5` public patch release
 
 `0.5.5`는 작업 상태 필터가 상위 작업의 현재 상태 대신 하위 agent 상태나 recent activity history까지 OR로 매치해 다른 상태의 카드를 섞던 문제를 수정한다. 할당 설명에는 공식 exact correlation ID/key가 없으므로 제한된 시간창의 candidate 1개와 새 agent 1개만 bounded/best-effort로 연결하며, concurrent spawn처럼 mapping이 모호하면 의도적으로 unavailable로 유지한다.
 
 - [x] 작업 상태 필터를 상위 작업의 현재 `session.status` 기준으로 제한하고 running/completed/waiting 회귀 테스트를 추가한다.
 - [x] English/한국어/Español 필터 label과 README에서 필터가 작업 상태 기준임을 명확히 한다.
 - [x] Package/plugin version과 exact install 문구를 `0.5.5`로 동기화한다.
-- [ ] 팀장 E2E QA와 `npm test`, `npm run validate:plugin`, `npm run check`, exact tarball smoke를 통과한다.
-- [ ] `0.5.5`를 npm에 공개하고 registry metadata/digest/signature와 immutable README를 확인한다.
-- [ ] Public exact reinstall, main/tag CI, annotated tag와 GitHub Release를 확인한다.
+- [x] 팀장 QA와 `npm test`, `npm run validate:plugin`, `npm run check`, exact-tarball lifecycle 및 isolated browser filter E2E를 통과한다.
+- [x] `0.5.5`를 npm에 공개하고 registry metadata/digest/signature와 immutable README를 확인한다.
+- [x] Public exact reinstall, main/tag CI, annotated tag와 GitHub Release를 확인한다.
 - [ ] Codex 앱 restart/new-task에서 status filter와 assignment unavailable 경계를 실제 확인한다.
 
-## Historical current public — `0.5.4` release
+## Historical — `0.5.4` public release
 
 `0.5.4`는 사용자용 제품 문구를 `Open each view with one lightweight \`@codex-agent-view\` invocation. Once open, live monitoring runs locally with no additional model calls.`로 통일하고, 관찰 대상 task/subagent의 일반적인 model·token 사용은 계속됨을 명시한다. Package/plugin은 detailed product copy를 사용하고 GitHub repository는 짧은 dashboard Description을 사용하며 기능·privacy 경계는 바꾸지 않는다.
 
@@ -38,7 +38,7 @@ Public npm `latest`/version은 `0.5.4`다. Signed registry artifact와 source-pa
 - [x] Public exact reinstall, main/tag CI, annotated tag와 GitHub Release를 확인한다.
 - [ ] Codex 앱 restart/new-task actual event와 public exact invocation E2E를 확인한다.
 
-## Historical current public — `0.5.3` release acceptance
+## Historical — `0.5.3` public release acceptance
 
 `0.5.3`은 기능·privacy 경계를 바꾸지 않고 Codex task와 subagent activity를 browser에서 실시간으로 확인하는 lightweight read-only companion이라는 제품 설명을 package, plugin, GitHub와 npm surface에 일관되게 반영했다.
 
@@ -53,7 +53,7 @@ Public npm `latest`/version은 `0.5.4`다. Signed registry artifact와 source-pa
 - [x] 성공한 publication/digest/CI/tag/Release 증거만 문서에 기록한다.
 - [ ] Public exact `@codex-agent-view` invocation → default browser E2E를 Codex 앱 재시작/new task에서 확인한다.
 
-## Historical current public — `0.5.2` release acceptance
+## Historical — `0.5.2` public release acceptance
 
 Plugin-level `interface.defaultPrompt`는 plugin 실행 기능이 아니라 plugin 카드의 starter-prompt UI metadata다. `0.5.2`는 starter text를 제공하거나 요구하지 않는다. 사용자는 Codex task에서 `@codex-agent-view` 자체를 선택·전송하고 내부 single skill이 `open`을 실행한다. Plugin 카드가 promptless Quick start control을 제공하는지는 앱 UI가 결정하므로 실제 확인 전에는 지원을 주장하지 않는다.
 
@@ -73,7 +73,7 @@ Plugin-level `interface.defaultPrompt`는 plugin 실행 기능이 아니라 plug
 - [x] Repository validation/tests와 실제 앱 관찰 근거를 바탕으로 npm publish, exact reinstall, artifact comparison, CI와 tag/GitHub Release를 완료한다.
 - [ ] Bundled validator와 portal/reviewer 확인은 별도 Directory submission blocker/미확인으로 유지한다.
 
-## Historical current public — `0.5.1` release acceptance
+## Historical — `0.5.1` public release acceptance
 
 Public `0.5.0`은 공식 Codex 앱에서 실행을 시작하고 OS 기본 외부 브라우저에 live UI를 표시하는 설계를 배포했다. 공식 E2E에서 Codex가 자동 첨부한 `in-app-browser-context` block이 task summary에 섞이는 문제를 확인했다. `0.5.1`은 그 ambient wrapper만 summary 입력에서 제거하며 launch, read-only와 bounded-memory 경계는 바꾸지 않는다.
 

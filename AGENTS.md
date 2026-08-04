@@ -12,7 +12,7 @@
 - 상태 설계: live companion 상태는 의도적으로 bounded process-local memory만 사용하며 재시작은 새 관찰 window를 시작한다. 이는 완성된 제품 경계다.
 - 의도적 non-goal: 대체 Codex 클라이언트, 외부 서버, 외부 telemetry, 필수 SQLite/영구 event store, 원격 제어
 - 영구 history는 누락된 요구가 아니다. 실제 사용자 가치가 입증될 때만 retention/deletion/privacy 비용을 포함한 별도 explicit opt-in 제안으로 검토한다.
-- 현재 단계: public `0.5.4` npm/artifact/exact reinstall/main·tag CI/annotated tag/GitHub Release와 GitHub repository metadata 확인 완료. Current source/package `0.5.5`는 assignment의 bounded/best-effort singleton correlation과 fail-closed 경계를 유지하면서 작업 상태 필터가 상위 작업의 현재 상태만 정확히 매치하도록 고치는 patch release 준비 상태다. `0.5.5` npm publish, public exact reinstall, tag/Release와 공식 앱 restart/new-task E2E는 완료 전까지 pending으로 기록한다. Public exact plugin `0.5.4`는 installed/enabled와 hook bundle을 확인했지만 install 뒤 monitor는 stopped, hook trust는 CLI-unobservable `unknown`이다. Public `0.5.3` evidence는 historical fact로 보존한다. Universal Plugins Directory validator·portal/reviewer·검색 노출과 promptless plugin-card Quick start는 별도 미확인 상태로 유지한다.
+- 현재 단계: public `0.5.5` npm/artifact/source-pack identity/exact reinstall/main·tag CI/annotated tag/GitHub Release 확인 완료. This-device global package와 CLI `0.5.5`, plugin installed/enabled, valid hook bundle 9종, registry/global 및 registry/marketplace install-entry 일치를 확인했다. Exact install 뒤 monitor는 stopped이고 hook trust는 CLI-unobservable `unknown`이다. 작업 상태 필터의 isolated browser E2E는 통과했지만 공식 Codex 앱 restart/new-task에서 public exact status-filter/assignment E2E는 pending이며 성공이나 실패로 단정하지 않는다. Assignment의 bounded/best-effort singleton correlation과 concurrent ambiguity fail-closed 경계를 유지한다. Public `0.5.4` evidence는 historical fact로 보존한다. Universal Plugins Directory validator·portal/reviewer·검색 노출과 promptless plugin-card Quick start는 별도 미확인 상태로 유지한다.
 
 ## 명령어
 
