@@ -52,11 +52,11 @@ function npmPackEnvironment() {
   return env;
 }
 
-test("keeps the npm 0.5.4 executable, discovery metadata, and publish surface intact", async () => {
+test("keeps the npm 0.5.5 executable, discovery metadata, and publish surface intact", async () => {
   const packageMetadata = await readJson("package.json");
 
   assert.equal(packageMetadata.name, "codex-agent-view");
-  assert.equal(packageMetadata.version, "0.5.4");
+  assert.equal(packageMetadata.version, "0.5.5");
   assert.equal(
     packageMetadata.description,
     "A read-only Codex plugin for monitoring live tasks and subagents in your browser. Open each view with one lightweight @codex-agent-view invocation. Once open, live monitoring runs locally with no additional model calls.",
@@ -188,7 +188,7 @@ test("has no postinstall side effects or production dependencies", async () => {
 
 test("keeps legal links secure and branding assets local", async () => {
   const manifest = await readJson(".codex-plugin/plugin.json");
-  assert.equal(manifest.version, "0.5.4");
+  assert.equal(manifest.version, "0.5.5");
   assert.equal(
     Object.hasOwn(manifest.interface ?? {}, "defaultPrompt"),
     false,

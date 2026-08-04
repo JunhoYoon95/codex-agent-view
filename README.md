@@ -13,7 +13,7 @@ It does not replace Codex, control tasks or agents, run a hosted service, send t
 Install the current release from a regular terminal:
 
 ```bash
-npm install --global codex-agent-view@0.5.4
+npm install --global codex-agent-view@0.5.5
 codex-agent-view install
 ```
 
@@ -45,11 +45,11 @@ The public Codex plugin API does not provide a reliable automatic app sidebar or
 
 ## What the view shows
 
-The live view defaults to English and also supports Korean and Spanish. It refreshes every two seconds without collapsing agent details.
+The live view defaults to English and also supports Korean and Spanish. It refreshes every two seconds without collapsing agent details. The **Work status filter** matches each parent work item's current status only; nested agent statuses and recent activity history do not cause a card to match a different status.
 
 Each work item can include a short, redacted request summary. Each agent card can show:
 
-- **Assigned work** — a bounded summary is shown only when one verified spawn candidate can be correlated unambiguously with one newly observed agent. In the currently observed official-app payload, the protected spawn message is opaque, so a safely humanized task label is the primary usable source. Ambiguous, concurrent, expired, or protected values are not guessed or displayed.
+- **Assigned work** — no exact upstream correlation ID has been observed for this mapping. A bounded summary is therefore matched on a best-effort basis only when one verified spawn candidate and one newly observed agent are the sole candidates in the bounded window. In the currently observed official-app payload, the protected spawn message is opaque, so a safely humanized task label is the primary usable source. When several agents are spawned concurrently and the mapping is ambiguous, assignment details intentionally remain unavailable instead of being guessed; expired or protected values are likewise not displayed.
 - **Current activity** — a human-readable description such as a file edit in progress or a recently completed terminal action. It is shown only when the observed tool lifecycle has the exact `turn_id` of one and only one agent.
 
 These fields describe observable assignment and tool lifecycle signals, not an agent's internal reasoning. The monitor does not retain or display raw spawn messages, full prompts, full tool input, or full tool output. Missing or ambiguous information remains unavailable instead of being inferred from timing.

@@ -12,7 +12,7 @@
 - 상태 설계: live companion 상태는 의도적으로 bounded process-local memory만 사용하며 재시작은 새 관찰 window를 시작한다. 이는 완성된 제품 경계다.
 - 의도적 non-goal: 대체 Codex 클라이언트, 외부 서버, 외부 telemetry, 필수 SQLite/영구 event store, 원격 제어
 - 영구 history는 누락된 요구가 아니다. 실제 사용자 가치가 입증될 때만 retention/deletion/privacy 비용을 포함한 별도 explicit opt-in 제안으로 검토한다.
-- 현재 단계: public `0.5.4` npm/artifact/exact reinstall/main·tag CI/annotated tag/GitHub Release와 GitHub repository metadata 확인 완료. Public exact plugin `0.5.4` installed/enabled와 hook bundle을 확인했지만 install 뒤 monitor는 stopped, hook trust는 CLI-unobservable `unknown`이다. 현재 Codex 앱 restart/new-task actual hook+assignment E2E는 pending이며 재시작 전 current-task canary의 event 부재를 성공이나 실패로 단정하지 않는다. Public `0.5.3` evidence는 historical fact로 보존한다. Universal Plugins Directory validator·portal/reviewer·검색 노출과 promptless plugin-card Quick start는 별도 미확인 상태로 유지한다.
+- 현재 단계: public `0.5.4` npm/artifact/exact reinstall/main·tag CI/annotated tag/GitHub Release와 GitHub repository metadata 확인 완료. Current source/package `0.5.5`는 assignment의 bounded/best-effort singleton correlation과 fail-closed 경계를 유지하면서 작업 상태 필터가 상위 작업의 현재 상태만 정확히 매치하도록 고치는 patch release 준비 상태다. `0.5.5` npm publish, public exact reinstall, tag/Release와 공식 앱 restart/new-task E2E는 완료 전까지 pending으로 기록한다. Public exact plugin `0.5.4`는 installed/enabled와 hook bundle을 확인했지만 install 뒤 monitor는 stopped, hook trust는 CLI-unobservable `unknown`이다. Public `0.5.3` evidence는 historical fact로 보존한다. Universal Plugins Directory validator·portal/reviewer·검색 노출과 promptless plugin-card Quick start는 별도 미확인 상태로 유지한다.
 
 ## 명령어
 
@@ -48,12 +48,14 @@ npm run check
 
 ## 제품 가드레일
 
-- 설치 후 실행 시작은 공식 Codex 앱에서 `@codex-agent-view` 자체를 선택·전송해 수행한다. 별도 `$show-agents` 선택이나 Quick start starter text를 요구하지 않으며, 내부 single skill은 `open` 실행 capability로만 유지한다. Plugin-level `interface.defaultPrompt`는 skill dispatch contract가 아닌 starter-prompt UI metadata다. `0.5.2`부터 `0.5.4`까지 starter text를 제공하지 않는다. Promptless plugin-card Quick start 제공 여부는 공식 앱에서 관찰하기 전까지 미확인으로 둔다.
+- 설치 후 실행 시작은 공식 Codex 앱에서 `@codex-agent-view` 자체를 선택·전송해 수행한다. 별도 `$show-agents` 선택이나 Quick start starter text를 요구하지 않으며, 내부 single skill은 `open` 실행 capability로만 유지한다. Plugin-level `interface.defaultPrompt`는 skill dispatch contract가 아닌 starter-prompt UI metadata다. `0.5.2`부터 current source `0.5.5`까지 starter text를 제공하지 않는다. Promptless plugin-card Quick start 제공 여부는 공식 앱에서 관찰하기 전까지 미확인으로 둔다.
 - 사용자용 제품 문구는 `Open each view with one lightweight \`@codex-agent-view\` invocation. Once open, live monitoring runs locally with no additional model calls.`로 통일한다. 이어서 관찰 대상 task/subagent의 일반적인 model·token 사용은 계속됨을 명시한다.
 - Live UI 표시 surface는 OS 기본 외부 브라우저다. 사용자는 열린 탭에서 상태를 확인하고 일반 연결 오류를 다시 시도한다.
 - npm/터미널은 최초 설치, 명시적 제거, maintainer 진단에만 허용한다. `start`, `status`, `doctor`를 정상적인 사용자 사용 순서에 포함하지 않는다.
 - live hook detail은 plugin이 healthy local monitor를 재사용하거나 필요 시 내부적으로 시작한 뒤 OS 기본 브라우저에서 연다. localhost 주소나 tokenized/private URL을 사용자에게 복사·입력·관리하게 하지 않는다.
 - 같은 브라우저 탭의 유효한 read-only recovery credential은 명시적 재연결 버튼으로 복구한다. 인증 이력이 없는 새 탭이나 fixed family가 만료된 탭은 자격을 스스로 발급하지 않고 `@codex-agent-view` 재실행을 안내한다.
+- 작업 상태 필터는 상위 작업 카드의 현재 상태만 기준으로 삼는다. 하위 agent 상태나 recent activity history를 OR 조건으로 사용해 다른 상태의 작업 카드를 섞지 않는다.
+- Agent 할당 설명에는 공식 exact correlation ID/key가 확인되지 않았다. 제한된 시간창에 검증된 spawn candidate가 정확히 하나이고 새 agent도 정확히 하나일 때만 bounded/best-effort로 연결한다. 동시 spawn처럼 매핑이 모호하면 발생 시각이나 순서로 추측하지 않고 unavailable로 둔다.
 - hook payload가 라이브 상태의 source of truth다.
 - App Server의 `thread/list`, `parentThreadId`, `ancestorThreadId`는 계층과 메타데이터 보강 후보일 뿐이다.
 - 별도 App Server가 공식 앱 프로세스의 in-memory 상태를 공유한다고 가정하지 않는다.

@@ -10,7 +10,7 @@ async function readProjectFile(path) {
   return readFile(resolve(projectRoot, path), "utf8");
 }
 
-test("documents the 0.5.4 install and each-view invocation default-browser workflow", async () => {
+test("documents the 0.5.5 install and each-view invocation default-browser workflow", async () => {
   const [packageText, manifestText, english, korean] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -20,14 +20,14 @@ test("documents the 0.5.4 install and each-view invocation default-browser workf
   const packageMetadata = JSON.parse(packageText);
   const manifest = JSON.parse(manifestText);
 
-  assert.equal(packageMetadata.version, "0.5.4");
-  assert.equal(manifest.version, "0.5.4");
-  assert.match(english, /npm install --global codex-agent-view@0\.5\.4/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.5\.4/);
-  assert.doesNotMatch(english, /0\.5\.4[^\n]*(?:pending|release target|candidate|unpublished)/i);
-  assert.doesNotMatch(korean, /0\.5\.4[^\n]*(?:대기|목표|후보|미배포)/i);
-  assert.doesNotMatch(english, /npm install --global codex-agent-view@0\.5\.1/);
-  assert.doesNotMatch(korean, /npm install --global codex-agent-view@0\.5\.1/);
+  assert.equal(packageMetadata.version, "0.5.5");
+  assert.equal(manifest.version, "0.5.5");
+  assert.match(english, /npm install --global codex-agent-view@0\.5\.5/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.5\.5/);
+  assert.doesNotMatch(english, /0\.5\.5[^\n]*(?:pending|release target|candidate|unpublished)/i);
+  assert.doesNotMatch(korean, /0\.5\.5[^\n]*(?:대기|목표|후보|미배포)/i);
+  assert.doesNotMatch(english, /npm install --global codex-agent-view@0\.5\.4/);
+  assert.doesNotMatch(korean, /npm install --global codex-agent-view@0\.5\.4/);
 
   assert.match(english, /select and send:[\s\S]*@codex-agent-view/);
   assert.match(korean, /다음 plugin을 선택해 그대로 전송[\s\S]*@codex-agent-view/);
@@ -50,7 +50,8 @@ test("documents assigned work and current activity without presenting internal r
   ]);
 
   assert.match(english, /\*\*Assigned work\*\*/);
-  assert.match(english, /unambiguous/);
+  assert.match(english, /no exact upstream correlation ID/);
+  assert.match(english, /best-effort basis/);
   assert.match(english, /task label is the primary usable source/);
   assert.match(english, /\*\*Current activity\*\*/);
   assert.match(english, /exact `turn_id`/);
@@ -58,6 +59,8 @@ test("documents assigned work and current activity without presenting internal r
   assert.match(english, /does not retain or display raw spawn messages, full prompts, full tool input, or full tool output/);
 
   assert.match(korean, /\*\*할당 작업\*\*/);
+  assert.match(korean, /공식 exact correlation ID/);
+  assert.match(korean, /bounded best-effort/);
   assert.match(korean, /task label을 주 근거/);
   assert.match(korean, /\*\*현재 활동\*\*/);
   assert.match(korean, /정확한 `turn_id`/);
@@ -66,6 +69,21 @@ test("documents assigned work and current activity without presenting internal r
   assert.match(privacy, /assignment_summary/);
   assert.match(privacy, /not internal reasoning/);
   assert.match(terms, /Neither display represents internal reasoning/);
+});
+
+test("documents the parent work-status filter and fail-closed concurrent assignments", async () => {
+  const [english, korean] = await Promise.all([
+    readProjectFile("README.md"),
+    readProjectFile("README.ko.md"),
+  ]);
+
+  assert.match(english, /\*\*Work status filter\*\* matches each parent work item's current status only/);
+  assert.match(english, /nested agent statuses and recent activity history do not cause a card to match a different status/);
+  assert.match(english, /several agents are spawned concurrently[\s\S]*assignment details intentionally remain unavailable/);
+
+  assert.match(korean, /\*\*작업 상태 필터\*\*는 각 상위 작업의 현재 상태만 기준/);
+  assert.match(korean, /하위 에이전트 상태나 최근 활동 기록 때문에 다른 상태의 작업 카드가 섞이지/);
+  assert.match(korean, /여러 에이전트가 동시에 생성돼[\s\S]*의도적으로 확인 불가/);
 });
 
 test("documents hook trust, local-only state, recovery, and safe removal", async () => {
@@ -94,7 +112,7 @@ test("documents hook trust, local-only state, recovery, and safe removal", async
   assert.match(privacy, /Recovery is stored in browser `sessionStorage`, never `localStorage`/);
 });
 
-test("keeps current public 0.5.4 language separate from historical 0.5.3 evidence and Directory acceptance", async () => {
+test("keeps current source 0.5.5 language separate from public 0.5.4 evidence and Directory acceptance", async () => {
   const [english, korean, agents, roadmap, distribution, findings, submission, privacy, terms] = await Promise.all([
     readProjectFile("README.md"),
     readProjectFile("README.ko.md"),
@@ -108,11 +126,11 @@ test("keeps current public 0.5.4 language separate from historical 0.5.3 evidenc
   ]);
 
   for (const document of [english, korean, agents, roadmap, distribution, findings, submission, privacy, terms]) {
-    assert.match(document, /0\.5\.4/);
+    assert.match(document, /0\.5\.5/);
   }
 
   for (const document of [english, korean]) {
-    assert.doesNotMatch(document, /0\.5\.4[^\n]*(?:pending|release target|candidate|unpublished|대기|목표|후보|미배포)/i);
+    assert.doesNotMatch(document, /0\.5\.5[^\n]*(?:pending|release target|candidate|unpublished|대기|목표|후보|미배포)/i);
   }
 
   assert.match(distribution, /Historical public `0\.5\.1`/);
@@ -135,8 +153,8 @@ test("records verified public 0.5.2 evidence without claiming Directory or Quick
     readProjectFile("docs/plugin-submission.md"),
   ]);
 
-  assert.match(english, /npm install --global codex-agent-view@0\.5\.4/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.5\.4/);
+  assert.match(english, /npm install --global codex-agent-view@0\.5\.5/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.5\.5/);
 
   for (const document of [distribution, findings, submission]) {
     assert.match(document, /2026-08-03T18:45:19\.094Z/);
