@@ -98,8 +98,11 @@ assert(
 );
 assert(
   marketplaceEntry.source.path === "./",
-  "marketplace plugin source path must be ./",
+  "source marketplace plugin path must resolve to the repository root",
 );
+const sourceMarketplaceRoot = new URL(".", packageUrl);
+const sourcePluginRoot = new URL(marketplaceEntry.source.path, sourceMarketplaceRoot);
+await access(new URL(".codex-plugin/plugin.json", sourcePluginRoot), constants.R_OK);
 assert(isObject(marketplaceEntry.policy), "marketplace plugin policy must be an object");
 assert(
   marketplaceEntry.policy.installation === "AVAILABLE",

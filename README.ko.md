@@ -13,18 +13,35 @@ Codex를 대체하거나 작업·에이전트를 제어하지 않으며, 외부 
 일반 터미널에서 현재 릴리스를 설치합니다.
 
 ```bash
-npm install --global codex-agent-view@0.5.5
+codex --version
+```
+
+PATH에서 선택되는 `codex` executable을 npm으로 설치했다면 다음과 같이 업데이트한 뒤 선택된 version을 다시 확인합니다.
+
+```bash
+npm install --global @openai/codex@latest
+codex --version
+```
+
+Codex를 다른 install channel로 설치했다면 그 channel에서 업데이트하세요. 그다음 plugin package를 설치합니다.
+
+```bash
+npm install --global codex-agent-view@0.5.6
 codex-agent-view install
 ```
 
-첫 번째 명령은 npm package를 설치하고, 두 번째 명령은 포함된 local Codex plugin을 명시적으로 등록합니다. `npm install`만으로는 Codex 설정을 바꾸지 않으며, 이 package에는 설정을 자동 변경하는 `postinstall` script가 없습니다.
+`0.5.6` installer는 등록 전에 포함된 plugin을 marketplace의 strict subdirectory로 복사하여 `0.5.5`의 marketplace-root discovery 실패를 피합니다.
+
+npm 명령은 package를 설치합니다. `codex-agent-view install`은 포함된 local Codex plugin을 복사하고 명시적으로 등록합니다. `npm install`만으로는 Codex 설정을 바꾸지 않으며, 이 package에는 설정을 자동 변경하는 `postinstall` script가 없습니다.
 
 설치 후에는 다음 순서를 따릅니다.
 
-1. 설치 중 Codex 앱이 열려 있었다면 완전히 종료한 뒤 다시 엽니다.
-2. Codex 앱의 **Plugins** 화면에서 **Codex Agent View**가 설치·활성화됐는지 확인합니다.
-3. Hook 검토 화면이 나오면 `hooks/hooks.json`과 `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` 명령을 확인하고 현재 정의를 명시적으로 trust합니다. 앱이 hook 검토 화면을 제공하지 않을 때만 설치 과정에서 interactive Codex CLI의 `/hooks`를 사용합니다.
+1. Codex 앱의 **Plugins** 화면에서 **Codex Agent View**가 설치·활성화됐는지 확인합니다.
+2. **Hooks** 영역에서 **검토(Review)**를 선택해 `hooks/hooks.json`과 `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` 명령을 확인한 뒤, 현재 정의에 **모두 신뢰하기(Trust all)**를 선택합니다. 앱에 Hook 검토 UI가 없을 때만 interactive Codex CLI의 `/hooks`를 사용합니다.
+3. Codex 앱을 완전히 종료한 뒤 다시 엽니다.
 4. Codex 앱에서 새 작업을 만듭니다. 설치 전에 지나간 event는 재생되지 않습니다.
+
+현재 programmatic plugin status에는 저장된 Hook 신뢰 상태가 노출되지 않으므로 browser와 `doctor`는 승인 여부를 확인할 수 없습니다. Codex 앱이나 interactive `/hooks` UI에서 직접 확인하세요.
 
 ## 사용
 
@@ -40,6 +57,7 @@ Codex 앱의 작업 입력창에서 다음 plugin을 선택해 그대로 전송�
 - 터미널에서 monitor를 시작하지 않습니다.
 - localhost 주소를 복사하거나 관리하지 않습니다.
 - 브라우저 탭을 닫아도 Codex 작업은 중단되지 않습니다. 새 인증 탭이 필요하면 `@codex-agent-view`를 다시 실행합니다.
+- Viewer를 연 작업 자체는 화면에서 숨겨지므로, 확인하려는 작업과 별도의 viewer 작업에서 실행합니다.
 
 공개 Codex plugin API는 이 흐름을 위한 앱 sidebar나 in-app panel 자동 생성을 안정적으로 제공하지 않으므로, 운영체제 기본 브라우저가 지원하는 표시 화면입니다.
 
@@ -94,7 +112,7 @@ codex-agent-view uninstall --purge
 
 ## 릴리스 및 프로젝트 문서
 
-Registry digest, exact reinstall, CI, tag와 GitHub Release를 포함한 공개·검증 증거는 변경할 수 없는 npm package README 밖의 [배포 문서](docs/distribution.md)에 기록합니다.
+Registry digest, 이 기기의 compatible-CLI reinstall, CI, tag와 GitHub Release를 포함한 공개·검증 증거는 변경할 수 없는 npm package README 밖의 [배포 문서](docs/distribution.md)에 기록합니다. 이 검증은 clean cross-device first install을 확인하지 않았으며, 위 호환성 실패는 별도 사실로 기록합니다.
 
 npm 공개와 Universal Plugins Directory 제출은 별도 절차입니다. Directory validator 호환성, portal/reviewer acceptance, 검색 노출과 promptless plugin-card Quick start 동작은 아직 확인하지 않았으며 이 문서에서 지원을 주장하지 않습니다.
 

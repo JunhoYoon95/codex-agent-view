@@ -10,7 +10,7 @@ async function readProjectFile(path) {
   return readFile(resolve(projectRoot, path), "utf8");
 }
 
-test("documents the 0.5.5 install and each-view invocation default-browser workflow", async () => {
+test("documents the 0.5.6 release and each-view invocation workflow", async () => {
   const [packageText, manifestText, english, korean] = await Promise.all([
     readProjectFile("package.json"),
     readProjectFile(".codex-plugin/plugin.json"),
@@ -20,12 +20,22 @@ test("documents the 0.5.5 install and each-view invocation default-browser workf
   const packageMetadata = JSON.parse(packageText);
   const manifest = JSON.parse(manifestText);
 
-  assert.equal(packageMetadata.version, "0.5.5");
-  assert.equal(manifest.version, "0.5.5");
-  assert.match(english, /npm install --global codex-agent-view@0\.5\.5/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.5\.5/);
-  assert.doesNotMatch(english, /0\.5\.5[^\n]*(?:pending|release target|candidate|unpublished)/i);
-  assert.doesNotMatch(korean, /0\.5\.5[^\n]*(?:대기|목표|후보|미배포)/i);
+  assert.equal(packageMetadata.version, "0.5.6");
+  assert.equal(manifest.version, "0.5.6");
+  assert.match(english, /npm install --global codex-agent-view@0\.5\.6/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.5\.6/);
+  assert.match(english, /codex --version/);
+  assert.match(korean, /codex --version/);
+  assert.match(english, /npm install --global @openai\/codex@latest/);
+  assert.match(korean, /npm install --global @openai\/codex@latest/);
+  assert.match(english, /another install channel, update it through that channel/);
+  assert.match(korean, /다른 install channel로 설치했다면 그 channel에서 업데이트/);
+  assert.match(english, /The `0\.5\.6` installer copies the bundled plugin/);
+  assert.match(korean, /`0\.5\.6` installer는 등록 전에 포함된 plugin을/);
+  assert.match(english, /strict marketplace subdirectory/);
+  assert.match(korean, /marketplace의 strict subdirectory/);
+  assert.doesNotMatch(english, /unpublished|release candidate|public npm `latest` remains `0\.5\.5`/i);
+  assert.doesNotMatch(korean, /아직 공개되지 않은|release candidate|public npm `latest`는 `0\.5\.5`/i);
   assert.doesNotMatch(english, /npm install --global codex-agent-view@0\.5\.4/);
   assert.doesNotMatch(korean, /npm install --global codex-agent-view@0\.5\.4/);
 
@@ -125,20 +135,35 @@ test("keeps public 0.5.5 evidence separate from official-app and Directory accep
     readProjectFile("docs/terms.md"),
   ]);
 
-  for (const document of [english, korean, agents, roadmap, distribution, findings, submission, privacy, terms]) {
+  for (const document of [english, korean, agents, roadmap, distribution, findings, submission, privacy]) {
     assert.match(document, /0\.5\.5/);
   }
+  assert.match(terms, /current source version `0\.5\.6`/);
+  assert.match(terms, /Version `0\.5\.6` provides no starter text/);
 
   for (const document of [english, korean]) {
-    assert.doesNotMatch(document, /0\.5\.5[^\n]*(?:pending|release target|candidate|unpublished|대기|목표|후보|미배포)/i);
+    assert.doesNotMatch(document, /(?:`0\.5\.5`|0\.5\.5) release candidate|`0\.5\.5` 후보/i);
   }
 
   assert.doesNotMatch(roadmap, /^## Historical current public\b/m);
 
-  assert.match(privacy, /Verified public `0\.5\.5` artifact, install, CI, tag and Release evidence/);
-  assert.match(privacy, /official Codex app restart\/new-task status-filter\/assignment E2E remains pending/);
+  for (const document of [agents, roadmap]) {
+    assert.match(document, /this-device|이 기기/);
+    assert.match(document, /compatible(?: Codex)? CLI|compatible-Codex-CLI/);
+    assert.match(document, /clean cross-device first install/i);
+    assert.match(document, /actual plugin not-found|plugin not-found failure/i);
+    assert.match(document, /strict subdirectory|strict-subdir/);
+  }
+  assert.match(agents, /`0\.5\.6` release candidate[^\n]*아직 publish\/tag되지 않았/);
+  assert.match(roadmap, /`0\.5\.6` exact tarball.*empty Codex home\/runtime.*actual CLI/);
+  assert.match(roadmap, /`0\.5\.6`을 공식 Codex 앱에서 완전히 재시작한 뒤 new task actual hook/);
+
+  assert.match(privacy, /Verified public `0\.5\.5` artifact identity, this-device compatible-CLI reinstall/);
+  assert.match(privacy, /Clean cross-device first install was not verified/);
+  assert.match(privacy, /actual not-found failure/);
+  assert.match(privacy, /exact tarball clean-device install, official-app E2E, publication, CI, tag, and Release remain unverified or pending/i);
   assert.doesNotMatch(privacy, /0\.5\.5 publication evidence remains pending/i);
-  assert.match(distribution, /현재 사용자 설치 명령은 root README의 public `0\.5\.5` Quick start/);
+  assert.match(distribution, /현재 source-tree 설치 명령은 root README의 `0\.5\.6` release candidate Quick start/);
   assert.doesNotMatch(distribution, /현재 사용자 설치 명령은 root README의 `0\.5\.2`/);
 
   assert.match(distribution, /Historical public `0\.5\.1`/);
@@ -161,8 +186,8 @@ test("records verified public 0.5.2 evidence without claiming Directory or Quick
     readProjectFile("docs/plugin-submission.md"),
   ]);
 
-  assert.match(english, /npm install --global codex-agent-view@0\.5\.5/);
-  assert.match(korean, /npm install --global codex-agent-view@0\.5\.5/);
+  assert.match(english, /npm install --global codex-agent-view@0\.5\.6/);
+  assert.match(korean, /npm install --global codex-agent-view@0\.5\.6/);
 
   for (const document of [distribution, findings, submission]) {
     assert.match(document, /2026-08-03T18:45:19\.094Z/);
@@ -285,7 +310,7 @@ test("records verified public 0.5.4 release evidence while keeping app E2E and D
   }
 });
 
-test("records verified public 0.5.5 evidence without claiming official-app or Directory acceptance", async () => {
+test("limits public 0.5.5 evidence to artifact and compatible-CLI reinstall", async () => {
   const documents = await Promise.all([
     readProjectFile("docs/distribution.md"),
     readProjectFile("docs/phase-0-findings.md"),
@@ -318,9 +343,14 @@ test("records verified public 0.5.5 evidence without claiming official-app or Di
     assert.match(document, /exact-tarball lifecycle/);
     assert.match(document, /isolated browser (?:status-)?filter E2E/);
     assert.match(document, /`hooks\/`, `scripts\/`, `src\/` diff(?:가|는)? 0/);
-    assert.match(document, /(?:official|공식) Codex 앱.*restart\/new-task.*status-filter\/assignment E2E.*pending/);
+    assert.match(document, /(?:official|공식) Codex 앱.*restart\/new-task.*status-filter\/assignment(?:\/invocation)? E2E.*pending/);
     assert.match(document, /Directory/);
     assert.match(document, /Quick start/);
+    assert.match(document, /compatible(?:-Codex)?-CLI reinstall/i);
+    assert.match(document, /clean cross-device first install/i);
+    assert.match(document, /source\.path: "\.\/"/);
+    assert.match(document, /plugin `codex-agent-view` was not found in marketplace `codex-agent-view`/);
+    assert.match(document, /temporary recovery|임시 recovery/i);
   }
 });
 

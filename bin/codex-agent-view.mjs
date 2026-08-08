@@ -32,6 +32,8 @@ import {
 const PACKAGE_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const PLUGIN_ID = "codex-agent-view@codex-agent-view";
 const MARKETPLACE_NAME = "codex-agent-view";
+const PLUGIN_BUNDLE_RELATIVE_PATH = join("plugins", "codex-agent-view");
+const INSTALLED_MARKETPLACE_PLUGIN_SOURCE = "./plugins/codex-agent-view";
 const BUNDLE_MARKER = ".codex-agent-view-owned.json";
 const BUNDLE_MARKER_SCHEMA_VERSION = 1;
 const PREPARE_LIVE_VIEW_WAIT_MS = 2_000;
@@ -50,8 +52,7 @@ const KNOWN_PRE_PROOF_MANAGED_VERSIONS = new Set([
 ]);
 const CANONICAL_THREAD_ID_PATTERN =
   /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
-const INSTALL_ENTRIES = [
-  ".agents",
+const PLUGIN_INSTALL_ENTRIES = [
   ".codex-plugin",
   "assets",
   "bin",
@@ -641,13 +642,11 @@ async function inspectInstalledBundleForLiveView() {
     throw new LiveViewPreparationError("plugin_bundle_unowned");
   }
 
-  const manifest = await readJsonRegularFile(
-    join(destination, ".codex-plugin", "plugin.json"),
-  );
-  if (manifest?.name !== MARKETPLACE_NAME || typeof manifest.version !== "string") {
+  const installedBundle = await inspectManagedBundleLayout(destination);
+  if (installedBundle === null) {
     throw new LiveViewPreparationError("plugin_bundle_invalid");
   }
-  if (manifest.version !== (await packageVersion())) {
+  if (installedBundle.version !== (await packageVersion())) {
     throw new LiveViewPreparationError("plugin_version_mismatch");
   }
 }
@@ -874,18 +873,46 @@ async function inspectPluginBundle(destination) {
   }
 
   const marker = await readJsonRegularFile(join(destination, BUNDLE_MARKER));
-  const manifest = await readJsonRegularFile(
-    join(destination, ".codex-plugin", "plugin.json"),
-  );
   if (
     marker?.schema_version !== BUNDLE_MARKER_SCHEMA_VERSION ||
     marker?.package !== MARKETPLACE_NAME ||
-    marker?.plugin_id !== PLUGIN_ID ||
-    manifest?.name !== MARKETPLACE_NAME
+    marker?.plugin_id !== PLUGIN_ID
   ) {
     return { kind: "unmanaged" };
   }
-  return { kind: "managed", version: manifest.version };
+  const installedBundle = await inspectManagedBundleLayout(destination);
+  if (installedBundle === null) {
+    return { kind: "unmanaged" };
+  }
+  return {
+    kind: "managed",
+    layout: installedBundle.layout,
+    version: installedBundle.version,
+  };
+}
+
+async function inspectManagedBundleLayout(destination) {
+  const candidates = [
+    {
+      layout: "subdirectory",
+      path: join(destination, PLUGIN_BUNDLE_RELATIVE_PATH, ".codex-plugin", "plugin.json"),
+    },
+    {
+      layout: "legacy-root",
+      path: join(destination, ".codex-plugin", "plugin.json"),
+    },
+  ];
+  const matches = [];
+  for (const candidate of candidates) {
+    const manifest = await readJsonRegularFile(candidate.path);
+    if (
+      manifest?.name === MARKETPLACE_NAME &&
+      typeof manifest.version === "string"
+    ) {
+      matches.push({ layout: candidate.layout, version: manifest.version });
+    }
+  }
+  return matches.length === 1 ? matches[0] : null;
 }
 
 function legacyBearerProbeOptions(bundle) {
@@ -926,10 +953,31 @@ async function copyPluginBundle(destination) {
     await rm(destination, { force: true, recursive: true });
   }
   await mkdir(destination, { mode: 0o700, recursive: true });
-  for (const entry of INSTALL_ENTRIES) {
+  await cp(join(PACKAGE_ROOT, ".agents"), join(destination, ".agents"), {
+    errorOnExist: true,
+    force: false,
+    recursive: true,
+  });
+  const installedCatalogPath = join(destination, ".agents", "plugins", "marketplace.json");
+  const installedCatalog = JSON.parse(await readFile(installedCatalogPath, "utf8"));
+  const installedEntry = installedCatalog?.plugins?.find(
+    (entry) => entry?.name === MARKETPLACE_NAME,
+  );
+  if (installedEntry?.source?.source !== "local") {
+    throw new Error("the bundled marketplace catalog is invalid");
+  }
+  installedEntry.source.path = INSTALLED_MARKETPLACE_PLUGIN_SOURCE;
+  await writeFile(installedCatalogPath, `${JSON.stringify(installedCatalog, null, 2)}\n`, {
+    encoding: "utf8",
+    flag: "w",
+    mode: 0o600,
+  });
+  const pluginDestination = join(destination, PLUGIN_BUNDLE_RELATIVE_PATH);
+  await mkdir(pluginDestination, { mode: 0o700, recursive: true });
+  for (const entry of PLUGIN_INSTALL_ENTRIES) {
     const source = join(PACKAGE_ROOT, entry);
     if (!(await pathExists(source))) continue;
-    await cp(source, join(destination, entry), {
+    await cp(source, join(pluginDestination, entry), {
       errorOnExist: true,
       force: false,
       recursive: true,

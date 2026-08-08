@@ -54,6 +54,7 @@ async function fixture(t) {
   const fakeBin = join(root, "fake-bin");
   const browserLog = join(root, "browser-calls.jsonl");
   const log = join(root, "codex-calls.jsonl");
+  const state = join(root, "codex-state.json");
   await mkdir(fakeBin);
   const fakeCodex = join(fakeBin, "codex");
   // Keep this extensionless POSIX executable in CommonJS syntax: Node 18 parses
@@ -61,19 +62,73 @@ async function fixture(t) {
   await writeFile(
     fakeCodex,
     `#!/usr/bin/env node
-const { appendFileSync } = require("node:fs");
+const { appendFileSync, existsSync, readFileSync, writeFileSync } = require("node:fs");
+const path = require("node:path");
 const args = process.argv.slice(2);
 appendFileSync(process.env.FAKE_CODEX_LOG, JSON.stringify(args) + "\\n");
+function readState() {
+  if (!existsSync(process.env.FAKE_CODEX_STATE)) {
+    return { installed: false, marketplaceRoot: null, sourcePath: null };
+  }
+  return JSON.parse(readFileSync(process.env.FAKE_CODEX_STATE, "utf8"));
+}
+function writeState(state) {
+  writeFileSync(process.env.FAKE_CODEX_STATE, JSON.stringify(state));
+}
+function resolveCatalogPlugin(marketplaceRoot) {
+  const catalogPath = path.join(marketplaceRoot, ".agents", "plugins", "marketplace.json");
+  const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+  const source = catalog.plugins[0].source.path;
+  if (source === "./" || source === ".") {
+    process.stderr.write("plugin codex-agent-view was not found in marketplace codex-agent-view\\n");
+    process.exit(7);
+  }
+  const pluginRoot = path.resolve(marketplaceRoot, source);
+  if (!existsSync(path.join(pluginRoot, ".codex-plugin", "plugin.json"))) {
+    process.stderr.write("plugin source subdirectory was not found\\n");
+    process.exit(7);
+  }
+  return pluginRoot;
+}
 if (args.join(" ") === "plugin marketplace list --json") {
-  process.stdout.write('{"marketplaces":[]}\\n');
+  const state = readState();
+  const marketplaces = state.marketplaceRoot
+    ? [{ name: "codex-agent-view", root: state.marketplaceRoot }]
+    : [];
+  process.stdout.write(JSON.stringify({ marketplaces }) + "\\n");
+} else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add") {
+  const marketplaceRoot = args[3];
+  resolveCatalogPlugin(marketplaceRoot);
+  writeState({ ...readState(), marketplaceRoot });
+  process.stdout.write('{}\\n');
+} else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "remove") {
+  writeState({ ...readState(), marketplaceRoot: null });
+  process.stdout.write('{}\\n');
+} else if (args[0] === "plugin" && args[1] === "add") {
+  if (process.env.FAKE_PLUGIN_ADD_FAILURE === "1") {
+    process.stderr.write("simulated plugin add failure\\n");
+    process.exit(9);
+  }
+  const state = readState();
+  if (!state.marketplaceRoot) {
+    process.stderr.write("marketplace is not registered\\n");
+    process.exit(8);
+  }
+  const sourcePath = resolveCatalogPlugin(state.marketplaceRoot);
+  writeState({ ...state, installed: true, sourcePath });
+  process.stdout.write('{}\\n');
+} else if (args[0] === "plugin" && args[1] === "remove") {
+  writeState({ ...readState(), installed: false, sourcePath: null });
+  process.stdout.write('{}\\n');
 } else if (args.join(" ") === "plugin list --json") {
-  const sourcePath = require("node:path").join(process.env.CODEX_AGENT_VIEW_RUNTIME_DIR, "marketplace");
-  process.stdout.write(JSON.stringify({ installed: [{
+  const state = readState();
+  const installed = state.installed ? [{
     pluginId: "codex-agent-view@codex-agent-view",
     enabled: process.env.FAKE_PLUGIN_DISABLED !== "1",
     version: "0.5.1",
-    source: { source: "local", path: sourcePath }
-  }] }) + "\\n");
+    source: { source: "local", path: state.sourcePath }
+  }] : [];
+  process.stdout.write(JSON.stringify({ installed }) + "\\n");
 } else {
   process.stdout.write('{}\\n');
 }
@@ -97,7 +152,7 @@ process.exitCode = Number(process.env.FAKE_BROWSER_EXIT_CODE || 0);
     await chmod(fakeBrowser, 0o700);
   }
 
-  return { browserLog, fakeBin, log, root };
+  return { browserLog, fakeBin, log, root, state };
 }
 
 function cliEnvironment(setup, runtimeRoot, extra = {}) {
@@ -107,8 +162,25 @@ function cliEnvironment(setup, runtimeRoot, extra = {}) {
     CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot,
     FAKE_BROWSER_LOG: setup.browserLog,
     FAKE_CODEX_LOG: setup.log,
+    FAKE_CODEX_STATE: setup.state,
     ...extra,
   };
+}
+
+function installedPluginRoot(runtimeRoot) {
+  return join(runtimeRoot, "marketplace", "plugins", "codex-agent-view");
+}
+
+function installedManifestPath(runtimeRoot) {
+  return join(installedPluginRoot(runtimeRoot), ".codex-plugin", "plugin.json");
+}
+
+async function convertToLegacyRootLayout(runtimeRoot) {
+  const marketplace = join(runtimeRoot, "marketplace");
+  const manifest = await readFile(installedManifestPath(runtimeRoot), "utf8");
+  await mkdir(join(marketplace, ".codex-plugin"));
+  await writeFile(join(marketplace, ".codex-plugin", "plugin.json"), manifest);
+  await rm(join(marketplace, "plugins"), { force: true, recursive: true });
 }
 
 function spawnCli(setup, runtimeRoot, args, options = {}) {
@@ -335,6 +407,31 @@ test("open reuses an owned runtime and passes one private grant only to the defa
   assert(!result.stderr.includes(bootstrapCredential));
 });
 
+test("open accepts an owned legacy root-layout bundle during the migration window", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "legacy-open-runtime");
+  const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
+  const install = await runCli(setup, runtimeRoot, ["install"]);
+  assert.equal(install.code, 0, install.stderr);
+  await convertToLegacyRootLayout(runtimeRoot);
+  const monitor = await startMonitorServer({
+    env,
+    port: 0,
+    viewerToken: await readViewerToken(env),
+  });
+  t.after(async () => monitor.close().catch(() => {}));
+
+  const result = await runCli(setup, runtimeRoot, ["open"]);
+
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(result.stdout, "Codex Agent View opened in the default browser.\n");
+  assert.equal((await waitForBrowserCall(setup.browserLog)).length, 1);
+});
+
 test("open starts a missing monitor internally and never exposes its authenticated target", async (t) => {
   if (process.platform === "win32") {
     t.skip("detached monitor fixture uses POSIX process behavior");
@@ -385,7 +482,7 @@ test("open returns bounded private-safe errors for invalid arguments and unsafe 
   );
   assert.deepEqual(await readCalls(setup.browserLog), []);
 
-  const manifestPath = join(runtimeRoot, "marketplace", ".codex-plugin", "plugin.json");
+  const manifestPath = installedManifestPath(runtimeRoot);
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   await writeFile(manifestPath, `${JSON.stringify({ ...manifest, version: "0.0.0" })}\n`);
   const mismatch = await runCli(setup, runtimeRoot, ["open"]);
@@ -462,7 +559,6 @@ test("open preserves bounded grant rejection, timeout, and invalid-response fail
     t.skip("fake executable fixture uses a POSIX shebang");
     return;
   }
-  const setup = await fixture(t);
   const cases = [
     { expectedCode: "viewer_grant_rejected", kind: "rejected" },
     { expectedCode: "viewer_grant_timeout", kind: "timeout" },
@@ -470,7 +566,8 @@ test("open preserves bounded grant rejection, timeout, and invalid-response fail
   ];
 
   for (const [index, failure] of cases.entries()) {
-    const runtimeRoot = join(setup.root, `grant-${failure.kind}`);
+    const setup = await fixture(t);
+    const runtimeRoot = join(setup.root, "runtime");
     const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
     const install = await runCli(setup, runtimeRoot, ["install"]);
     assert.equal(install.code, 0, install.stderr);
@@ -633,6 +730,74 @@ test("refuses to replace or uninstall an unmanaged marketplace directory", async
   assert.deepEqual(await readCalls(setup.log), []);
 });
 
+test("fresh install uses a strict plugin subdirectory accepted by a root-rejecting marketplace parser", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+
+  const result = await runCli(setup, runtimeRoot, ["install"]);
+
+  assert.equal(result.code, 0, result.stderr);
+  const marketplace = JSON.parse(await readFile(
+    join(runtimeRoot, "marketplace", ".agents", "plugins", "marketplace.json"),
+    "utf8",
+  ));
+  assert.equal(
+    marketplace.plugins[0].source.path,
+    "./plugins/codex-agent-view",
+  );
+  await access(installedManifestPath(runtimeRoot));
+  await assertMissing(join(runtimeRoot, "marketplace", ".codex-plugin", "plugin.json"));
+  assert.deepEqual(await readCalls(setup.log), [
+    ["plugin", "marketplace", "list", "--json"],
+    ["plugin", "marketplace", "add", join(runtimeRoot, "marketplace"), "--json"],
+    ["plugin", "add", "codex-agent-view@codex-agent-view", "--json"],
+    ["plugin", "list", "--json"],
+  ]);
+});
+
+test("install upgrades an owned legacy root-layout bundle to the strict subdirectory layout", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+  assert.equal((await runCli(setup, runtimeRoot, ["install"])).code, 0);
+  await convertToLegacyRootLayout(runtimeRoot);
+  await access(join(runtimeRoot, "marketplace", ".codex-plugin", "plugin.json"));
+
+  const result = await runCli(setup, runtimeRoot, ["install"]);
+
+  assert.equal(result.code, 0, result.stderr);
+  await access(installedManifestPath(runtimeRoot));
+  await assertMissing(join(runtimeRoot, "marketplace", ".codex-plugin", "plugin.json"));
+  const fakeState = JSON.parse(await readFile(setup.state, "utf8"));
+  assert.equal(fakeState.sourcePath, installedPluginRoot(runtimeRoot));
+});
+
+test("install reports plugin registration failure instead of claiming success", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("fake executable fixture uses a POSIX shebang");
+    return;
+  }
+  const setup = await fixture(t);
+  const runtimeRoot = join(setup.root, "runtime");
+
+  const result = await runCli(setup, runtimeRoot, ["install"], {
+    env: { FAKE_PLUGIN_ADD_FAILURE: "1" },
+  });
+
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /simulated plugin add failure/);
+  assert.doesNotMatch(result.stdout, /Installed|Registration verified/);
+  const fakeState = JSON.parse(await readFile(setup.state, "utf8"));
+  assert.equal(fakeState.installed, false);
+});
+
 test("install preserves an existing viewer credential without exposing it", async (t) => {
   if (process.platform === "win32") {
     t.skip("fake executable fixture uses a POSIX shebang");
@@ -750,7 +915,7 @@ test("install uses bearer fallback only for a known managed pre-proof bundle", a
   const runtimeRoot = join(setup.root, "legacy-upgrade-runtime");
   const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
   assert.equal((await runCli(setup, runtimeRoot, ["install"])).code, 0);
-  const manifestPath = join(runtimeRoot, "marketplace", ".codex-plugin", "plugin.json");
+  const manifestPath = installedManifestPath(runtimeRoot);
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   await writeFile(manifestPath, `${JSON.stringify({ ...manifest, version: "0.4.7" })}\n`);
 
@@ -829,7 +994,7 @@ test("an unknown managed version gets no legacy bearer fallback and is preserved
   const runtimeRoot = join(setup.root, "unknown-version-runtime");
   const env = { CODEX_AGENT_VIEW_RUNTIME_DIR: runtimeRoot };
   assert.equal((await runCli(setup, runtimeRoot, ["install"])).code, 0);
-  const manifestPath = join(runtimeRoot, "marketplace", ".codex-plugin", "plugin.json");
+  const manifestPath = installedManifestPath(runtimeRoot);
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   await writeFile(manifestPath, `${JSON.stringify({ ...manifest, version: "9.9.9" })}\n`);
   const seen = [];
@@ -1339,7 +1504,7 @@ test("doctor distinguishes valid registration from unobservable hook trust and n
   assert.deepEqual(report.plugin, {
     enabled: true,
     installed: true,
-    source_path: join(runtimeRoot, "marketplace"),
+    source_path: installedPluginRoot(runtimeRoot),
     version: "0.5.1",
   });
   assert.equal(report.hook.wiring_ok, true);

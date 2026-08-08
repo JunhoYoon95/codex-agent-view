@@ -386,6 +386,45 @@ test("offers an accessible English, Korean, and Spanish language selector", () =
   assert.deepEqual(Object.keys(messages.es).sort(), englishKeys);
 });
 
+test("makes hook review and self-exclusion prominent in every empty-state locale", () => {
+  const messagesStart = app.indexOf("const MESSAGES = Object.freeze(");
+  const messagesEnd = app.indexOf("\n\nconst STATUS_KEYS", messagesStart);
+  const messages = Function(
+    `"use strict"; ${app.slice(messagesStart, messagesEnd)}; return MESSAGES;`,
+  )();
+
+  for (const locale of ["en", "ko", "es"]) {
+    const copy = messages[locale];
+    assert(copy.hookReviewTitle.length > 0);
+    assert(copy.hookReviewCopy.length > 0);
+    assert.match(copy.hookReviewCopy, /trust|신뢰|confianza/i);
+    assert.match(copy.emptyStep1, /Plugins > Codex Agent View/);
+    assert.match(copy.emptyStep1, /Trust all|모두 신뢰하기|Confiar en todos/);
+    assert.match(copy.emptyStep1, /Review|검토|Revisar/);
+    assert.match(copy.emptyStep2, /\/hooks/);
+    assert.match(copy.emptyStep3, /restart|재시작|reinicia/i);
+    assert.match(copy.emptyStep4, /new task|새 작업|tarea nueva/i);
+    assert.match(copy.viewerTaskHiddenCopy, /only observed|관찰된 유일한|único trabajo observado/i);
+    assert.match(copy.viewerTaskActionTitle, /separate task|별도의 작업|otra tarea/i);
+    assert.match(copy.viewerTaskExclusion, /separate lightweight viewer task|별도의 가벼운 보기용 작업|otra tarea ligera de visualización/i);
+    assert.match(copy.observationBoundary, /cannot be replayed|재생되지 않|no se puede reproducir/i);
+  }
+
+  assert.match(app, /hookReview\.className = "hook-review-callout"/);
+  assert.match(app, /rawSessions\.length > 0[\s\S]*?observableSessions\(\)\.length === 0/);
+  assert.match(app, /rawSessions\.some\(\(session\) => session\.sessionId === excludedSessionId\)/);
+  assert.match(app, /viewState\.diagnostics\.length === 0[\s\S]*?viewState\.updatedAtMs/);
+  assert.match(app, /viewerTaskCallout\.className = "viewer-task-callout"/);
+  assert.match(app, /copy\.textContent = t\("viewerTaskHiddenCopy"\)/);
+  assert.match(app, /viewerTaskTitle\.textContent = t\("viewerTaskActionTitle"\)/);
+  assert.match(
+    app,
+    /if \(hasOnlyExcludedViewerTask\)[\s\S]*?guidance\.append\(viewerTaskCallout\)[\s\S]*?else if \(noHookEventsObserved\)[\s\S]*?guidance\.append\(hookReview, automaticTracking, steps\)/,
+  );
+  assert.match(styles, /\.hook-review-callout\s*,/);
+  assert.match(styles, /\.viewer-task-callout\s*\{/);
+});
+
 test("uses product-oriented work language instead of implementation hierarchy terms", () => {
   assert.match(html, /See what Codex is working on, which agents are involved/);
   assert.match(html, /LIVE CODEX WORK/);

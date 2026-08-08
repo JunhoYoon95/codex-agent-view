@@ -1,6 +1,6 @@
 {
   "name": "codex-agent-view",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "A read-only Codex plugin for monitoring live tasks and subagents in your browser. Open each view with one lightweight @codex-agent-view invocation. Once open, live monitoring runs locally with no additional model calls.",
   "author": {
     "name": "Junho Yoon",

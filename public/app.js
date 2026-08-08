@@ -125,10 +125,17 @@ const MESSAGES = Object.freeze({
     emptyTitle: "No task activity has been received in this observation window.",
     emptyCopy: "The local monitor is connected. This result alone does not mean that Codex has no active work or participating agents.",
     emptyGuidanceTitle: "If work does not appear",
+    hookReviewTitle: "Check hook approval first",
+    hookReviewCopy: "No activity has reached this monitor. The hook may not be trusted or loaded yet, but this page cannot inspect Codex's saved hook-trust state.",
     automaticTracking: "You do not need to enter or register task IDs. Activity from trusted hooks is added automatically.",
-    emptyStep1: "After installing the plugin, fully restart the official Codex app.",
-    emptyStep2: "In a new task, review and explicitly trust the Codex Agent View hook command.",
-    emptyStep3: "After trusting it, start new work and run agents. New activity is added automatically.",
+    emptyStep1: "In the Codex app, open Plugins > Codex Agent View, confirm that it is enabled, choose Review under Hooks, and then choose Trust all if those controls are available.",
+    emptyStep2: "If the app has no hook-review controls, open the interactive Codex CLI, run /hooks, inspect the current Codex Agent View command, and approve it.",
+    emptyStep3: "Fully quit and restart the official Codex app so it loads the current plugin and hook definition.",
+    emptyStep4: "After approval and restart, create a new task and start new work to verify delivery.",
+    viewerTaskHiddenTitle: "The viewer task is hidden from this page.",
+    viewerTaskHiddenCopy: "The only observed work item is the task that opened this view, so the visible list is empty.",
+    viewerTaskActionTitle: "Open the viewer from a separate task",
+    viewerTaskExclusion: "The task that opened this view is intentionally excluded. Open Codex Agent View from a separate lightweight viewer task, then start or continue the work you want to monitor in another task.",
     observationBoundary: "Observation starts with the first trusted hook event. Earlier activity and activity missed while local collection was stopped cannot be replayed; restarting collection opens a new observation window.",
     diagnosticsCount: "Validation information · {count}",
     diagnosticOccurrences: "{count} occurrences",
@@ -280,10 +287,17 @@ const MESSAGES = Object.freeze({
     emptyTitle: "이 관찰 화면에서 수신된 작업 활동이 없습니다.",
     emptyCopy: "로컬 모니터 연결은 정상입니다. 이 결과만으로 Codex에 진행 중인 작업이나 참여 에이전트가 없다고 판단할 수 없습니다.",
     emptyGuidanceTitle: "표시되지 않을 때 확인 순서",
+    hookReviewTitle: "먼저 Hook 승인 상태를 확인하세요",
+    hookReviewCopy: "아직 이 모니터에 도착한 활동이 없습니다. Hook이 신뢰되지 않았거나 아직 로드되지 않았을 수 있지만, 이 화면에서는 Codex에 저장된 Hook 신뢰 상태를 확인할 수 없습니다.",
     automaticTracking: "작업 ID를 입력하거나 작업별로 등록할 필요가 없습니다. 신뢰한 hook의 작업 활동이 이 목록에 자동으로 추가됩니다.",
-    emptyStep1: "플러그인을 설치한 뒤 공식 Codex 앱을 완전히 재시작했는지 확인합니다.",
-    emptyStep2: "새 작업에서 표시되는 Codex Agent View hook 명령을 검토하고 직접 신뢰합니다.",
-    emptyStep3: "신뢰 설정 후 새 작업을 시작해 에이전트를 실행합니다. 새 활동은 이 목록에 자동으로 추가됩니다.",
+    emptyStep1: "Codex 앱에서 Plugins > Codex Agent View를 열어 활성화 상태를 확인하고, Hooks에서 '검토'를 누른 뒤 해당 버튼이 보이면 '모두 신뢰하기'를 선택합니다.",
+    emptyStep2: "앱에 Hook 검토 화면이 없다면 interactive Codex CLI에서 /hooks를 실행하고 현재 Codex Agent View 명령을 검토한 뒤 승인합니다.",
+    emptyStep3: "현재 플러그인과 Hook 정의를 다시 로드하도록 공식 Codex 앱을 완전히 종료한 뒤 재시작합니다.",
+    emptyStep4: "승인과 재시작을 마친 뒤 새 작업을 만들고 새로운 활동을 시작해 전달 여부를 확인합니다.",
+    viewerTaskHiddenTitle: "이 화면을 연 작업은 목록에서 숨겨집니다.",
+    viewerTaskHiddenCopy: "현재 관찰된 유일한 작업이 이 화면을 연 작업이므로 표시 목록이 비어 있습니다.",
+    viewerTaskActionTitle: "별도의 작업에서 보기 화면을 여세요",
+    viewerTaskExclusion: "이 화면을 연 작업은 의도적으로 제외됩니다. 별도의 가벼운 보기용 작업에서 Codex Agent View를 연 뒤, 다른 작업에서 관찰할 새 작업을 시작하거나 기존 작업을 계속하세요.",
     observationBoundary: "관찰 화면은 첫 번째로 신뢰한 hook을 받은 시점부터 시작합니다. 그 전에 이미 지나간 활동과 로컬 상태 수집이 중단된 동안의 활동은 재생되지 않으며, 수집이 다시 시작되면 새 관찰 화면이 열립니다.",
     diagnosticsCount: "검증 정보 · {count}건",
     diagnosticOccurrences: "{count}건",
@@ -435,10 +449,17 @@ const MESSAGES = Object.freeze({
     emptyTitle: "No se recibió actividad en esta ventana de observación.",
     emptyCopy: "El monitor local está conectado. Este resultado no implica por sí solo que Codex no tenga trabajos o agentes activos.",
     emptyGuidanceTitle: "Si el trabajo no aparece",
+    hookReviewTitle: "Comprueba primero la aprobación del hook",
+    hookReviewCopy: "Aún no llegó actividad a este monitor. Es posible que el hook todavía no sea confiable o no esté cargado, pero esta página no puede consultar el estado de confianza guardado por Codex.",
     automaticTracking: "No es necesario introducir ni registrar IDs de tareas. La actividad de hooks confiables se añade automáticamente.",
-    emptyStep1: "Tras instalar el plugin, reinicia por completo la aplicación oficial de Codex.",
-    emptyStep2: "En una tarea nueva, revisa y autoriza explícitamente el comando hook de Codex Agent View.",
-    emptyStep3: "Después, inicia un trabajo nuevo y ejecuta agentes. La actividad se añadirá automáticamente.",
+    emptyStep1: "En la aplicación Codex, abre Plugins > Codex Agent View, confirma que esté activado, elige Revisar en Hooks y después Confiar en todos si aparecen esos controles.",
+    emptyStep2: "Si la aplicación no tiene controles para revisar hooks, abre la CLI interactiva de Codex, ejecuta /hooks, inspecciona el comando actual de Codex Agent View y apruébalo.",
+    emptyStep3: "Cierra por completo y reinicia la aplicación oficial de Codex para que cargue el plugin y la definición de hook actuales.",
+    emptyStep4: "Después de aprobar y reiniciar, crea una tarea nueva e inicia trabajo nuevo para verificar la entrega.",
+    viewerTaskHiddenTitle: "La tarea que abrió esta vista está oculta.",
+    viewerTaskHiddenCopy: "El único trabajo observado es la tarea que abrió esta vista, por eso la lista visible está vacía.",
+    viewerTaskActionTitle: "Abre el visor desde otra tarea",
+    viewerTaskExclusion: "La tarea que abrió esta vista se excluye intencionalmente. Abre Codex Agent View desde otra tarea ligera de visualización y después inicia o continúa el trabajo que quieras observar en una tarea diferente.",
     observationBoundary: "La observación comienza con el primer evento de un hook autorizado. La actividad anterior o perdida mientras la recopilación local estuvo detenida no se puede reproducir; al reiniciarla se abre una ventana nueva.",
     diagnosticsCount: "Información de validación · {count}",
     diagnosticOccurrences: "{count} apariciones",
@@ -1713,12 +1734,26 @@ function setEmptyObservationMessage() {
   elements.stateMessage.className = "state-message state-empty state-empty-observation";
   elements.stateMessage.replaceChildren();
 
+  const rawSessions = Array.isArray(viewState.sessions) ? viewState.sessions : [];
+  const hasOnlyExcludedViewerTask =
+    rawSessions.length > 0 &&
+    observableSessions().length === 0 &&
+    CANONICAL_SESSION_ID_PATTERN.test(excludedSessionId) &&
+    rawSessions.some((session) => session.sessionId === excludedSessionId);
+  const noHookEventsObserved =
+    viewState.diagnostics.length === 0 &&
+    rawSessions.length === 0 &&
+    (!Number.isFinite(viewState.updatedAtMs) || viewState.updatedAtMs <= 0);
+
   const heading = document.createElement("strong");
   const copy = document.createElement("span");
 
   if (viewState.diagnostics.length) {
     heading.textContent = t("emptyWithDiagnosticsTitle");
     copy.textContent = t("emptyWithDiagnosticsCopy", { count: viewState.diagnostics.length });
+  } else if (hasOnlyExcludedViewerTask) {
+    heading.textContent = t("viewerTaskHiddenTitle");
+    copy.textContent = t("viewerTaskHiddenCopy");
   } else {
     heading.textContent = t("emptyTitle");
     copy.textContent = t("emptyCopy");
@@ -1734,18 +1769,45 @@ function setEmptyObservationMessage() {
   automaticTracking.className = "automatic-tracking";
   automaticTracking.textContent = t("automaticTracking");
 
-  const steps = document.createElement("ol");
-  for (const step of [t("emptyStep1"), t("emptyStep2"), t("emptyStep3")]) {
-    const item = document.createElement("li");
-    item.textContent = step;
-    steps.append(item);
-  }
-
   const boundary = document.createElement("p");
   boundary.className = "observation-boundary";
   boundary.textContent = t("observationBoundary");
 
-  guidance.append(guidanceTitle, automaticTracking, steps, boundary);
+  guidance.append(guidanceTitle);
+  if (hasOnlyExcludedViewerTask) {
+    const viewerTaskCallout = document.createElement("section");
+    viewerTaskCallout.className = "viewer-task-callout";
+    const viewerTaskTitle = document.createElement("h4");
+    viewerTaskTitle.textContent = t("viewerTaskActionTitle");
+    const viewerTaskCopy = document.createElement("p");
+    viewerTaskCopy.textContent = t("viewerTaskExclusion");
+    viewerTaskCallout.append(viewerTaskTitle, viewerTaskCopy);
+    guidance.append(viewerTaskCallout);
+  } else if (noHookEventsObserved) {
+    const hookReview = document.createElement("section");
+    hookReview.className = "hook-review-callout";
+    const hookReviewTitle = document.createElement("h4");
+    hookReviewTitle.textContent = t("hookReviewTitle");
+    const hookReviewCopy = document.createElement("p");
+    hookReviewCopy.textContent = t("hookReviewCopy");
+    hookReview.append(hookReviewTitle, hookReviewCopy);
+
+    const steps = document.createElement("ol");
+    for (const step of [
+      t("emptyStep1"),
+      t("emptyStep2"),
+      t("emptyStep3"),
+      t("emptyStep4"),
+    ]) {
+      const item = document.createElement("li");
+      item.textContent = step;
+      steps.append(item);
+    }
+    guidance.append(hookReview, automaticTracking, steps);
+  } else {
+    guidance.append(automaticTracking);
+  }
+  guidance.append(boundary);
 
   if (viewState.diagnostics.length) {
     const diagnostics = document.createElement("div");

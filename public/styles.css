@@ -482,6 +482,29 @@ h1 {
   font-size: var(--text-sm);
 }
 
+.hook-review-callout,
+.viewer-task-callout {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border-default));
+  border-left: 0.3rem solid var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+.hook-review-callout h4,
+.viewer-task-callout h4 {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-md);
+}
+
+.hook-review-callout p,
+.viewer-task-callout p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
 .automatic-tracking {
   margin-bottom: var(--space-3);
   color: var(--text-secondary);

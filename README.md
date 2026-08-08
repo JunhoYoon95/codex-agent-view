@@ -13,18 +13,35 @@ It does not replace Codex, control tasks or agents, run a hosted service, send t
 Install the current release from a regular terminal:
 
 ```bash
-npm install --global codex-agent-view@0.5.5
+codex --version
+```
+
+If the `codex` executable on your PATH was installed through npm, update it and verify the selected version again:
+
+```bash
+npm install --global @openai/codex@latest
+codex --version
+```
+
+If Codex came from another install channel, update it through that channel instead. Then install the plugin package:
+
+```bash
+npm install --global codex-agent-view@0.5.6
 codex-agent-view install
 ```
 
-The first command installs the npm package. The second explicitly registers its bundled local Codex plugin. `npm install` alone does not modify Codex settings, and this package has no `postinstall` script that does so.
+The `0.5.6` installer copies the bundled plugin into a strict marketplace subdirectory before registration, avoiding the marketplace-root discovery failure in `0.5.5`.
+
+The npm command installs the package. `codex-agent-view install` copies and explicitly registers its bundled local Codex plugin. `npm install` alone does not modify Codex settings, and this package has no `postinstall` script that does so.
 
 Then:
 
-1. If Codex was open during installation, quit it completely and reopen it.
-2. In the Codex app's **Plugins** screen, confirm that **Codex Agent View** is installed and enabled.
-3. If Codex asks you to review hooks, inspect `hooks/hooks.json` and the `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command before explicitly trusting the current definition. If the app does not provide hook review, use `/hooks` in the interactive Codex CLI during installation.
+1. In the Codex app's **Plugins** screen, confirm that **Codex Agent View** is installed and enabled.
+2. In its **Hooks** section, choose **Review**, inspect `hooks/hooks.json` and the `node "${PLUGIN_ROOT}/scripts/send-hook.mjs"` command, then choose **Trust all** for the current definitions. Only if the app has no hook-review UI, use `/hooks` in the interactive Codex CLI.
+3. Quit Codex completely and reopen it.
 4. Create a new Codex task. Events from before installation are not replayed.
+
+Persisted hook trust is not exposed by the current programmatic plugin status, so the browser and `doctor` cannot confirm that approval; verify it in the Codex app or interactive `/hooks` UI.
 
 ## Use
 
@@ -40,6 +57,7 @@ That is the whole normal-use command. The plugin prepares or reuses its local mo
 - Do not start the monitor in a terminal.
 - Do not copy or manage a localhost URL.
 - Closing the browser tab does not stop Codex work. Invoke `@codex-agent-view` again when you want a new authenticated tab.
+- The task used to open the viewer is hidden from the view itself, so use a separate viewer task to monitor the work you care about.
 
 The public Codex plugin API does not provide a reliable automatic app sidebar or in-app panel for this workflow, so the default browser is the supported display surface.
 
@@ -94,7 +112,7 @@ codex-agent-view uninstall --purge
 
 ## Release and project documentation
 
-Release publication and verification evidence is recorded outside the immutable npm package README in [Distribution](docs/distribution.md), including registry digests, exact reinstall checks, CI, tags, and GitHub Releases.
+Release publication and verification evidence is recorded outside the immutable npm package README in [Distribution](docs/distribution.md), including registry digests, this-device compatible-CLI reinstall checks, CI, tags, and GitHub Releases. Those checks did not verify a clean cross-device first install; the compatibility failure above is now recorded separately.
 
 npm publication is separate from submission to the Universal Plugins Directory. Directory validator compatibility, portal/reviewer acceptance, search exposure, and promptless plugin-card Quick start behavior remain unverified and are not claimed here.
 
