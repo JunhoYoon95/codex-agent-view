@@ -4,13 +4,13 @@
 
 릴리스 증거 갱신일: 2026-08-09
 
-이 문서는 Codex Agent View의 배포 경계를 정리한다. Public npm `latest`/version은 `0.5.5`이며 registry metadata·digest, source-pack identity, 이 기기의 compatible-Codex-CLI reinstall, main/tag CI, annotated tag와 GitHub Release를 확인했다. Clean cross-device first install은 검증하지 않았고 실제 다른 기기에서 호환성 실패가 확인됐다. Current source는 unpublished `0.5.6` release candidate이며 public `0.5.5` evidence는 historical fact로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
+이 문서는 Codex Agent View의 배포 경계를 정리한다. Public npm `latest`/version은 `0.5.6`이며 accepted/registry tarball byte identity, registry metadata·digest/signature, main/tag CI, annotated tag와 GitHub Release를 확인했다. Accepted artifact의 clean temporary CLI install은 완료됐지만 official Codex app real-hook E2E와 clean second-device install은 pending이다. Public `0.5.5` evidence와 actual compatibility failure는 historical fact로 보존한다. Universal Directory publish는 npm/GitHub release와 별도 절차이며 아직 수행하지 않았다.
 
 ## 현재 상태
 
-- Package 이름은 `codex-agent-view`이고 public npm `latest`는 `0.5.5`다. Signed 23-file registry artifact, source-pack identity, 이 기기의 compatible-Codex-CLI reinstall, main/tag CI와 tag/Release를 확인했다. Prepublish exact-tarball lifecycle과 isolated browser status-filter E2E는 통과했지만 clean cross-device first install이나 공식 Codex 앱 restart/new-task public exact status-filter/assignment E2E를 대체하지 않는다.
+- Package 이름은 `codex-agent-view`이고 public npm `latest`는 `0.5.6`이다. Signed 23-file registry artifact, accepted-tarball byte identity, main/tag CI와 tag/Release를 확인했다. Prepublish exact-tarball lifecycle과 isolated browser E2E는 통과했지만 clean second-device install이나 공식 Codex 앱 restart/trust/new-task real-hook E2E를 대체하지 않는다.
 - Public `0.5.5` catalog는 marketplace root를 가리키는 `source.path: "./"`를 사용한다. 이 형식을 지원하지 않는 Codex CLI가 설치 명령에 선택된 다른 기기에서 plugin entry가 발견되지 않아 “plugin `codex-agent-view` was not found in marketplace `codex-agent-view`” 실패가 실제 확인됐다. 이는 사용자 입력 오류가 아니라 설치 호환성 결함이다.
-- Current `0.5.6` candidate는 copied marketplace 안의 strict subdirectory에 plugin을 배치하고 catalog path를 그 위치로 바꾸는 installer correction을 포함한다. Accepted exact tarball의 digest/package metadata, empty temporary `CODEX_HOME`/runtime actual-CLI first install/uninstall과 exact extracted artifact browser E2E를 확인했다. 공식 앱 restart/trust/new-task actual hook E2E, publish, CI, tag와 Release는 아직 완료되지 않았다.
+- Public `0.5.6`은 copied marketplace 안의 strict subdirectory에 plugin을 배치하고 catalog path를 그 위치로 바꾸는 installer correction을 포함한다. Accepted exact tarball의 clean temporary actual-CLI first install/uninstall과 exact extracted artifact browser E2E를 확인했다. 공식 앱 restart/trust/new-task actual hook E2E와 clean second-device install은 아직 완료되지 않았다.
 - Public `0.4.2`의 push, main CI Node.js 18/20/22, npm metadata/signature, release/registry tarball byte 일치, annotated tag/GitHub Release, this-device exact reinstall/artifact match, plugin installed/enabled, hook wiring 9종과 official Codex in-app Browser visual E2E를 확인했다.
 - Public `0.3.2`는 immutable packaged README의 잘못된 release-state 안내를 수정한 patch다. Registry metadata/digest/signature, tag/GitHub Release, main/tag CI, this-device exact install과 registry/install artifact match를 확인했다. App-native snapshot은 worker activity 3개를 확인했지만 live hook E2E는 앱 restart/new-task 전이라 미완료다.
 - Node.js `>=18`을 요구하며 production dependency가 없다.
@@ -21,17 +21,21 @@
 - `0.3.0` primary UX는 공식 Codex 앱 내장 thread tools의 bounded active-task snapshot이다. Optional runtime은 `127.0.0.1`에만 bind하고 hook lifecycle 상태를 bounded process memory에 둔다. 별도 App Server는 앱 내장 tools와 다른 process이며 live source로 사용하지 않는다.
 - Maintainer `kyurasi` account의 2FA는 `auth-and-writes` mode이고 pending enrollment가 없다. Public exact `codex-agent-view@0.4.7`의 this-device global reinstall, registry-extracted artifact 일치, CLI/plugin version, installed/enabled와 hook wiring 9종을 확인했다. 같은 현재 공식 앱 process는 초기 none observed 뒤 later actual hooks 전달을 시작했고 최종 public `0.4.7` official-app hook E2E도 완료했다.
 
-### Unpublished `0.5.6` accepted release candidate evidence
+### Public `0.5.6` release evidence
 
-Accepted exact tarball의 SHA-256은 `1833ab20f694c6ee10c16c76af19e968074c566ae39ffa53b88efee81b70de86`, npm shasum은 `9879c9fb98ee9abe768ca05e0c7dac1729015867`, integrity는 `sha512-0BIt98xDH1eDvqbI7OeGzwGcwv5YxanwJJ3YeduqN6ubiZiHW3M3x6iuql8LUAKs4k8THXf7YeE6L23bfvROkQ==`다. Package는 23 files, packed `65770` bytes, unpacked `262872` bytes다. 이 값은 아직 registry evidence가 아니라 publish 대상으로 고정한 exact local artifact의 identity다.
+Public npm `0.5.6`은 `2026-08-08T23:51:45.221Z`에 publish됐고 `latest`도 `0.5.6`이다. Registry tarball은 accepted exact tarball과 byte-identical하다. SHA-256은 `1833ab20f694c6ee10c16c76af19e968074c566ae39ffa53b88efee81b70de86`, npm shasum은 `9879c9fb98ee9abe768ca05e0c7dac1729015867`, integrity는 `sha512-0BIt98xDH1eDvqbI7OeGzwGcwv5YxanwJJ3YeduqN6ubiZiHW3M3x6iuql8LUAKs4k8THXf7YeE6L23bfvROkQ==`다. Registry signature가 있고 package는 23 files, packed `65770` bytes, unpacked `262872` bytes다.
 
 Empty temporary `CODEX_HOME`과 runtime에서 actual `codex-cli 0.146.0`을 사용해 exact tgz를 설치했다. Plugin `0.5.6`은 installed/enabled였고 copied catalog source는 `./plugins/codex-agent-view`였다. Copied marketplace에는 nested `.codex-plugin/plugin.json`만 plugin manifest로 존재했으며 root manifest는 없었다. Hook wiring 9종은 valid였고 persisted trust는 CLI가 노출하지 않아 `unknown`이다. `uninstall --purge` 뒤 plugin registration과 owned runtime은 모두 absent였다.
 
+npm 공개 뒤 이 기기의 global package를 `0.5.5`에서 `0.5.6`으로 업그레이드하고 `codex-agent-view install`이 성공하는 것도 확인했다. Actual `codex-cli 0.146.0`에서 plugin `0.5.6`은 installed/enabled였고 runtime source는 사용자 home 아래 `.codex-agent-view/marketplace/plugins/codex-agent-view` strict subdirectory였다. `doctor`는 hook bundle valid와 hooks 9종, trust `unknown`, monitor not running을 보고했다. 이 this-device upgrade/reinstall 증거는 clean second-device install이나 공식 Codex 앱 real-hook E2E가 아니다.
+
 같은 exact tarball을 추출한 artifact의 isolated browser E2E에서 event가 없을 때 Hook 검토 callout과 4단계 안내가 표시됐고, viewer task self-exclusion은 mutual-exclusion 경계를 유지했다. Browser console warning과 error는 각각 0건이었다. 이 browser 검증은 공식 Codex 앱의 actual hook delivery를 대체하지 않는다.
 
-Release write 전 GitHub auth와 npm `kyurasi` auth 및 2FA `auth-and-writes`를 확인했다. npm public `0.5.6`, registry digest/signature, main/tag CI, annotated tag/GitHub Release와 공식 Codex 앱 완전 재시작·Hook trust·new-task actual hook/status-filter/assignment/invocation E2E는 아직 pending이다. Public `0.5.5` evidence와 actual compatibility failure는 아래 historical record로 보존한다.
+Release commit과 annotated `v0.5.6` tag target은 `651d260c17694814a118f84705b3f809b7daa1a5`다. Main CI `31284502077`과 tag CI `31284958057`은 모두 Node.js 18/20/22에서 성공했다. [Public non-draft/non-prerelease GitHub Release v0.5.6](https://github.com/JunhoYoon95/codex-agent-view/releases/tag/v0.5.6)는 `2026-08-08T23:53:33Z`에 공개됐다.
 
-### Public `0.5.5` patch release contract and evidence
+공식 Codex 앱 완전 재시작·Hook trust·new-task real-hook status-filter/assignment/invocation E2E와 clean second-device install은 아직 pending이다. Public `0.5.5` evidence와 actual compatibility failure는 아래 historical record로 보존한다.
+
+### Historical public `0.5.5` patch release contract and evidence
 
 Public `0.5.5`는 **Work status filter**가 상위 작업의 현재 `session.status`만 매치하도록 제한한다. 이전 source는 하위 agent 상태와 recent activity history까지 OR 조건으로 사용해 `Running`을 선택해도 현재 완료·대기인 작업 카드가 섞일 수 있었다. 새 회귀 계약은 running/completed/waiting 각각에서 과거 활동이나 하위 agent가 다른 상태여도 상위 작업의 현재 상태가 선택값과 다른 카드를 제외한다. UI label과 README도 English/한국어/Español에서 이 필터가 work-item status 기준임을 명시한다.
 
@@ -464,7 +468,7 @@ Release candidate 검증에서는 `npm pack`으로 만든 exact tarball을 임�
 
 ### Historical public `0.5.1`
 
-다음 exact-version 명령은 historical public registry artifact `0.5.1`을 재현할 때만 사용한다. 현재 source-tree 설치 명령은 root README의 `0.5.6` release candidate Quick start를 따르며 npm 공개 전에는 실행 가능한 public install contract가 아니다.
+다음 exact-version 명령은 historical public registry artifact `0.5.1`을 재현할 때만 사용한다. 현재 사용자 설치 명령은 root README의 public `0.5.6` Quick start를 따른다.
 
 ```bash
 npm install --global codex-agent-view@0.5.1
